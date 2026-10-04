@@ -1,6 +1,7 @@
 import os
+import re
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from uuid import uuid4
 
@@ -118,3 +119,34 @@ def test_t012_ac1_graph_postgresql_atomic_sequence_and_concurrent_cycles(postgre
     assert [event.seq for event in EventStore(postgres_engine).list("task", scope=SCOPE)] == list(
         range(1, 65)
     )
+
+
+def test_t012_ac1_graph_postgresql_stale_event_ulid_wire_contract(postgres_engine) -> None:
+    from cre_brain.state.graph import DependencyGraph
+
+    upgrade_database(postgres_engine)
+    graph = DependencyGraph(postgres_engine, release_id="integration-release")
+    graph.add_edge("rent", "noi", scope=SCOPE)
+    graph.add_edge("noi", "uw", scope=SCOPE)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        assert (
+            list(
+                executor.map(
+                    lambda _: graph.mark_stale("rent", task_id="task", scope=SCOPE), range(32)
+                )
+            )
+            == [["noi", "uw"]] * 32
+        )
+    persisted = EventStore(postgres_engine).list("task", scope=SCOPE)
+    assert len({event.event_id for event in persisted}) == 64
+    assert [event.seq for event in persisted] == list(range(1, 65))
+    alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    for event in persisted:
+        assert re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", event.event_id)
+        timestamp = 0
+        for char in event.event_id[:10]:
+            timestamp = timestamp * 32 + alphabet.index(char)
+        assert timestamp == (event.ts - datetime(1970, 1, 1, tzinfo=UTC)) // timedelta(
+            milliseconds=1
+        )
+    assert graph.stale_items("task", scope=SCOPE) == ["noi", "uw"]

@@ -1,4 +1,6 @@
+import re
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine, select, text
@@ -107,6 +109,106 @@ def test_t012_ac1_graph_stale_event_failure_rolls_back_entire_invalidation(graph
             )
         )
     with pytest.raises(DBAPIError):
+        graph.mark_stale("rent", task_id="task", scope=SCOPE)
+    assert EventStore(graph.engine).list("task", scope=SCOPE) == []
+    assert graph.stale_items("task", scope=SCOPE) == []
+
+
+@pytest.mark.parametrize(
+    "timestamp",
+    [
+        datetime(1970, 1, 1, tzinfo=UTC),
+        datetime(2026, 10, 4, 12, 30, 59, 999999, tzinfo=UTC),
+        datetime(9999, 12, 31, 23, 59, 59, 999999, tzinfo=UTC),
+    ],
+)
+def test_t012_ac1_graph_persisted_stale_events_have_timestamped_ulids(
+    graph, monkeypatch, timestamp
+) -> None:
+    class FrozenDateTime(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            assert tz == UTC
+            return timestamp
+
+    monkeypatch.setattr("cre_brain.state.graph.datetime", FrozenDateTime)
+    graph.add_edge("rent", "noi", scope=SCOPE)
+    graph.add_edge("noi", "uw", scope=SCOPE)
+    for _ in range(3):
+        assert graph.mark_stale("rent", task_id="task", scope=SCOPE, cause_id="answer") == [
+            "noi",
+            "uw",
+        ]
+    persisted = EventStore(graph.engine).list("task", scope=SCOPE)
+    assert len(persisted) == 6
+    assert len({event.event_id for event in persisted}) == 6
+    assert [event.seq for event in persisted] == list(range(1, 7))
+    alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    expected_ms = (timestamp - datetime(1970, 1, 1, tzinfo=UTC)) // timedelta(milliseconds=1)
+    for event in persisted:
+        assert re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", event.event_id)
+        decoded_ms = 0
+        for char in event.event_id[:10]:
+            decoded_ms = decoded_ms * 32 + alphabet.index(char)
+        assert decoded_ms == expected_ms
+        assert event.ts == timestamp
+        assert event.source == "system" and event.kind == "stale"
+        assert event.task_id == "task" and event.origin is None
+        assert event.release_id == "test-release" and event.runner == "state"
+        assert event.cause_id == "answer" and event.schema_version == 1
+    assert graph.stale_items("task", scope=SCOPE) == ["noi", "uw"]
+
+
+def test_t012_ac1_graph_concurrent_invalidations_persist_unique_ulids(graph) -> None:
+    graph.add_edge("rent", "noi", scope=SCOPE)
+    graph.add_edge("noi", "uw", scope=SCOPE)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(
+            executor.map(lambda _: graph.mark_stale("rent", task_id="task", scope=SCOPE), range(32))
+        )
+    assert results == [["noi", "uw"]] * 32
+    persisted = EventStore(graph.engine).list("task", scope=SCOPE)
+    assert [event.seq for event in persisted] == list(range(1, 65))
+    assert len({event.event_id for event in persisted}) == 64
+    assert all(re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", e.event_id) for e in persisted)
+
+
+@pytest.mark.parametrize("entropy", [bytes(10), bytes([255]) * 10])
+def test_t012_ac1_graph_ulids_encode_all_80_secure_random_bits(graph, monkeypatch, entropy) -> None:
+    def random_bytes(size: int) -> bytes:
+        assert size == 10
+        return entropy
+
+    monkeypatch.setattr("secrets.token_bytes", random_bytes)
+    graph.add_edge("rent", "noi", scope=SCOPE)
+    graph.mark_stale("rent", task_id="task", scope=SCOPE)
+    event = EventStore(graph.engine).list("task", scope=SCOPE)[0]
+    assert re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", event.event_id)
+    alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    encoded = 0
+    for char in event.event_id:
+        encoded = encoded * 32 + alphabet.index(char)
+    assert encoded.bit_length() <= 128
+    assert encoded & ((1 << 80) - 1) == int.from_bytes(entropy)
+    assert encoded >> 80 == (event.ts - datetime(1970, 1, 1, tzinfo=UTC)) // timedelta(
+        milliseconds=1
+    )
+
+
+def test_t012_ac1_graph_entropy_failure_rolls_back_all_stale_events(graph, monkeypatch) -> None:
+    calls = 0
+
+    def random_bytes(size: int) -> bytes:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("entropy source unavailable")
+        return bytes(size)
+
+    monkeypatch.setattr("secrets.token_bytes", random_bytes)
+    graph.add_edge("rent", "noi", scope=SCOPE)
+    graph.add_edge("noi", "uw", scope=SCOPE)
+    with pytest.raises(OSError, match="entropy source unavailable"):
         graph.mark_stale("rent", task_id="task", scope=SCOPE)
     assert EventStore(graph.engine).list("task", scope=SCOPE) == []
     assert graph.stale_items("task", scope=SCOPE) == []

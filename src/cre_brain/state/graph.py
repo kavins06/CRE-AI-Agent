@@ -1,9 +1,9 @@
 """Tenant-scoped dependency DAG and durable, event-sourced invalidation."""
 
-from datetime import UTC, datetime
+import secrets
+from datetime import UTC, datetime, timedelta
 from graphlib import CycleError, TopologicalSorter
 from heapq import heappop, heappush
-from uuid import uuid4
 
 from pydantic import TypeAdapter
 from sqlalchemy import Connection, Engine, select
@@ -15,6 +15,13 @@ from cre_brain.state.schema import edges, events
 from cre_brain.state.store import lock_append, tenant_filter
 
 identifier = TypeAdapter(Identifier)
+
+
+def _new_event_id(timestamp: datetime) -> str:
+    milliseconds = (timestamp - datetime(1970, 1, 1, tzinfo=UTC)) // timedelta(milliseconds=1)
+    value = int.from_bytes(milliseconds.to_bytes(6, "big") + secrets.token_bytes(10), "big")
+    alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    return "".join(alphabet[(value >> shift) & 31] for shift in range(125, -1, -5))
 
 
 class GraphCycle(ValueError):
@@ -96,12 +103,13 @@ class DependencyGraph:
             if connection.dialect.name == "postgresql":
                 lock_append(connection, scope, ("events", task_id))
             for node in ordered:
+                timestamp = datetime.now(UTC)
                 event = AgentEvent(
-                    event_id=uuid4().hex,
+                    event_id=_new_event_id(timestamp),
                     task_id=task_id,
                     seq=None,
                     origin=None,
-                    ts=datetime.now(UTC),
+                    ts=timestamp,
                     source="system",
                     kind="stale",
                     cause_id=cause_id,

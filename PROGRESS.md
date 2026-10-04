@@ -369,3 +369,32 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
   T012: 9 passed, 246 deselected; AC1 PASSED, AC2 PASSED, AC3 PASSED
   ```
 - No missing-integration claim: three integration tests excluded from `make check` were separately executed successfully against the rootless/socket-only fixture; credentials stayed in its native passfile. Main PR #1 remains open/mergeable with four passing checks and the owner protected-change guard failure, no labels or owner review. No bypass, private-eval access, model calls or live-service changes. Next: release the workflow group from current tested dev, then T014 operating projections/tax/value-add.
+
+### 2026-10-04: T012 stale-event ULID wire-contract repair
+- Replaced `uuid4().hex` in graph-generated stale events with canonical 26-character Crockford Base32 ULIDs per SPEC §4. Each ID encodes the same UTC millisecond timestamp as its event plus 80 bits from `secrets.token_bytes(10)`. Existing tenant locks, event sequencing, graph order, payloads and transaction boundaries are unchanged.
+- Red-first evidence: all seven new offline ULID/entropy cases failed against UUID generation. Regression coverage inspects real persisted events at the Unix epoch, a sub-millisecond boundary and Python's maximum datetime; repeated same-millisecond invalidations and 32 concurrent two-event invalidations retain distinct IDs and contiguous sequences. Controlled zero/all-one entropy proves the full 80-bit field; failure on the second entropy request rolls back the first event too. Separate PostgreSQL coverage checks persisted canonical IDs and decoded timestamps under concurrent invalidation. Existing tests/assertions are retained.
+- Decisions: no shared ULID generator/dependency exists, so use the standard library in the allowed graph module without a lockfile change. Integer timedelta division avoids float timestamp rounding; six-byte unsigned conversion fails closed for out-of-range timestamps. IDs use the ordinary random ULID variant, not a process-local monotonic counter; durable server-assigned `seq` remains authoritative for same-millisecond ordering.
+- Exact verify command: `uv run pytest tests/state -q -k graph && uv run python scripts/check_task.py T012`. Exit **0**, with `CRE_TEST_DATABASE_URL` bound to a disposable PostgreSQL 16.15 cluster. Verification output tail (the command produced fewer than 30 lines):
+  ```text
+  .................                                                        [100%]
+  17 passed, 32 deselected in 3.97s
+
+  .................                                                        [100%]
+  =============================== warnings summary ===============================
+  .venv/lib/python3.12/site-packages/typer/__init__.py:24
+    /srv/infra/devin-outpost/sessions/devin-0dbd21040b5a41bcad9430277ed910e6/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:24: DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_binary_stream as get_binary_stream
+
+  .venv/lib/python3.12/site-packages/typer/__init__.py:25
+    /srv/infra/devin-outpost/sessions/devin-0dbd21040b5a41bcad9430277ed910e6/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:25: DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_text_stream as get_text_stream
+
+  -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+  17 passed, 246 deselected, 2 warnings in 3.32s
+
+  T012: AC1 PASSED, AC2 PASSED, AC3 PASSED
+  ```
+- `make check` exit 0: Ruff/format clean in 76 files, strict mypy clean in 50 source files, `259 passed, 4 deselected, 2 warnings in 55.42s`. `uv run pre-commit run --all-files` exit 0. PostgreSQL integration file separately exited 0 (`3 passed in 1.81s`), including existing T011 migration/state semantics and T012 concurrency/cycle checks.
+- Complete state-area replay with the same disposable PostgreSQL fixture exited 0: `49 passed in 7.49s`, including the fourth integration test excluded from `make check` and all earlier state regressions.
+- The cluster was extracted locally from the PostgreSQL apt package under ignored `.cache`, initialized/run in a user namespace and restricted to this session's Unix socket with TCP disabled. Initial abstract-socket attempts failed in psycopg hostname resolution; switching only the disposable fixture to a regular session-specific socket resolved it without production/test-policy changes.
+- Inherited T012 `passes: true` is freshly reverified; no feature flag changed. Owner guards, protected paths, dependencies and unrelated source remain unchanged. No live services, customer data, private evaluations, model calls or Excel runtime were used; this is state/wire-contract evidence, not analyst-quality evidence. Next: integrate this tested repair into dev for coordinator review, then T014 operating projections/tax/value-add. Blockers: none.
