@@ -28,6 +28,12 @@ def collect(root: Path) -> int:
         [
             "tests",
             "--collect-only",
+            "-p",
+            "pytest_asyncio.plugin",
+            "-p",
+            "pytest_cov.plugin",
+            "-p",
+            "_hypothesis_pytestplugin",
             "-q",
             "-o",
             "addopts=",
@@ -53,10 +59,15 @@ def count_revision(
             return 0
         raise ValueError(f"{revision} contains no tests directory")
     (target / ".cache").mkdir(exist_ok=True)
+    environment = os.environ.copy()
+    environment.pop("PYTEST_PLUGINS", None)
+    environment.update(
+        PYTEST_ADDOPTS="", PYTEST_DISABLE_PLUGIN_AUTOLOAD="1", PYTHONPATH=str(target / "src")
+    )
     result = subprocess.run(
         [sys.executable, str(Path(__file__).resolve()), "--collect", str(target)],
         cwd=target,
-        env={**os.environ, "PYTEST_ADDOPTS": "", "PYTHONPATH": str(target / "src")},
+        env=environment,
         capture_output=True,
         text=True,
         timeout=120,

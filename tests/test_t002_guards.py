@@ -313,3 +313,60 @@ def test_t002_ac6_broken_base_collection_is_not_treated_as_zero(tmp_path: Path) 
     )
     assert result.returncode != 0
     assert "collection failed" in (result.stdout + result.stderr).lower()
+
+
+def test_t002_ac3_external_pytest_plugin_override_cannot_affect_archives(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    suite(tmp_path, "def test_committed(): pass\n", policy=False)
+    git(tmp_path, "init", "--initial-branch=dev")
+    base = commit_fixture(tmp_path)
+    monkeypatch.setenv("PYTEST_PLUGINS", "nonexistent_external_plugin_override")
+    monkeypatch.setenv("PYTEST_DISABLE_PLUGIN_AUTOLOAD", "0")
+    result = run(
+        sys.executable,
+        str(ROOT / "scripts/test_count.py"),
+        "--root",
+        str(tmp_path),
+        "--base",
+        base,
+        cwd=tmp_path,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "base=1 head=1" in result.stdout
+
+
+def test_t002_ac3_ambient_entrypoint_autoload_is_disabled(tmp_path: Path) -> None:
+    suite(tmp_path, "def test_committed(): pass\n", policy=False)
+    (tmp_path / "src").mkdir()
+    (tmp_path / "src/sitecustomize.py").write_text(
+        """
+import importlib.metadata as metadata
+from types import SimpleNamespace
+original = metadata.distributions
+def poisoned(*args, **kwargs):
+    yield from original(*args, **kwargs)
+    yield SimpleNamespace(
+        entry_points=[metadata.EntryPoint(
+            name="ambient_poison", value="nonexistent_ambient_plugin", group="pytest11"
+        )],
+        files=[],
+        metadata={"Name": "ambient-poison"},
+    )
+metadata.distributions = poisoned
+"""
+    )
+    git(tmp_path, "init", "--initial-branch=dev")
+    base = commit_fixture(tmp_path)
+    command = ("--root", str(tmp_path), "--base", base)
+    result = run(sys.executable, str(ROOT / "scripts/test_count.py"), *command, cwd=tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    broken = tmp_path / "autoload_enabled.py"
+    broken.write_text(
+        (ROOT / "scripts/test_count.py")
+        .read_text()
+        .replace('PYTEST_DISABLE_PLUGIN_AUTOLOAD="1"', 'PYTEST_DISABLE_PLUGIN_AUTOLOAD=""')
+    )
+    result = run(sys.executable, str(broken), *command, cwd=tmp_path)
+    assert result.returncode != 0
+    assert "nonexistent_ambient_plugin" in result.stdout + result.stderr
