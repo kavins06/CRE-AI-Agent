@@ -224,3 +224,52 @@ def test_t015_ac3_debt_refinance_rejects_unsupported_dates_and_bad_inputs():
         terms(base_rate=0.06)
     with pytest.raises(ValidationError):
         loan(principal=D("NaN"))
+
+
+@pytest.mark.parametrize("annual_rate", ["1e-25", "1e-26", "1e-27", "1e-80"])
+def test_t015_ac1_debt_near_zero_payment_and_sizing(annual_rate):
+    contract = terms(base_rate=D(annual_rate), term_months=12, amortization_months=12)
+    result = amortize_debt(loan(principal=D(1200)), contract, **META)
+    with localcontext() as oracle:
+        oracle.prec = 150
+        monthly = D(annual_rate) / 12
+        expected = D(1200) * monthly / (1 - (1 + monthly) ** -12)
+    assert abs(result.outputs["month:1:scheduled_payment"] - expected) < D("1e-24")
+    assert result.outputs["month:1:interest"] > 0
+    assert result.outputs["balloon_payoff"] == 0
+    assert abs(result.outputs["scheduled_principal"] - 1200) < D("1e-23")
+    sized = size_debt(sizing(annual_noi=D(120)), contract, **META)
+    assert abs(sized.outputs["loan_amount"] - 96) < D("1e-23")
+    assert sized.outputs["loan_amount"] == sized.outputs["dscr_limit"]
+    assert sized.outputs["dscr"] >= D("1.25") - D("1e-26")
+
+
+@pytest.mark.parametrize("annual_rate", ["1e-25", "1e-26", "1e-27", "1e-80"])
+def test_t015_ac2_debt_near_zero_quotes_keep_cost_and_payoff(annual_rate):
+    contract = terms(base_rate=D(annual_rate), term_months=12, amortization_months=12)
+    result = compare_debt_quotes(loan(principal=D(1200)), [contract], **META)
+    assert abs(result.outputs["quote:terms:total_payments"] - 1200) < D("1e-22")
+    assert abs(result.outputs["quote:terms:effective_annual_cost"]) < D("1e-23")
+    assert result.outputs["quote:terms:balloon_payoff"] == 0
+    assert result.outputs["quote:terms:rank"] == 1
+
+
+@pytest.mark.parametrize("annual_rate", ["1e-25", "1e-26", "1e-27", "1e-80"])
+@pytest.mark.parametrize("io_months", [0, 12])
+def test_t015_ac3_debt_near_zero_refinance_amortizing_and_io(annual_rate, io_months):
+    contract = terms(
+        base_rate=D(annual_rate), term_months=12, amortization_months=12, io_months=io_months
+    )
+    refi = RefinanceInput(input_id="refi", refinance_date=date(2024, 7, 31), new_principal=D(1200))
+    result = refinance_debt(
+        loan(principal=D(1200)),
+        contract,
+        refi,
+        contract.model_copy(update={"input_id": "new"}),
+        **META,
+    )
+    expected_balance = D(1200) if io_months else D(600)
+    assert abs(result.outputs["old_balance_payoff"] - expected_balance) < D("1e-22")
+    assert result.outputs["cash_out"] + result.outputs["old_balance_payoff"] == 1200
+    expected_payment = D(1200) * D(annual_rate) / 12 if io_months else D(100)
+    assert abs(result.outputs["new:month:1:scheduled_payment"] - expected_payment) < D("1e-23")

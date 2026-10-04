@@ -74,7 +74,11 @@ class RefinanceInput(DomainModel):
 def _payment(principal: Decimal, rate: Decimal, months: int) -> Decimal:
     if not rate:
         return principal / months
-    return principal * rate / (ONE - (ONE + rate) ** -months)
+    discount = ONE / (ONE + rate)
+    annuity = ZERO
+    for _ in range(months):
+        annuity = (annuity + ONE) * discount
+    return principal / annuity
 
 
 def _monthly_rate(terms: LoanTerms) -> Decimal:

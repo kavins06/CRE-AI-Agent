@@ -786,3 +786,19 @@ T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
 T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Full `make check`: Ruff lint/format, strict mypy (69 source files) and 564 tests pass; one approved Reducto-license skip and 11 integration deselections. All pre-commit hooks pass. No runtime/approval blocker. T015/T016 remain false pending independent review; no PR, dev/main merge or acceptance is claimed.
+
+## 2026-10-04 — T015 required-review R1 repair (acceptance pending)
+- Accepted base verified exactly at origin/dev `5afde310256b5f988d17cef78d02644ddc0fe5fc`; locked bootstrap and baseline `make check` pass: 518 passed, one approved Reducto-license skip, 11 integration deselected. Incoming task branch retained; repair adds commits without rewriting.
+- Red-first regressions reproduced wrong payments/balances at annual rates 1e-25 and 1e-26 and DivisionByZero at 1e-27 and 1e-80, including fully IO refinancing: 12 failed, 4 passed, 75 deselected.
+- Decision: evaluate the finite annuity as a Horner sum of discounted unit payments, then divide principal by that positive sum. No subtraction of almost-equal powers, rate cutoff or near-zero division; the zero-rate limit is continuous. Interest still uses the actual positive rate, with isolated 28-digit outputs. Twelve-month payments match an independent 150-digit closed-form oracle; DSCR sizing remains approximately 96, never the erroneous 115.2. Balloon/IO/fees/provenance semantics are unchanged.
+- Focused Ruff and strict mypy (69 files) pass. Exact T015 verify exits 0; tail:
+```text
+...........................                                              [100%]
+27 passed, 64 deselected in 0.52s
+
+...........................                                              [100%]
+27 passed, 565 deselected, 2 warnings in 1.45s
+
+T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Both acceptance flags remain false. Next: repair T016 R2, then coupled full checks and independent review. No PR or dev/main integration; no blocker.
