@@ -730,3 +730,31 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - Independent parser/cross-module reviewer passed exact `761fcde`, confirming parser and locked dependencies identical to `91517ca`, reviewed finance/rules/domain state contracts, forged-provenance rejection and synthetic SQL/JSON provenance round trips. Clean locked `make check`: `518 passed, 1 approved Reducto skip, 11 integration deselected`; exact T034 replay `74 passed`, AC1–AC3 pass. Initial independent harness Git/venv failures were corrected by a clean isolated worktree, not source/test edits.
 - Fresh same-session exact T034 verify on the final metadata assembly exits 0: parser `74 passed, 1 approved Reducto skip`; checker `74 passed, 456 deselected`; AC1–AC3 pass. T034 alone marked true after the above verification and source review. The incoming T014/T021 flags are those tasks' separately verified changes. Source/tests/dependencies remain unchanged; no security gate changes.
 - Final head/merge hosted CI remains outstanding before dev integration. Optional Reducto licensed execution and same-UID/root adversarial isolation are not claimed. The reference cache is external to Git; no SEC/private evaluation/model calls were used.
+
+## 2026-10-04 — T015 author candidate (acceptance pending)
+- Isolated checkout from origin/dev `5afde310256b5f988d17cef78d02644ddc0fe5fc`; required accepted base is exactly this base. Locked `./init.sh` and baseline `make check` exited 0: 518 passed, one approved optional Reducto-license skip, 11 integration deselected.
+- Tests first: the new debt AC suite failed collection with `ModuleNotFoundError: No module named 'cre_brain.finance.debt'` (29 deselected, one error). Added Decimal sizing, monthly IO/amortization, borrower-yield quote ranking and payment-date refinancing. No existing tests/assertions or public domain schemas changed.
+- Decisions: the task's shorthand "balance → 0 at maturity" is satisfied by a separately reported balloon payment, never by deleting debt. IO defers the start of amortization; DSCR sizing uses the post-IO constant except for entirely IO terms. Fully IO zero-rate DSCR is explicitly undefined/nonbinding. Base plus spread is a fixed quoted rate, not an invented forward-rate curve.
+- Effective quote cost is the annually compounded monthly borrower IRR of net proceeds versus scheduled payments, balloon and early-prepayment fees. Fees are fixed plus percentage of principal; prepayment percentage applies to outstanding balance only before maturity. Exact ties sort by quote input ID. Optional common payoff horizon is a stored input, otherwise each contractual maturity is used.
+- Refinance is on contractual monthly anniversaries (day clamped to month end), after the old month's scheduled payment and before its balloon. Maturity refinancing therefore pays the remaining balance. Negative cash-out means equity required, not magically generated proceeds. Every source and optional horizon/NOI has a stored input ID. Outputs use isolated 28-digit half-even Decimal arithmetic without silent money quantization.
+- Exact verify exited 0: `uv run pytest tests/finance -q -k debt && uv run python scripts/check_task.py T015`. Tail:
+```text
+...........                                                              [100%]
+11 passed, 29 deselected in 0.50s
+
+...........                                                              [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_binary_stream as get_binary_stream
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_text_stream as get_text_stream
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+11 passed, 530 deselected, 2 warnings in 1.37s
+
+T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Full `make check`: Ruff lint/format, strict mypy (68 source files) and 529 tests pass; one approved Reducto-license skip and 11 integration deselections. All pre-commit hooks pass. No runtime/approval blocker; next implement T016, then independent review. T015 remains false; no PR, dev/main merge or acceptance is claimed.
