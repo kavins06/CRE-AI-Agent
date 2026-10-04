@@ -85,7 +85,7 @@
         "T011"
       ],
       "verify": "uv run pytest tests/state -q -k graph && uv run python scripts/check_task.py T012",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T013",
