@@ -34,6 +34,13 @@ class ChartOfAccounts(DomainModel):
     input_id: Identifier
     mapping: dict[Identifier, Identifier] = Field(min_length=1)
 
+    @field_validator("mapping")
+    @classmethod
+    def mapped_lines(cls, value: dict[str, str]) -> dict[str, str]:
+        if any(line.startswith("unmapped:") for line in value.values()):
+            raise ValueError("Chart line prefix 'unmapped:' is reserved for unmapped accounts")
+        return value
+
 
 class MissingMonthRule(DomainModel):
     input_id: Identifier

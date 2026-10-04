@@ -71,6 +71,11 @@ def test_t013_ac2_t12_zero_policy_does_not_invent_missing_months() -> None:
     assert result.outputs["annualization_factor"] == Decimal(1)
 
 
+def test_t013_ac2_t12_chart_rejects_reserved_unmapped_line_namespace() -> None:
+    with pytest.raises(ValueError, match="reserved"):
+        chart({"known": "unmapped:other"})
+
+
 @given(st.lists(st.integers(-100000, 100000), min_size=12, max_size=12))
 def test_t013_ac3_t12_twelve_month_annualization_is_identity(amounts) -> None:
     rows = [entry(month, month, "rent", str(amount)) for month, amount in enumerate(amounts, 1)]
