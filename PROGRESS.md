@@ -398,3 +398,35 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - Complete state-area replay with the same disposable PostgreSQL fixture exited 0: `49 passed in 7.49s`, including the fourth integration test excluded from `make check` and all earlier state regressions.
 - The cluster was extracted locally from the PostgreSQL apt package under ignored `.cache`, initialized/run in a user namespace and restricted to this session's Unix socket with TCP disabled. Initial abstract-socket attempts failed in psycopg hostname resolution; switching only the disposable fixture to a regular session-specific socket resolved it without production/test-policy changes.
 - Inherited T012 `passes: true` is freshly reverified; no feature flag changed. Owner guards, protected paths, dependencies and unrelated source remain unchanged. No live services, customer data, private evaluations, model calls or Excel runtime were used; this is state/wire-contract evidence, not analyst-quality evidence. Next: integrate this tested repair into dev for coordinator review, then T014 operating projections/tax/value-add. Blockers: none.
+
+### 2026-10-04: T031 local Docker sandbox and physical isolation
+- Added the typed `SandboxProvider`/`Box`/`ExecResult` contract and trusted `LocalDockerProvider`. Analyst containers run non-root with read-only rootfs, dropped capabilities, no-new-privileges, memory/CPU/PID limits, tenant-labelled private volumes and no Docker socket. Only deals, memory, outbox and scratch are writable; sleep/resume retain named volumes. Foreign resource collisions are rejected without deletion.
+- Reference Ubuntu images install pinned Codex/uv, Python, CRE runtime, LibreOffice/UNO/unoserver, Chromium/Playwright and fonts. Extractors receive only a bounded parsed JSON object, read-only, plus disposable scratch; no raw documents, analyst memory, skills or MCP configuration. Runtime credentials enter individual exec environments, never image layers/container config. Transfers use no-follow path traversal, bounded regular files and atomic replacement; snapshots reject symlinks/hardlinks, credential filenames and known credential values.
+- Egress uses a dedicated sidecar network namespace with deny-by-default iptables. UID 1000 may reach only the loopback CONNECT proxy; UID 1001 may use public DNS and HTTPS. The proxy requires exact domains, rejects all non-public/multicast/reserved answers and connects to the validated numeric address. Setup capabilities are irrevocably dropped before handling requests. No privileged analyst or host-network container is used.
+- Decisions: default resources implement SPEC's 2 CPU / 4 GB single-session minimum; owners provision at least 20 GB persistent disk and storage quotas, and configure 4 CPU / 8 GB for two sessions. Trusted host orchestration is the extraction sidecar API, not a daemon socket in the analyst. Known-secret snapshot refusal is not arbitrary encoded-secret detection. These local fixtures prove OS/plumbing behavior, not live analyst quality.
+- Red/runtime evidence: the mount-source delimiter regression failed before its boundary validator (`DID NOT RAISE`); physical validation caught root initialization traversal permissions, a read-only resolver write, missing Python alias, COPY permissions under restrictive host umask, and Docker's empty-volume copy-up resetting ownership. Fixed with startup-only initialization capabilities, a read-only sidecar DNS bind, explicit interpreter/file permissions and volume-nocopy on writable volumes. Chromium now actually launches and renders an isolated title. Peer-network assertions require an observed listening server before attempting access.
+- All reference images built in a disposable Docker 28.3.3 daemon with separate data/socket and mount/network namespaces under ignored session-local `.cache`; no shared daemon/service was changed. Docker was initially absent, so this substitutes a real isolated daemon, never a host-process sandbox or mocked OS tests. Synthetic credential sentinels only; no model calls, customer data or private evaluation access.
+- Initial exact verification passed with explicitly built `cre-box:t031`/`cre-extract:t031`. Final verification below also exercised fresh-runner bootstrap: only `DOCKER_HOST=unix:///tmp/cre-t031-420/socket` and `CRE_SANDBOX_DOCKER=$PWD/.cache/docker-runtime/docker/docker` were supplied. The physical integration fixture builds default reference images once per pytest process using a credential-free client environment, so existing main/nightly feature verification needs no guard/CI changes. Explicit owner image overrides are never rebuilt. Final commands were serialized to avoid pytest basetemp collisions. Output tail (existing Typer/Click deprecation warnings omitted):
+  ```text
+  uv run pytest tests/sandbox -q
+  ...........................                                              [100%]
+  27 passed in 142.19s (0:02:22)
+
+  uv run python scripts/check_task.py T031
+  .........                                                                [100%]
+  9 passed, 281 deselected, 2 warnings in 46.95s
+  T031: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
+
+  make check
+  All checks passed!
+  85 files already formatted
+  Success: no issues found in 54 source files
+  279 passed, 11 deselected, 2 warnings in 55.42s
+
+  uv run pre-commit run --all-files
+  ruff lint................................................................Passed
+  ruff format..............................................................Passed
+  strict source types......................................................Passed
+  ```
+- Review: checked correctness, simplicity, protocol/image boundaries, bounded operations and tenant/secret/egress safety; ownership preflight and mount-source delimiter regressions added. No existing assertion/guard or other task flag changed; only T031 becomes true after fresh verification. Reusable `python -m tests.sandbox.contract --factory module:factory --image IMAGE` executes policy-disabled shell isolation against an owner's real provider.
+- Next: integrate the tested task branch into dev for coordinator review/replay, then T032 tool-server/session wiring. Disposable daemon/images retained for coordinator replay; no main promotion from this worker. Blockers: none.
