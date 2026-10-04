@@ -107,7 +107,7 @@
         "T013"
       ],
       "verify": "uv run pytest tests/finance -q -k 'proforma or taxes or valueadd' && uv run python scripts/check_task.py T014",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T015",
