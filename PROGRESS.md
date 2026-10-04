@@ -537,3 +537,22 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - The T034 feature flag remains false and integration remains held because T010 still requires the
   owner-held deliverable-enum contract correction. Existing T010 and T014 assertions were not
   changed.
+
+## 2026-10-04 — T034 final-review follow-up
+
+- Independent review of `2bdcd8a` reproduced a second worksheet-data section being silently
+  ignored. The new regression failed before the repair; native XLSX parsing now requires exactly
+  one direct `sheetData` section. Two additional red-first cases prove document-derived
+  coordinate/shared-string exceptions do not appear in formatted native-parser tracebacks.
+- Exact fresh verification: extraction `69 passed, 1 skipped`; task replay `69 passed,
+  319 deselected`; `T034: AC1 PASSED, AC2 PASSED, AC3 PASSED`. `make check`: Ruff lint/format,
+  strict mypy and `376 passed, 1 skipped, 11 deselected`; all pre-commit hooks passed. The sole
+  skip is the approved optional Reducto license seam, not a native parsing gap.
+- A built wheel installed into a separate environment parsed a real PDF through the isolated
+  worker, preserved the visibility warning and immutable/idempotent output. The successful
+  execution was offline with locked dependencies and no Torch/NVIDIA package; no model ran.
+- Nonblocking review limitation: concurrent identical writers can fail closed during the short
+  two-link publication window; a later retry after cleanup succeeds. No overwrite was observed.
+  Same-UID/root hostile mutation and OS containment are not proven by parser file-boundary tests.
+- T034 remains false and unmerged pending the T010 enum-contract correction and final review/CI.
+  Existing T010/T014 assertions and owner guards remain untouched.

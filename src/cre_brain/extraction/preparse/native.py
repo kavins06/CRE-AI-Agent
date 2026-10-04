@@ -242,9 +242,10 @@ def xlsx_tables(
             worksheet = _xml(members[part])
             if worksheet.tag != f"{MAIN}worksheet":
                 raise PreparseError("Only native worksheet cells are supported")
-            sheet_data = worksheet.find(f"{MAIN}sheetData")
-            if sheet_data is None:
-                raise PreparseError("Worksheet has no sheet data")
+            data_sections = worksheet.findall(f"{MAIN}sheetData")
+            if len(data_sections) != 1:
+                raise PreparseError("Worksheet must contain exactly one sheet data section")
+            sheet_data = data_sections[0]
             for node in (
                 cell for row in sheet_data.findall(f"{MAIN}row") for cell in row.findall(f"{MAIN}c")
             ):
@@ -291,4 +292,4 @@ def xlsx_tables(
     except (KeyError, ValueError, IndexError, TypeError) as error:
         if isinstance(error, PreparseError):
             raise
-        raise PreparseError("Malformed or unsupported native spreadsheet") from error
+        raise PreparseError("Malformed or unsupported native spreadsheet") from None

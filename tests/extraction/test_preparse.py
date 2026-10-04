@@ -8,6 +8,7 @@ import json
 import os
 import socket
 import sys
+import traceback
 import zipfile
 from pathlib import Path
 
@@ -117,6 +118,41 @@ def test_t034_ac1_preparse_native_xlsx_exact_cells_and_multiple_sheets(parser: P
         doc_id="roll", sheet="T12", cell="F7", quote="9007199254740991.0100"
     )
     assert doc == parser.parse("roll.xlsx", doc_id="roll")
+
+
+def test_t034_ac1_preparse_rejects_duplicate_worksheet_data(parser: Preparser):
+    worksheet = (
+        b'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        b'<sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>first</t></is>'
+        b'</c></row></sheetData><sheetData><row r="2"><c r="A2" t="inlineStr">'
+        b"<is><t>second</t></is></c></row></sheetData></worksheet>"
+    )
+    raw = rewrite_zip(xlsx_bytes(), "xl/worksheets/sheet1.xml", worksheet)
+    (parser.raw_root / "duplicate-data.xlsx").write_bytes(raw)
+    with pytest.raises(PreparseError, match="exactly one sheet data"):
+        parser.parse("duplicate-data.xlsx", doc_id="duplicate-data")
+
+
+@pytest.mark.parametrize("attribute", ["r", "v"])
+def test_t034_ac1_preparse_native_errors_do_not_expose_source_tracebacks(
+    parser: Preparser, attribute: str
+):
+    private_text = "SYNTHETIC_PRIVATE_DOCUMENT_TEXT"
+    address = private_text if attribute == "r" else "A1"
+    value = private_text if attribute == "v" else "0"
+    worksheet = (
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f'<sheetData><row r="1"><c r="{address}" t="s"><v>{value}</v></c>'
+        "</row></sheetData></worksheet>"
+    ).encode()
+    raw = rewrite_zip(xlsx_bytes(), "xl/worksheets/sheet1.xml", worksheet)
+    (parser.raw_root / "private.xlsx").write_bytes(raw)
+    with pytest.raises(PreparseError) as caught:
+        parser.parse("private.xlsx", doc_id="private")
+    formatted = "".join(traceback.format_exception(caught.value))
+    assert private_text not in formatted
+    assert caught.value.__cause__ is None
+    assert caught.value.__suppress_context__
 
 
 def test_t034_ac1_preparse_reports_hidden_worksheet_content(parser: Preparser):
