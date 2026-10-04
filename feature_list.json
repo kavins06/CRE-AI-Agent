@@ -41,7 +41,7 @@
         "T001"
       ],
       "verify": "uv run pytest tests/config -q && uv run python scripts/check_task.py T003",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T004",

@@ -1,0 +1,7 @@
+runner: codex
+roles:
+  lead: {runner: codex, profile: analyst, model: "<owner sets>"}
+  extraction: {runner: codex, profile: extractor, model: "<owner sets>"}
+  verifier: {runner: codex, profile: verifier, model: "<owner sets>"}
+  classifier: {runner: codex, profile: classifier, model: "<owner sets>"}
+  reflection: {runner: codex, profile: reflector, model: "<owner sets>"}

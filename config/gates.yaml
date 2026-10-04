@@ -1,0 +1,37 @@
+parity_abs: "1"
+parity_rel: "0.000001"
+checksum_abs: "1"
+number_abs: "1"
+number_rel: "0.000001"
+fragility_margin: "0.02"
+excel_functions:
+  - SUM
+  - SUMIF
+  - SUMIFS
+  - SUMPRODUCT
+  - IF
+  - IFERROR
+  - AND
+  - OR
+  - MIN
+  - MAX
+  - ABS
+  - ROUND
+  - ROUNDUP
+  - ROUNDDOWN
+  - COUNT
+  - COUNTIF
+  - AVERAGE
+  - INDEX
+  - MATCH
+  - DATE
+  - YEAR
+  - MONTH
+  - EOMONTH
+  - NPV
+  - IRR
+  - XNPV
+  - XIRR
+  - PMT
+  - IPMT
+  - PPMT

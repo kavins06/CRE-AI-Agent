@@ -160,3 +160,31 @@
 T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 ```
 - Next: T003 configuration. Blockers: none locally; GitHub execution and owner milestone review remain separate from offline proof. No analyst-quality claims.
+
+### 2026-10-04: Log timestamp correction
+- The preceding repair/T002 headings used estimated times. The actual machine clock read `2026-10-04 06:06:21 UTC` after both integrations. The command outputs, commits and test counts are verified; those estimated heading times are not execution timestamps.
+
+### 2026-10-04: T003 validated configuration
+- Branch: `task/t003-config`; integration target `dev`.
+- Added four owner YAML files, strict Pydantic settings/runner-role registry and 22 offline configuration tests. Unknown fields/roles/runners, nonpositive budgets, boolean-as-integer values, nonfinite/negative tolerances and duplicate whitelist functions fail validation. Shared-login concurrency is exactly 1.
+- `load(config_dir)` uses explicit directory, otherwise `CRE_CONFIG_DIR` or cwd/config. Leaf overrides use `CRE_<SECTION>__<FIELD>` (nested role fields supported). Model/toggle overrides retain strings so YAML 1.1 cannot turn off/on into booleans. No credentials or `.env` are read into settings.
+- Defaults follow SPEC: Codex owner-set models/profiles, 20-minute segments, 200 sessions/10-hour nightly limits, extraction/session concurrency 4/2. Unspecified initial reconnect timeout is 120 seconds; parity tolerance $1/1e-6, checksum/number absolute tolerance $1, number relative tolerance 1e-6, fragility margin 0.02. These are initial owner-reviewable config, not modifications of an existing protected threshold. All four action toggles default off.
+- `live_enabled` uses bounded/captured `codex login status` or SDK key presence, handles missing CLI/timeout/invalid config/unknown role cleanly and never invokes a model. Tests mock all status probes and use synthetic environment values.
+- Model-literal guard scans source AST outside config and catches a planted model string. Test-first red run: 19 failed before implementation. Later on/off override tests reproduced and fixed YAML boolean coercion.
+- Verify: `uv run pytest tests/config -q && uv run python scripts/check_task.py T003` → exit 0; `make check` → exit 0 (85 passed; strict types/lint passed). Checker tail:
+```text
+......................                                                   [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------ generated xml file: /tmp/cre-task-rht1quq9/results.xml ------------
+22 passed, 63 deselected, 2 warnings in 0.58s
+
+T003: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
+```
+- Existing owner guards/assertions unchanged. New budget/gate files need milestone protected-change label and owner review. Next: T004 replayable releases. Blockers: none for offline task verification; no live/quality/production readiness claim.

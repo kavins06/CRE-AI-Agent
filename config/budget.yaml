@@ -1,0 +1,7 @@
+segment_max_min: 20
+nightly_sessions: 200
+nightly_wallclock_h: 10
+max_parallel_extractions: 4
+max_parallel_sessions: 2
+codex_login_max_concurrency: 1
+box_reconnect_s: 120
