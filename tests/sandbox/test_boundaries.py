@@ -1,3 +1,6 @@
+import io
+import re
+import tarfile
 from pathlib import Path
 
 import pytest
@@ -6,6 +9,7 @@ from pydantic import ValidationError
 from cre_brain.sandbox.base import Box, ExecResult, SandboxProvider
 from cre_brain.sandbox.files import validate_path
 from cre_brain.sandbox.proxy import resolve_target, validate_domains
+from tests.sandbox.contract import assert_isolation, assert_snapshot_contents
 
 
 def test_t031_ac1_typed_contract() -> None:
@@ -78,3 +82,46 @@ def test_file_helper_rejects_symlink_parents(tmp_path: Path) -> None:
         read_file(("memory", "link", "secret"), root=tmp_path)
     with pytest.raises(OSError):
         write_file(("memory", "link", "secret"), b"x", root=tmp_path)
+
+
+def test_snapshot_artifact_requires_expected_bounded_workspace_contents() -> None:
+    def archive(name: str, data: bytes) -> bytes:
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w") as output:
+            member = tarfile.TarInfo(name)
+            member.size = len(data)
+            output.addfile(member, io.BytesIO(data))
+        return buffer.getvalue()
+
+    expected = b"binary\x00state\xff"
+    assert_snapshot_contents(archive("memory/own.txt", expected), expected)
+    with pytest.raises(AssertionError):
+        assert_snapshot_contents(archive("memory/auth.json", b"credential"), expected)
+    with pytest.raises(AssertionError):
+        assert_snapshot_contents(archive("../../host", expected), expected)
+    with pytest.raises(AssertionError):
+        assert_snapshot_contents(archive("memory/own.txt", b"wrong-artifact"), expected)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("protected", ["/srv/raw", "/var/run/docker.sock"])
+async def test_contract_does_not_treat_failed_cat_as_resource_absence(protected: str) -> None:
+    class ExistingResourceProvider:
+        async def exec(self, box: Box, cmd: list[str], timeout_s: int) -> ExecResult:
+            command = cmd[-1]
+            if command == "id -u":
+                return ExecResult(exit_code=0, stdout="1000", stderr="")
+            if command.startswith("test -r "):
+                return ExecResult(exit_code=0, stdout="", stderr="")
+            if command.startswith("test ! -e "):
+                return ExecResult(
+                    exit_code=int(command.startswith(f"test ! -e {protected} ")),
+                    stdout="",
+                    stderr="",
+                )
+            return ExecResult(exit_code=1, stdout="", stderr="cat failed")
+
+    first = Box(user_id="alice", box_id="first")
+    second = Box(user_id="bob", box_id="second")
+    with pytest.raises(AssertionError, match=re.escape(f"test ! -e {protected} ")):
+        await assert_isolation(ExistingResourceProvider(), first, second)

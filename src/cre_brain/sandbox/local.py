@@ -251,6 +251,10 @@ class LocalDockerProvider:
             ]
         )
         await self._run(["start", name])
+        await self._wait_proxy(box)
+
+    async def _wait_proxy(self, box: Box) -> None:
+        name = box.box_id + "-egress"
         for _ in range(50):
             code, _, _ = await self._run(
                 [
@@ -357,6 +361,7 @@ class LocalDockerProvider:
         async with self._lock:
             await self._inspect(box)
             await self._run(["start", box.box_id + "-egress"])
+            await self._wait_proxy(box)
             await self._run(["start", box.box_id])
             return box
 
@@ -444,6 +449,21 @@ class LocalDockerProvider:
             with os.fdopen(fd, "wb") as stream:
                 stream.write(data)
         return str(path)
+
+    async def read_snapshot(self, snapshot_id: str) -> bytes:
+        path = Path(snapshot_id)
+        if (
+            path.parent != self.config.state_dir
+            or re.fullmatch(r"[0-9a-f]{64}\.tar", path.name) is None
+        ):
+            raise SandboxError("Snapshot identifier is not owned by this provider")
+        try:
+            data = read_file((path.name,), root=self.config.state_dir)
+        except (OSError, ValueError) as exc:
+            raise SandboxError("Snapshot artifact is unavailable or unsafe") from exc
+        if hashlib.sha256(data).hexdigest() != path.stem:
+            raise SandboxError("Snapshot artifact failed integrity validation")
+        return data
 
     async def create_extraction(self, user_id: str, image: str, parsed: Path) -> Box:
         """Trusted pre-parser launches a disposable box with exactly one parsed JSON file."""
