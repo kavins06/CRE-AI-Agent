@@ -239,3 +239,38 @@ def test_t004_ac3_failed_recovery_preserves_backup_bytes(
     assert len(backups) == 1
     assert (backups[0] / "previous-brain/prompt.md").read_text() == "original to recover"
     assert (backups[0] / "previous-config/budget.yaml").read_bytes() == original_budget
+
+
+def test_t004_ac2_listing_ignores_nonrelease_json_but_not_corrupt_release(repo: Path) -> None:
+    manifest = release.build(repo)
+    (repo / "releases/notes.json").write_text("not a release")
+    assert release.list_releases(repo) == [manifest]
+    (repo / "releases" / ("a" * 64 + ".json")).write_text("corrupt")
+    with pytest.raises(ValueError):
+        release.list_releases(repo)
+
+
+@pytest.mark.parametrize("current_version", ["codex-cli changed", None])
+def test_t004_ac3_runtime_mismatch_fails_before_any_tree_changes(
+    repo: Path, monkeypatch: pytest.MonkeyPatch, current_version: str | None
+) -> None:
+    manifest = release.build(repo)
+    (repo / "brain/prompt.md").write_text("preserve current brain")
+    monkeypatch.setattr(release, "_codex_version", lambda: current_version)
+    with pytest.raises(ValueError, match="Codex CLI version"):
+        release.rollback(repo, manifest.release_id)
+    assert (repo / "brain/prompt.md").read_text() == "preserve current brain"
+    assert not list(repo.glob(".release-*"))
+
+
+def test_t004_ac3_offline_release_restores_offline_but_not_under_new_runtime(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(release, "_codex_version", lambda: None)
+    manifest = release.build(repo)
+    (repo / "brain/prompt.md").write_text("changed offline")
+    release.rollback(repo, manifest.release_id)
+    assert (repo / "brain/prompt.md").read_bytes() == b"synthetic prompt\n"
+    monkeypatch.setattr(release, "_codex_version", lambda: "codex-cli newly installed")
+    with pytest.raises(ValueError, match="Codex CLI version"):
+        release.rollback(repo, manifest.release_id)

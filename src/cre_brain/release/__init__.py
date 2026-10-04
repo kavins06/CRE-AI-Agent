@@ -1,6 +1,7 @@
 """Immutable global brain/config snapshots; tenant playbooks are version references.
 
-Rollback requires exclusive access to the offline checkout. It stages both trees,
+Rollback requires trusted releases and exclusive access to the offline checkout.
+Manifest hashes provide integrity, not authorization. It stages both trees,
 checks identity/environment before writing, and restores the originals on rename
 errors. It never changes protected gate code, process environment, or tenant data.
 """
@@ -154,7 +155,11 @@ def list_releases(root: Path) -> list[Manifest]:
     directory = _safe(root, "releases")
     if not directory.exists():
         return []
-    return [read(root, path.stem) for path in sorted(directory.glob("*.json"))]
+    return [
+        read(root, path.stem)
+        for path in sorted(directory.glob("*.json"))
+        if re.fullmatch(r"[a-f0-9]{64}", path.stem)
+    ]
 
 
 def rollback(root: Path, release_id: str) -> Manifest:
@@ -162,6 +167,8 @@ def rollback(root: Path, release_id: str) -> Manifest:
     manifest = read(root, release_id)
     if _gate_hash(root) != manifest.gates_code_hash:
         raise ValueError("Release gate code differs; check out the reviewed code version first")
+    if _codex_version() != manifest.codex_cli_version:
+        raise ValueError("Release Codex CLI version differs; install the recorded runtime first")
     _inventory(root, "brain")
     _inventory(root, "config")
     stage = Path(tempfile.mkdtemp(prefix=".release-", dir=root))

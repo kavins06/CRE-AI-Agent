@@ -236,3 +236,9 @@ T004: AC1 PASSED, AC2 PASSED, AC3 PASSED
 T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 ```
 - Feature state unchanged (T002 remains verified). Existing owner guards unchanged. Next: final M0 handoff/review. No task blockers; protected-change owner label/review remain main-promotion gates only.
+
+### 2026-10-04: T004 M0 review hardening
+- Branch `task/t004-review-hardening`: non-release JSON names no longer break listing, but a corrupt digest-named manifest still fails closed. Rollback now compares the recorded Codex CLI version before staging either tree; unavailable/installed/upgraded differences reject without writes. A no-CLI release remains restorable while offline. Four new cases first reproduced the missing guards; no existing assertions weakened.
+- Local trust boundary: M0 rollback is an offline administrative operation in an operator-controlled checkout. Content addressing establishes integrity, not owner approval; untrusted seller/analyst/web release import and signing are not implemented. Documented this explicitly rather than inventing an approval credential/protocol. Evaluator/owner promotion controls remain prerequisites for distributing candidates; global analyst brain synchronization is read-only per SPEC.
+- Exact T004 verification exited 0: 17 focused release tests; AC1–AC3 passed. Full `make check` exited 0 with 104 passed; Ruff/strict mypy clean.
+- Next: strip pytest plugin environment overrides in T002, then replay M0. No implementation blockers; owner protected-change review remains a main-promotion gate. No services/models/credentials touched.
