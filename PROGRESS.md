@@ -945,3 +945,15 @@ T017: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Full `make check`: Ruff lint/format green (115 files), strict mypy green (73 source files), 676 passed, one existing approved license skip, 11 integration deselected. Every pytest run serialized.
 - Next: implement coupled T018, then independent source review. T017/T018 passes remain false by author protocol; no PR, dev/main merge, runtime/security changes or blockers.
+
+## 2026-10-04 — T017 exact rational return-ledger hardening (acceptance pending)
+- Tests first: a close-root waterfall regression exposed 28-digit ledger rounding hiding two distinct IRRs. An initial finite-exact/80-digit recurring conversion fixed that case but the subsequent hold/sell recurring-exit regression independently reproduced the same false unique root. Both regressions are retained; no existing assertion or skip changed.
+- Decision: clear one common rational denominator and reduce the integer cash-flow vector by its GCD before calling the existing returns engine. Uniform scaling preserves every IRR, MIRR and equity multiple exactly; no recurring rational coefficient is rounded before root certification. Contribution/distribution money and equity multiple are computed from the original exact ledger, not the scaled integers. Common-denominator/coefficient growth is bounded to 65536 bits, and the returns engine's 256-digit certification budget remains fail-closed.
+- Combined T017/T018 boundary replay: 50 passed, 169 deselected; Ruff and strict mypy pass. Exact T017 verify exits 0:
+```text
+20 passed, 199 deselected in 1.19s
+17 passed, 703 deselected, 2 warnings in 2.01s
+T017: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- The final coupled working tree also passes `uv sync --locked --python 3.12`, `uv lock --check`, `make check` (708 passed, one existing approved Reducto-license skip, 11 integration deselected; 95.09s), Ruff lint/format (117 files), strict mypy (74 source files), and every pre-commit hook. All pytest processes serialized.
+- Next: separate T018 source/test commit and push the authored branch for independent review. T017/T018 flags remain false; no PR, merge, promotion, model, SEC, private evaluation, host/runtime or guard changes.

@@ -19,7 +19,12 @@ from pydantic import Field, model_validator
 from cre_brain.domain import CalcResult
 from cre_brain.domain.base import Identifier
 from cre_brain.domain.models import DomainModel
-from cre_brain.finance._arithmetic import dated_value, decimal_value, working_precision
+from cre_brain.finance._arithmetic import (
+    dated_value,
+    decimal_value,
+    return_coefficients,
+    working_precision,
+)
 from cre_brain.finance._context import _calculation
 from cre_brain.finance.proforma import NonnegativeDecimal, Ratio
 from cre_brain.finance.returns import (
@@ -74,10 +79,11 @@ def _return_outputs(
     # One dated event alone has no holding-period return.
     if len(ledger) == 1:
         ledger = [*ledger, (ledger[0][0], Fraction(0))]
-    return calculate_returns(
+    amounts = [amount for _, amount in ledger]
+    outputs = calculate_returns(
         ReturnsInput(
             input_id=input_id,
-            cash_flows=tuple(decimal_value(v) for _, v in ledger),
+            cash_flows=return_coefficients(amounts),
             dates=tuple(d for d, _ in ledger),
             finance_rate=finance_rate,
             reinvest_rate=reinvest_rate,
@@ -85,6 +91,13 @@ def _return_outputs(
         calc_id=calc_id,
         code_version=code_version,
     ).outputs
+    contributions = sum((-amount for amount in amounts if amount < 0), Fraction(0))
+    distributions = sum((amount for amount in amounts if amount > 0), Fraction(0))
+    outputs["total_contributions"] = decimal_value(contributions)
+    outputs["total_distributions"] = decimal_value(distributions)
+    if contributions:
+        outputs["equity_multiple"] = decimal_value(distributions / contributions)
+    return outputs
 
 
 @_calculation

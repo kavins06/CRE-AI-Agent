@@ -8,6 +8,7 @@ span/precision fails explicitly. Public callers must use _calculation isolation.
 from datetime import date
 from decimal import Decimal, localcontext
 from fractions import Fraction
+from math import gcd, lcm
 
 
 def working_precision(values: list[Decimal]) -> int:
@@ -29,6 +30,26 @@ def decimal_value(value: Fraction, precision: int = 28) -> Decimal:
     with localcontext() as context:
         context.prec = precision
         return Decimal(value.numerator) / Decimal(value.denominator)
+
+
+def return_coefficients(values: list[Fraction]) -> tuple[Decimal, ...]:
+    """Clear a common denominator exactly; uniform scaling preserves all roots.
+
+    Even guarded decimal conversion of recurring coefficients can collapse
+    distinct IRRs. Money outputs must separately use the unscaled ledger.
+    """
+    denominator = 1
+    for value in values:
+        if max(value.numerator.bit_length(), value.denominator.bit_length()) > 65536:
+            raise ValueError("Return coefficients exceed the rational complexity budget")
+        denominator = lcm(denominator, value.denominator)
+        if denominator.bit_length() > 65536:
+            raise ValueError("Return denominator exceeds the rational complexity budget")
+    coefficients = [value.numerator * (denominator // value.denominator) for value in values]
+    if any(abs(value).bit_length() > 65536 for value in coefficients):
+        raise ValueError("Return coefficients exceed the rational complexity budget")
+    divisor = gcd(*coefficients) or 1
+    return tuple(Decimal(value // divisor) for value in coefficients)
 
 
 def growth(rate: Decimal, start: date, end: date) -> Decimal:

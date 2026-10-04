@@ -412,3 +412,49 @@ def test_t017_ac2_exit_exact_cancellation_and_unsupported_span():
     assert calculate_exit(source, **META).outputs["net_equity_proceeds"] == D("1e-140")
     with pytest.raises(ValueError, match="precision"):
         calculate_exit(exit_input(cap_rate=D("1e-300")), **META)
+
+
+def test_t017_ac1_waterfall_sub_output_precision_does_not_hide_close_irr_roots():
+    t = terms(
+        lp_ownership=D(1),
+        preferred_rate=D(0),
+        catch_up_share=D(0),
+        tiers=(PromoteTier(hurdle_rate=None, lp_share=D(1)),),
+    )
+    last = D("-99.99999999999999999999999999999999999999")
+    o = distribute_waterfall(
+        (flow(START, "-100"), flow(YEAR, "200"), flow(YEAR + timedelta(days=365), str(last))),
+        t,
+        **META,
+    ).outputs
+    assert o["lp:ambiguous"] == 1
+    assert o["lp:root_count"] == 2
+    assert o["lp:root:0"] < 0 < o["lp:root:1"]
+    assert "lp:xirr" not in o
+
+
+def test_t017_ac3_holdsell_recurring_exit_never_rounds_multiple_roots_into_one():
+    history = (flow(START - timedelta(days=730), "-100"), flow(START - timedelta(days=365), "200"))
+    o = compare_hold_sell(
+        comparison(historical_flows=history),
+        (
+            alternative(
+                "sell",
+                START,
+                exit=exit_input(
+                    forward_noi=D(1),
+                    cap_rate=D(3),
+                    selling_cost_rate=D(0),
+                    fixed_selling_cost=D(0),
+                    debt_payoff=D("100." + "3" * 100),
+                ),
+            ),
+        ),
+        **META,
+    ).outputs
+    assert o["sell:returns:ambiguous"] == 1
+    assert o["sell:returns:root_count"] == 2
+    assert o["sell:returns:root:0"] < 0 < o["sell:returns:root:1"]
+    assert "sell:returns:xirr" not in o
+    assert o["sell:returns:total_contributions"] == 200
+    assert o["sell:returns:total_distributions"] == 200
