@@ -48,6 +48,20 @@ The reusable owner contract exercises direct shell commands with no tool policy:
 uv run python -m tests.sandbox.contract --factory owner_module:factory --image owner-image
 ```
 
+The production `SandboxProvider` interface stays unchanged. Artifact inspection
+uses the separately published `SnapshotReader` protocol in `sandbox/base.py`:
+`async read_snapshot(snapshot_id: str) -> bytes`. `LocalDockerProvider` implements
+it with owned, bounded, no-follow, content-hash-checked reads. Owners whose
+provider uses opaque remote snapshot handles supply a trusted reader via
+`--snapshot-reader-factory owner_module:reader_factory`; programmatic callers
+use `SnapshotContractAdapter(provider, reader)` with `run_contract`.
+Readers must return the actual TAR artifact, not a manifest or prefiltered view.
+No artifact reader is exposed to analyst code. The contract inspects bytes; it
+does not restore/extract archives. It bounds the full decoded TAR, scans names,
+PAX metadata and payloads for its synthetic credential canary, rejects aliases
+and duplicate destinations, and accepts single-stream TAR/GZIP/BZIP2/XZ within
+its size/memory bounds. Unsupported or concatenated compression fails closed.
+
 For the local factory, set `CRE_SANDBOX_STATE`, `CRE_SANDBOX_NAMESPACE`,
 `CRE_SANDBOX_IMAGE`, and optionally `CRE_SANDBOX_DOMAINS` (space-separated),
 `CRE_SANDBOX_MODEL_DOMAINS`, `CRE_SANDBOX_DOCKER`,

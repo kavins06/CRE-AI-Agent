@@ -4,34 +4,60 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import bz2
 import importlib
 import io
+import lzma
 import tarfile
 import tempfile
 import uuid
+import zlib
 from pathlib import Path, PurePosixPath
-from typing import Protocol, runtime_checkable
 
-from cre_brain.sandbox.base import Box, SandboxError, SandboxProvider
+from cre_brain.sandbox.base import (
+    Box,
+    SandboxError,
+    SandboxProvider,
+    SnapshotContractAdapter,
+    SnapshotReader,
+)
 from cre_brain.sandbox.files import MAX_BYTES, WRITABLE
 
 WORK = "/home/agent/work"
 
 
-@runtime_checkable
-class SnapshotReader(Protocol):
-    async def read_snapshot(self, snapshot_id: str) -> bytes: ...
+def _snapshot_tar(data: bytes) -> bytes:
+    if data.startswith(b"\x1f\x8b"):
+        decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    elif data.startswith(b"BZh"):
+        decoder = bz2.BZ2Decompressor()
+    elif data.startswith(b"\xfd7zXZ\x00"):
+        decoder = lzma.LZMADecompressor(memlimit=MAX_BYTES)
+    else:
+        return data
+    decoded = decoder.decompress(data, max_length=MAX_BYTES + 1)
+    assert len(decoded) <= MAX_BYTES, "Snapshot decompressed content exceeds limit"
+    assert decoder.eof and not decoder.unused_data, "Noncanonical snapshot compression stream"
+    return decoded
 
 
 def assert_snapshot_contents(data: bytes, expected: bytes) -> None:
     assert len(data) <= MAX_BYTES
+    decoded = _snapshot_tar(data)
+    assert b"contract-credential-probe" not in decoded, "Snapshot contains credential canary"
     names: set[str] = set()
     found: bytes | None = None
-    with tarfile.open(fileobj=io.BytesIO(data), mode="r|*") as archive:
+    decompressed_bytes = 0
+    with tarfile.open(fileobj=io.BytesIO(decoded), mode="r:") as archive:
         for index, member in enumerate(archive):
             assert index < 256
             assert member.isfile() and member.size <= MAX_BYTES
+            decompressed_bytes += member.size
+            assert decompressed_bytes <= MAX_BYTES, "Snapshot decompressed content exceeds limit"
             parts = PurePosixPath(member.name).parts
+            assert member.name == PurePosixPath(member.name).as_posix(), (
+                "Noncanonical snapshot name"
+            )
             assert len(parts) >= 2 and parts[0] in WRITABLE
             assert not PurePosixPath(member.name).is_absolute()
             assert all(part not in ("", ".", "..") for part in parts)
@@ -45,6 +71,7 @@ def assert_snapshot_contents(data: bytes, expected: bytes) -> None:
             assert stream is not None
             payload = stream.read(MAX_BYTES + 1)
             assert len(payload) <= MAX_BYTES
+            assert len(payload) == member.size
             assert b"contract-credential-probe" not in payload
             if member.name == "memory/own.txt":
                 found = payload
@@ -177,9 +204,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--factory", required=True, help="module:zero_argument_provider_factory")
     parser.add_argument("--image", required=True)
+    parser.add_argument(
+        "--snapshot-reader-factory", help="module:zero_argument_snapshot_reader_factory"
+    )
     args = parser.parse_args()
     module, name = args.factory.split(":")
     provider = getattr(importlib.import_module(module), name)()
+    if args.snapshot_reader_factory:
+        reader_module, reader_name = args.snapshot_reader_factory.split(":")
+        reader = getattr(importlib.import_module(reader_module), reader_name)()
+        assert isinstance(reader, SnapshotReader)
+        provider = SnapshotContractAdapter(provider, reader)
     assert isinstance(provider, SandboxProvider)
     snapshot = asyncio.run(run_contract(provider, args.image))
     print(f"PASS: physical isolation, binary transfers, lifecycle, timeout; snapshot={snapshot}")
