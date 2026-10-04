@@ -1,0 +1,133 @@
+{
+  "metadata": {
+    "table_id": "loi_policy.default",
+    "version": "1.0.0",
+    "policy_notice": "Classification only. Business defaults are illustrative configurable firm policy, not market or legal truth. Jurisdiction outcomes require caller-supplied verified policy/evidence; no jurisdiction facts are bundled.",
+    "numeric_encoding": "Money: exact cents; ratios: exact millionths; integers bounded at 2**53-1. No numeric arithmetic or float conversion."
+  },
+  "nodes": [
+    {
+      "id": "input",
+      "type": "inputNode",
+      "name": "input",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "rules",
+      "type": "decisionTableNode",
+      "name": "rules",
+      "position": {
+        "x": 200,
+        "y": 0
+      },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          {
+            "id": "predicate",
+            "name": "ExactPolicyPredicate",
+            "field": "",
+            "type": "expression"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "classification",
+            "name": "classification",
+            "field": "classification",
+            "type": "expression"
+          },
+          {
+            "id": "reason_code",
+            "name": "reason_code",
+            "field": "reason_code",
+            "type": "expression"
+          },
+          {
+            "id": "required_checks",
+            "name": "required_checks",
+            "field": "required_checks",
+            "type": "expression"
+          }
+        ],
+        "rules": [
+          {
+            "_id": "missing_terms",
+            "predicate": "price == null or dd_days == null or close_days == null or deposit_percent == null or (require_financing_contingency and financing_contingency == null)",
+            "classification": "\"review_required\"",
+            "reason_code": "\"missing_terms\"",
+            "required_checks": "[\"verify_loi_terms\"]"
+          },
+          {
+            "_id": "price_exception",
+            "predicate": "price > max_price",
+            "classification": "\"approval_required\"",
+            "reason_code": "\"price_exception\"",
+            "required_checks": "[\"approve_loi_exception\"]"
+          },
+          {
+            "_id": "dd_exception",
+            "predicate": "dd_days < min_dd_days or dd_days > max_dd_days",
+            "classification": "\"approval_required\"",
+            "reason_code": "\"dd_exception\"",
+            "required_checks": "[\"approve_loi_exception\"]"
+          },
+          {
+            "_id": "closing_exception",
+            "predicate": "close_days < min_close_days or close_days > max_close_days",
+            "classification": "\"approval_required\"",
+            "reason_code": "\"closing_exception\"",
+            "required_checks": "[\"approve_loi_exception\"]"
+          },
+          {
+            "_id": "deposit_exception",
+            "predicate": "deposit_percent > max_deposit_percent",
+            "classification": "\"approval_required\"",
+            "reason_code": "\"deposit_exception\"",
+            "required_checks": "[\"approve_loi_exception\"]"
+          },
+          {
+            "_id": "contingency_exception",
+            "predicate": "require_financing_contingency and not financing_contingency",
+            "classification": "\"approval_required\"",
+            "reason_code": "\"contingency_exception\"",
+            "required_checks": "[\"approve_loi_exception\"]"
+          },
+          {
+            "_id": "within_policy",
+            "predicate": "",
+            "classification": "\"within_policy\"",
+            "reason_code": "\"within_policy\"",
+            "required_checks": "[\"legal_review_before_use\"]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "outputNode",
+      "name": "output",
+      "position": {
+        "x": 400,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-rules",
+      "type": "edge",
+      "sourceId": "input",
+      "targetId": "rules"
+    },
+    {
+      "id": "rules-output",
+      "type": "edge",
+      "sourceId": "rules",
+      "targetId": "output"
+    }
+  ]
+}

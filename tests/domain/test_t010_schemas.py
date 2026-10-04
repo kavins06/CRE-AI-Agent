@@ -160,8 +160,43 @@ def test_t010_ac1_agent_event_has_the_full_kind_and_source_vocabulary() -> None:
 
 
 def test_t010_ac2_deliverable_kind_includes_required_analyses() -> None:
-    assert DeliverableKind.RENT_COMP_ANALYSIS.value == "rent_comp_analysis"
-    assert DeliverableKind.DEBT_QUOTE_SUMMARY.value == "debt_quote_summary"
+    assert DeliverableKind.RENT_COMP_ANALYSIS.value == "RENT_COMP_ANALYSIS"
+    assert DeliverableKind.DEBT_QUOTE_SUMMARY.value == "DEBT_QUOTE_SUMMARY"
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "SCREEN",
+        "UW_MODEL",
+        "IC_MEMO",
+        "DD_TRACKER",
+        "LOI",
+        "BROKER_QUESTIONS",
+        "LEASE_ABSTRACT",
+        "DEAL_COMPARISON",
+        "RENT_COMP_ANALYSIS",
+        "DEBT_QUOTE_SUMMARY",
+        "ESCALATION",
+    ],
+)
+def test_t010_ac2_deliverable_kind_wire_values_match_spec(name: str) -> None:
+    assert DeliverableKind[name].value == name
+    deliverable = Deliverable(
+        d_id="d-1",
+        deal_ids=["deal-1"],
+        kind=name,
+        version=1,
+        status="draft",
+        path="deliverables/artifact",
+        gate_results=[],
+        depends_on=[],
+        edited_by_user=False,
+    )
+    assert deliverable.model_dump(mode="json")["kind"] == name
+    assert Deliverable.model_validate_json(deliverable.model_dump_json()) == deliverable
+    with pytest.raises(ValidationError):
+        Deliverable.model_validate({**deliverable.model_dump(), "kind": name.lower()})
 
 
 @given(facts)

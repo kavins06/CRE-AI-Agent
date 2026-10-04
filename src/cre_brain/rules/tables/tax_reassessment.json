@@ -1,0 +1,119 @@
+{
+  "metadata": {
+    "table_id": "tax_reassessment",
+    "version": "1.0.0",
+    "policy_notice": "Classification only. Business defaults are illustrative configurable firm policy, not market or legal truth. Jurisdiction outcomes require caller-supplied verified policy/evidence; no jurisdiction facts are bundled.",
+    "numeric_encoding": "Money: exact cents; ratios: exact millionths; integers bounded at 2**53-1. No numeric arithmetic or float conversion."
+  },
+  "nodes": [
+    {
+      "id": "input",
+      "type": "inputNode",
+      "name": "input",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "rules",
+      "type": "decisionTableNode",
+      "name": "rules",
+      "position": {
+        "x": 200,
+        "y": 0
+      },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          {
+            "id": "predicate",
+            "name": "ExactPolicyPredicate",
+            "field": "",
+            "type": "expression"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "classification",
+            "name": "classification",
+            "field": "classification",
+            "type": "expression"
+          },
+          {
+            "id": "reason_code",
+            "name": "reason_code",
+            "field": "reason_code",
+            "type": "expression"
+          },
+          {
+            "id": "required_checks",
+            "name": "required_checks",
+            "field": "required_checks",
+            "type": "expression"
+          }
+        ],
+        "rules": [
+          {
+            "_id": "policy_unverified",
+            "predicate": "not policy_verified",
+            "classification": "\"review_required\"",
+            "reason_code": "\"policy_unverified\"",
+            "required_checks": "[\"verify_jurisdiction_policy\"]"
+          },
+          {
+            "_id": "transfer_reassessment",
+            "predicate": "status == \"on_transfer\"",
+            "classification": "\"reassessment_required\"",
+            "reason_code": "\"transfer_reassessment\"",
+            "required_checks": "[\"model_verified_tax_basis\"]"
+          },
+          {
+            "_id": "periodic_reassessment",
+            "predicate": "status == \"periodic\"",
+            "classification": "\"periodic_review\"",
+            "reason_code": "\"periodic_reassessment\"",
+            "required_checks": "[\"verify_reassessment_schedule\"]"
+          },
+          {
+            "_id": "no_transfer_reassessment",
+            "predicate": "status == \"none_on_transfer\"",
+            "classification": "\"no_transfer_reassessment\"",
+            "reason_code": "\"no_transfer_reassessment\"",
+            "required_checks": "[\"confirm_policy_scope\"]"
+          },
+          {
+            "_id": "unknown_policy",
+            "predicate": "",
+            "classification": "\"review_required\"",
+            "reason_code": "\"unknown_policy\"",
+            "required_checks": "[\"verify_jurisdiction_policy\"]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "outputNode",
+      "name": "output",
+      "position": {
+        "x": 400,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-rules",
+      "type": "edge",
+      "sourceId": "input",
+      "targetId": "rules"
+    },
+    {
+      "id": "rules-output",
+      "type": "edge",
+      "sourceId": "rules",
+      "targetId": "output"
+    }
+  ]
+}

@@ -399,6 +399,11 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - The cluster was extracted locally from the PostgreSQL apt package under ignored `.cache`, initialized/run in a user namespace and restricted to this session's Unix socket with TCP disabled. Initial abstract-socket attempts failed in psycopg hostname resolution; switching only the disposable fixture to a regular session-specific socket resolved it without production/test-policy changes.
 - Inherited T012 `passes: true` is freshly reverified; no feature flag changed. Owner guards, protected paths, dependencies and unrelated source remain unchanged. No live services, customer data, private evaluations, model calls or Excel runtime were used; this is state/wire-contract evidence, not analyst-quality evidence. Next: integrate this tested repair into dev for coordinator review, then T014 operating projections/tax/value-add. Blockers: none.
 
+### 2026-10-04: T014 pro forma, tax reassessment and value-add
+- Added deterministic monthly and annual pro forma calculations for revenue/expense growth, vacancy, post-vacancy credit loss, reserves, property tax, NOI, renovation cost and cash flow. Inputs are frozen Pydantic records, binary floats fail closed, and every calculation runs under the shared isolated 28-digit Decimal context.
+- Added jurisdiction-rule tax schedules with explicit assessment ratio, millage, full-reassessment choice, phase-in and annual growth cap. A property-based test proves that a full reassessment after a value increase cannot reduce the current tax; the calculation records whether that conservative floor was applied. Assessment facts and rules have separate provenance IDs.
+- Added cohort-based unit-turn schedules with throughput, downtime, cost/unit, current rent, premium and ramp. Monthly offline-unit loss, premium-equivalent units and renovation costs flow into pro forma NOI and cash flow through the source calculation ID; no LLM-generated number or unstored source value enters the projection.
+- Red evidence: the new suite initially failed collection because all three finance modules were absent. Exact verification exited 0: `6 passed, 14 deselected`; `T014: AC1 PASSED, AC2 PASSED, AC3 PASSED`. Full `make check` exited 0: Ruff/format clean, strict mypy clean in 53 source files, `265 passed, 4 deselected, 2 warnings in 56.69s`. Only T014's feature flag changed; existing assertions and protected files remain unchanged. No live services, private evaluations, model calls, external data or SEC resources were used. Next: independent review and integration, then T015 debt/returns/waterfall. Blockers: none.
 ### 2026-10-04: T031 local Docker sandbox and physical isolation
 - Added the typed `SandboxProvider`/`Box`/`ExecResult` contract and trusted `LocalDockerProvider`. Analyst containers run non-root with read-only rootfs, dropped capabilities, no-new-privileges, memory/CPU/PID limits, tenant-labelled private volumes and no Docker socket. Only deals, memory, outbox and scratch are writable; sleep/resume retain named volumes. Foreign resource collisions are rejected without deletion.
 - Reference Ubuntu images install pinned Codex/uv, Python, CRE runtime, LibreOffice/UNO/unoserver, Chromium/Playwright and fonts. Extractors receive only a bounded parsed JSON object, read-only, plus disposable scratch; no raw documents, analyst memory, skills or MCP configuration. Runtime credentials enter individual exec environments, never image layers/container config. Transfers use no-follow path traversal, bounded regular files and atomic replacement; snapshots reject symlinks/hardlinks, credential filenames and known credential values.
@@ -587,3 +592,128 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - Installed-wheel extraction replay on c925817 passed all 73 tests with the one approved license
   skip. The new streaming head will receive another installed-wheel replay and independent review.
 - T034 remains false and integration remains held on T010; no existing assertions or guards changed.
+### 2026-10-04: T021 rules — OFFLINE SOURCE-ONLY, ready for independent review
+- Branch: `task/T021-rules`, independent checkout from `origin/dev` at `11705ea9055305a093c805b7646dc0439e34d31f`. Initial and final fetch confirmed this base; other workers' remote branches were preserved.
+- Changed: strict Pydantic classification/policy/input/trace models, zen-engine 2.1.2 wrapper, seven packaged JDM tables, and 93 non-skipped rules tests. AC3 examples per table: buy-box 10, assumption ranges 9, LOI 9, missing data 7, escalation 8, rent regulation 8, tax reassessment 8. Extra tests exercise typed replay, real ZEN delegation, exact precision/boundaries, configurable policy/profile hashes, path rejection, code-node rejection and no input mutation.
+- TDD RED: wrote tests before the adapter/tables; `uv run pytest tests/rules -q` exited **2**, with `ImportError: cannot import name 'engine' from 'cre_brain.rules'`, one collection error. After implementation, 93 rules tests pass; no existing test assertion was changed, removed or skipped.
+
+#### Decisions
+- Official references consulted: [Python loader/evaluate guide](https://github.com/gorules/zen/blob/master/bindings/python/README.md), [official JDM table](https://github.com/gorules/zen/blob/master/test-data/table.json), [official trace snapshot](https://github.com/gorules/zen/blob/master/core/engine/tests/snapshots/engine__decision-table-discounts_0.snap), and installed 2.1.2 Python stubs. A real engine probe confirmed `{"trace": True}`, response `result`/`trace`/`performance`, node `traceData` with matching rule `_id`/`index`, and full-expression table predicates before designing the adapter.
+- Decimal-only boundary: strict typed Decimal inputs/policy thresholds; cents for amounts, millionths for ratios, integer counts; each transported integer is bounded by `2**53-1`. Scaling uses Decimal tuples and integer division, never float conversion or context-sensitive Decimal arithmetic. Unsupported numeric types, non-finite values, precision and ranges raise validation errors rather than round. Tests include a two-digit Decimal context, millionth boundary differences, cent differences at the maximum exact integer and randomized signed bounded transports.
+- Seven allowlisted bundled IDs only. No caller filesystem paths, user-supplied JDM, nested decisions or code nodes. `importlib.resources` loads JSON from the package, not the checkout/CWD. Hatch's existing package selection includes all seven tables, so no build configuration or dependency/lock change was needed.
+- Business thresholds are explicit **illustrative configurable firm policy**, not verified market truth: buy-box units 50–500, DSCR minimum 1.25, price maximum 100000000, tiers A/B; LOI DD 15–60 days, closing 30–120 days, deposit maximum 0.03 and financing contingency by default. Assumption profiles explicitly select market tier/class/vintage and configured ranges, with unsupported/overlapping profiles rejected or sent to review. Missing-data critical fields and external-action escalation policy are configurable too.
+- No jurisdiction/legal facts are bundled. Rent/tax outcomes require a caller-supplied policy attested verified, nonempty evidence IDs, matching jurisdiction and known status; absent/unverified/mismatched/unknown policy or the `unknown` jurisdiction requires verified policy/evidence. Caller attestation must come from trusted verified evidence in future tool wiring; these classification results neither verify legal truth nor authorize external actions.
+- Deterministic immutable trace includes engine/table/policy versions, SHA-256 of source table/policy/input, exact typed input JSON, source and assumption IDs, selected profile, sorted engine nodes and matching rule/index/trace data. Runtime timing is intentionally excluded. Classification is separate from stored Fact/Assumption records and canonical finance CalcResults; no state/database/model calls or T010 DeliverableKind import.
+
+#### Verification evidence
+- Exact verifier: `uv run pytest tests/rules -q && uv run python scripts/check_task.py T021` → **exit 0**. Exact output tail:
+  ```text
+  ........................................................................ [ 77%]
+  .....................                                                    [100%]
+  93 passed in 0.60s
+
+  ........................................................................ [ 77%]
+  .....................                                                    [100%]
+  =============================== warnings summary ===============================
+  .venv/lib/python3.12/site-packages/typer/__init__.py:24
+    /srv/infra/devin-outpost/sessions/devin-92e9e2c3c33b453fb6809c5ffd3a8c9d/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:24: DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_binary_stream as get_binary_stream
+
+  .venv/lib/python3.12/site-packages/typer/__init__.py:25
+    /srv/infra/devin-outpost/sessions/devin-92e9e2c3c33b453fb6809c5ffd3a8c9d/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:25: DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_text_stream as get_text_stream
+
+  -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+  93 passed, 291 deselected, 2 warnings in 1.18s
+
+  T021: AC1 PASSED, AC2 PASSED, AC3 PASSED
+  ```
+- `make check` → **exit 0**, offline units only (`not integration`), exact output tail:
+  ```text
+  uv run --locked ruff check src tests
+  All checks passed!
+  uv run --locked ruff format --check src tests
+  88 files already formatted
+  uv run --locked mypy src
+  Success: no issues found in 56 source files
+  uv run --locked pytest tests -m "not integration" -q
+  ........................................................................ [ 19%]
+  ........................................................................ [ 38%]
+  ........................................................................ [ 57%]
+  ........................................................................ [ 77%]
+  ........................................................................ [ 96%]
+  .............                                                            [100%]
+  =============================== warnings summary ===============================
+  .venv/lib/python3.12/site-packages/typer/__init__.py:24
+    /srv/infra/devin-outpost/sessions/devin-92e9e2c3c33b453fb6809c5ffd3a8c9d/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:24: DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_binary_stream as get_binary_stream
+
+  .venv/lib/python3.12/site-packages/typer/__init__.py:25
+    /srv/infra/devin-outpost/sessions/devin-92e9e2c3c33b453fb6809c5ffd3a8c9d/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:25: DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_text_stream as get_text_stream
+
+  -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+  373 passed, 11 deselected, 2 warnings in 56.20s
+  ```
+- `uv run pre-commit run --all-files` → **exit 0**:
+  ```text
+  ruff lint................................................................Passed
+  ruff format..............................................................Passed
+  strict source types......................................................Passed
+  ```
+- Wheel: `uv build --wheel` → exit 0, seven JSON resources inspected in `dist/cre_brain-0.1.0-py3-none-any.whl`; installed wheel into project-local `.cache/t021-wheel-venv` and evaluated **all seven** tables with its Python `-I` isolated interpreter. Import path was the wheel environment's `site-packages`, not `src`; resource/hash/deterministic repeat checks all passed. Offline dependency-cache attempt was unavailable; normal project-local pinned dependency install succeeded. No services were involved.
+
+#### Review readiness and dependency acceptance
+- Source branch is ready for coordinator **independent review** after exact verifier, offline make check and hooks passed. No milestone/product completion is claimed. T021 flag remains **false**; no feature flag, existing assertion, owner guard, dev/main integration or PR is changed/created.
+- **Dependency acceptance BLOCKED/pending (not a local implementation failure):** coordinator reports unresolved T010 uppercase DeliverableKind versus two erroneous lowercase assertions. This wrapper is independent of that enum and does not decide/fix its contract. A passing local offline suite does not resolve that coordinator acceptance issue; T010 acceptance must be settled before integrated T021 acceptance.
+- Shared-VPS boundary honored: only source work, project-local uv Python dependencies, public official documentation HTTP, offline unit checks and local wheel verification. No Docker/containerd installation, startup/build, containers, rootful daemon, host permission/sysctl/AppArmor/cgroup changes, shared databases/live services, production/private-eval/SEC data, runtime/integration tests or live model calls.
+- Next: push **only** `task/T021-rules` for independent coordinator replay/review. Coordinator retains integration/dependency acceptance; do not merge this branch into dev/main or flip T021 here.
+
+### 2026-10-04: T021 rules — combined-dev assembly verified, acceptance BLOCKED
+- Replayed the independently reviewed `70d540c` implementation exactly on a fresh branch from `dev` at accepted T031 commit `eb19d0b`. Rule source, tests, tables, `pyproject.toml` and `uv.lock` are byte-equivalent to the reviewed candidate; the only cherry-pick conflict was additive `PROGRESS.md` history and both histories were retained.
+- Exact verifier: `93 passed`; `scripts/check_task.py T021` selected the same 93 tests and reported `AC1 PASSED, AC2 PASSED, AC3 PASSED`. Combined `make check` passed Ruff, format, strict mypy and `400 passed, 11 deselected`; pre-commit passed all hooks.
+- `T021.passes` remains **false** and this source branch is not integrated. Required dependency T010 still has the known SPEC mismatch: `DeliverableKind.RENT_COMP_ANALYSIS` and `DEBT_QUOTE_SUMMARY` serialize lowercase while SPEC requires uppercase, and two existing assertions require the incorrect lowercase values. The owner has not yet authorized correction of those assertions. T014's independent NOI/reserve assertion blocker also remains untouched.
+- No guard, dependency, acceptance criterion, existing assertion or other task flag changed. Next: owner authorizes the narrow T010 assertion correction; correct and independently verify T010, then replay and accept T021 before `dev` integration.
+
+## 2026-10-04 — T010 owner-approved enum contract correction
+- Owner explicitly approved all four previously held enum/NOI corrections in the coordinator conversation. Corrected exactly the two existing DeliverableKind assertions to uppercase and changed all eleven DeliverableKind wire values to the SPEC contract. ClaimType and the event vocabulary are unchanged; no guard, private eval, transcript or protected path changed.
+- Red-first replay: 12 deliverable-kind cases failed against lowercase auto() values. After the correction, 32 domain tests pass; added parametrized coverage of all eleven uppercase values, serialized Deliverable JSON and round trips, with lowercase inputs rejected.
+- Exact verification exited 0: `uv run --locked pytest tests/domain -q` => `32 passed`; `uv run --locked python scripts/check_task.py T010` => `32 passed, 297 deselected`; `T010: AC1 PASSED, AC2 PASSED, AC3 PASSED`.
+- `make check` exited 0: Ruff lint/format and strict mypy pass; `318 passed, 11 deselected`. `uv run --locked pre-commit run --all-files`: all hooks pass. Independent source review and CI remain outstanding; task acceptance/integration remain held until they pass.
+### 2026-10-04: T014 independent review; integration BLOCKED
+- Fresh adversarial review rejected the initial T014 commit: reserves are incorrectly deducted in NOI, an existing assessed tax basis is ratio-adjusted twice, grown rent is earned by offline units, negative schedule costs can manufacture income, and valid downside assumptions are rejected.
+- Fixed the four unblocked source issues with six red-first regression cases: retained assessments now bypass the ratio conversion, full reassessment converts sale price into assessed basis exactly once, value-add exposes separate nominal premium and offline-rent components (offline loss follows base rent growth), schedule costs fail closed, and negative growth greater than -1/full vacancy are accepted. Original test assertions remain unchanged.
+- Exact T014 verification freshly exited 0: `12 passed, 14 deselected`; task replay `12 passed, 291 deselected`; AC1–AC3 passed. Full `make check` exited 0: Ruff/format clean in 90 files, strict mypy clean in 57 source files, `292 passed, 11 deselected, 2 warnings in 59.50s`; all pre-commit hooks passed. This does NOT establish correctness of the reserve/NOI convention: the original two NOI assertions encode my error. Accordingly T014's own flag is restored to false after fresh verification and no dev integration is accepted. No model, private evaluation, live service or SEC use.
+- Needs owner: explicit permission to correct only the erroneous existing NOI expectations, as requested in the coordinator conversation. Cash-flow expectations and acceptance criteria remain unchanged. The source repair and independent re-review must follow before T014 integration. T015 preparation may continue, but dependency completion is not claimed.
+
+### 2026-10-04: T031 coordinator safety review; NOT ACCEPTED
+- Independent reviewer and coordinator observed the retained Docker daemon as host UID/GID 0 with the host user namespace, full effective capabilities and no no-new-privileges/seccomp confinement; only mount/network namespaces differed. Coordinator did not run the proposed physical replay. Rootful daemon authority is not contained by those two namespaces, so the preceding claim that no shared-host state was changed is not independently established. Actual global mutations are not yet proven or excluded.
+- The implementation workflow is paused. Worker420 was instructed to stop only its owned disposable processes, preserve evidence, inspect possible host-wide effects read-only, and not restore unknown prior sysctl/AppArmor values. No further rootful Docker or host policy changes are authorized on this shared VPS.
+- Source review also found resume missing the firewall/proxy readiness gate, and reusable owner-contract checks that could falsely certify protected-resource absence/snapshot safety. Worker420 is repairing source with offline tests only on a separate task branch; no coordinator acceptance, physical-security completion, or main promotion is claimed.
+- The inherited worker T031 flag remains true only because the repository forbids flag changes without successful same-session exact verification; it is NOT a coordinator security acceptance. Do not schedule dependent sandbox tasks or promote based on that flag. Safe independent physical validation requires an already-authorized fully contained runtime or dedicated disposable machine, plus resolved source findings. Runtime cleanup/effects report remains pending.
+
+## 2026-10-04 — T014 approved below-NOI reserves repair IN REVIEW
+- Assembled the held T014 source onto current dev plus the T010 enum correction. The only merge conflict was an additive PROGRESS.md tail; both evidence histories were retained, including later T031 acceptance. No sandbox source, workflow or guard changed.
+- Corrected exactly the two owner-approved NOI expectations: first month 5550 and month 13 6255. Annual cash-flow expectations remain unchanged. NOI excludes replacement reserves and renovation costs; cash flow deducts both below NOI. Added three reserve scenarios including zero and negative cash flow, real tax/renovation schedules, monthly identities, annual totals and the partial second year.
+- Red-first focused replay: `3 failed, 1 passed, 25 deselected`; the two nonzero-reserve cases and original corrected expectation failed against the prior source. After the two-line finance repair, exact verification exited 0: `15 passed, 14 deselected`; checker `15 passed, 329 deselected`; `T014: AC1 PASSED, AC2 PASSED, AC3 PASSED`.
+- `make check`: Ruff lint/format and strict mypy pass; `333 passed, 11 deselected`. All pre-commit hooks pass. T014 remains false until fresh independent review and CI. T010 PR review found historical lowercase deliverable-read compatibility, being repaired separately before integration.
+
+### T010 historical deliverable compatibility repair
+- PR #6 review correctly found that old lowercase deliverable payloads would no longer validate. Eleven red-first historical-row tests reproduced it. Added an exact allowlisted storage-read adapter only for legacy Deliverable kinds after the tenant-scoped query. New domain inputs remain uppercase-only; new appended payloads serialize uppercase. Existing versioned rows are not migrated or rewritten, preserving immutable audit history.
+- Tests cover every legacy kind, historical/current reads, both tenant boundary mismatches, next-version append and byte-equivalent stored JSON values after reads; six invalid/mixed-case/unknown kinds remain rejected. No existing assertion was changed beyond the two owner-approved enum expectations.
+- Fresh verification exited 0: domain+store tests `59 passed`; T010 checker `32 passed, 314 deselected` (AC1–AC3); T011 checker `37 passed, 309 deselected` (AC1–AC4). `make check` and all pre-commit hooks pass: `335 passed, 11 deselected`; Ruff lint/format and strict mypy green. Independent source review and hosted CI are still required for this repaired head.
+
+### Verification record corrections and fresh combined T014 replay
+- Correction to the preceding T010 store record: actual T011 checker output was `47 passed, 4 skipped, 295 deselected`, AC1–AC3 (there is no AC4 in T011). The four approved integration-key skips are not PostgreSQL evidence. T010 and full-check totals were recorded correctly.
+- Correction to the initial T014 full-check record: that run actually failed the fresh-archive test because the resolved PROGRESS.md conflict had not been staged. It reported `1 failed, 332 passed, 11 deselected`; pre-commit had not run from that chained command. No test was skipped or weakened to fix this: stage the resolved index, incorporate the historical-read repair, then rerun.
+- Fresh combined T014 exact verify now exits 0: `15 passed, 14 deselected`; checker `15 passed, 346 deselected`; AC1–AC3 passed. Full `make check` exits 0 with `350 passed, 11 deselected`; Ruff lint/format, strict mypy and all pre-commit hooks pass. Independent source review and CI remain pending; T014 stays false.
+
+## 2026-10-04 — T021 combined dependency replay
+- T010 source review passed on exact `772c6e4`, including eleven legacy-kind regressions and immutable historical storage. PR #6 hosted CI settled: five passed, zero failed/pending, one main-only verifier not applicable. Owner-approved enum assertion repair is no longer held. The T011 count correction above is authoritative.
+- Assembled rules with the corrected T010 and T014 review candidate, retaining all progress histories across an additive log-only conflict. Rules source/tests/tables are unchanged from the independently reviewed candidate.
+- Fresh exact T021 verification exited 0: rules `94 passed`; checker `94 passed, 361 deselected`; AC1–AC3 passed. Full `make check`: `444 passed, 11 deselected`; Ruff lint/format, strict mypy and all pre-commit hooks pass. Combined review/CI remain outstanding; T021 stays false until acceptance.
+
+## 2026-10-04 — T034 combined dependency replay
+- Assembled the reviewed parser with current domain correction, T014 below-NOI repair and T021 rules candidate, retaining both additive progress histories. Parser source/tests and locked dependencies are unchanged from independently reviewed `91517ca`; real model-free Docling, inert XLSX formulas and bounded/lazy CSV behavior remain intact. No protected source/guards changed.
+- Fresh `./init.sh` exited 0 using locked dependencies and installed the existing pre-commit hook. Exact T034 checker exited 0: `74 passed, 456 deselected`; AC1–AC3 passed. Full `make check` exited 0 with `518 passed, 1 approved Reducto-license skip, 11 integration deselected`; Ruff lint/format, strict mypy and all pre-commit hooks pass. No licensed Reducto execution, private eval, SEC, live model or shared-host Docker use is claimed.
+- Fresh combined-source review and head/merge hosted CI remain outstanding. T034 stays false until acceptance. Finance independent review separately passed exact `d48f9f7`, including deterministic-context and monthly/annual oracle checks.

@@ -1,0 +1,126 @@
+{
+  "metadata": {
+    "table_id": "escalation_policy",
+    "version": "1.0.0",
+    "policy_notice": "Classification only. Business defaults are illustrative configurable firm policy, not market or legal truth. Jurisdiction outcomes require caller-supplied verified policy/evidence; no jurisdiction facts are bundled.",
+    "numeric_encoding": "Money: exact cents; ratios: exact millionths; integers bounded at 2**53-1. No numeric arithmetic or float conversion."
+  },
+  "nodes": [
+    {
+      "id": "input",
+      "type": "inputNode",
+      "name": "input",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "rules",
+      "type": "decisionTableNode",
+      "name": "rules",
+      "position": {
+        "x": 200,
+        "y": 0
+      },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          {
+            "id": "predicate",
+            "name": "ExactPolicyPredicate",
+            "field": "",
+            "type": "expression"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "classification",
+            "name": "classification",
+            "field": "classification",
+            "type": "expression"
+          },
+          {
+            "id": "reason_code",
+            "name": "reason_code",
+            "field": "reason_code",
+            "type": "expression"
+          },
+          {
+            "id": "required_checks",
+            "name": "required_checks",
+            "field": "required_checks",
+            "type": "expression"
+          }
+        ],
+        "rules": [
+          {
+            "_id": "evidence_conflict",
+            "predicate": "evidence_conflict",
+            "classification": "\"stop\"",
+            "reason_code": "\"evidence_conflict\"",
+            "required_checks": "[\"resolve_evidence_conflict\"]"
+          },
+          {
+            "_id": "legal_uncertainty",
+            "predicate": "legal_uncertainty",
+            "classification": "\"legal_review\"",
+            "reason_code": "\"legal_uncertainty\"",
+            "required_checks": "[\"obtain_verified_legal_policy\"]"
+          },
+          {
+            "_id": "policy_exception",
+            "predicate": "policy_exception",
+            "classification": "\"approval_required\"",
+            "reason_code": "\"policy_exception\"",
+            "required_checks": "[\"approve_policy_exception\"]"
+          },
+          {
+            "_id": "external_action",
+            "predicate": "external_action and require_external_approval",
+            "classification": "\"approval_required\"",
+            "reason_code": "\"external_action\"",
+            "required_checks": "[\"approve_external_action\"]"
+          },
+          {
+            "_id": "material_uncertainty",
+            "predicate": "material_uncertainty",
+            "classification": "\"clarification_required\"",
+            "reason_code": "\"material_uncertainty\"",
+            "required_checks": "[\"clarify_material_fact\"]"
+          },
+          {
+            "_id": "continue",
+            "predicate": "",
+            "classification": "\"continue\"",
+            "reason_code": "\"continue\"",
+            "required_checks": "[]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "outputNode",
+      "name": "output",
+      "position": {
+        "x": 400,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-rules",
+      "type": "edge",
+      "sourceId": "input",
+      "targetId": "rules"
+    },
+    {
+      "id": "rules-output",
+      "type": "edge",
+      "sourceId": "rules",
+      "targetId": "output"
+    }
+  ]
+}

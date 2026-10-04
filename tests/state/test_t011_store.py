@@ -2,7 +2,8 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import create_engine
+from pydantic import ValidationError
+from sqlalchemy import create_engine, select
 
 from cre_brain.domain import ClaimType, Deliverable, DeliverableKind, Fact, Provenance
 from cre_brain.domain.base import TenantScope
@@ -96,3 +97,83 @@ def test_t011_ac2_deliverables_are_append_only_versions() -> None:
     store.append(second, scope=SCOPE)
     assert store.get("uw", scope=SCOPE, version=1) == first
     assert store.current("uw", scope=SCOPE) == second
+
+
+@pytest.mark.parametrize("kind", list(DeliverableKind))
+def test_t011_ac2_legacy_deliverable_reads_preserve_history_and_canonical_writes(kind) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    metadata.create_all(engine)
+    store = SqlVersionedStore(engine, Deliverable)
+    first = Deliverable(
+        d_id="uw",
+        deal_ids=["deal-a"],
+        kind=kind,
+        version=1,
+        status="draft",
+        path="model-v1.xlsx",
+        gate_results=[],
+        depends_on=["noi"],
+    )
+    second = first.model_copy(update={"version": 2, "parent_version": 1})
+    historical = []
+    with engine.begin() as connection:
+        for record in (first, second):
+            payload = {**record.model_dump(mode="json"), "kind": kind.value.lower()}
+            historical.append(payload)
+            connection.execute(
+                store.table.insert().values(
+                    user_id=SCOPE.user_id,
+                    firm_id=SCOPE.firm_id,
+                    record_id=record.d_id,
+                    version=record.version,
+                    payload=payload,
+                )
+            )
+    assert store.get("uw", scope=SCOPE, version=1) == first
+    restored = store.current("uw", scope=SCOPE)
+    assert restored == second
+    for other in (
+        TenantScope(user_id="user-b", firm_id=SCOPE.firm_id),
+        TenantScope(user_id=SCOPE.user_id, firm_id="firm-b"),
+    ):
+        assert store.get("uw", scope=other, version=1) is None
+        assert store.current("uw", scope=other) is None
+    third = restored.model_copy(update={"version": 3, "parent_version": 2})
+    assert store.append(third, scope=SCOPE) == third
+    assert store.current("uw", scope=SCOPE) == third
+    with engine.connect() as connection:
+        payloads = list(
+            connection.execute(
+                select(store.table.c.payload).order_by(store.table.c.version)
+            ).scalars()
+        )
+    assert payloads == [*historical, third.model_dump(mode="json")]
+    assert payloads[-1]["kind"] == kind.value
+
+
+@pytest.mark.parametrize("kind", ["uw_Model", " uw_model", "unknown", "", None, 3])
+def test_t011_ac2_stored_unknown_deliverable_kind_remains_invalid(kind) -> None:
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    metadata.create_all(engine)
+    store = SqlVersionedStore(engine, Deliverable)
+    with engine.begin() as connection:
+        connection.execute(
+            store.table.insert().values(
+                user_id=SCOPE.user_id,
+                firm_id=SCOPE.firm_id,
+                record_id="uw",
+                version=1,
+                payload={
+                    "d_id": "uw",
+                    "deal_ids": ["deal-a"],
+                    "kind": kind,
+                    "version": 1,
+                    "status": "draft",
+                    "path": "model.xlsx",
+                    "gate_results": [],
+                    "depends_on": [],
+                },
+            )
+        )
+    with pytest.raises(ValidationError):
+        store.current("uw", scope=SCOPE)
