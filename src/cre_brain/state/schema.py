@@ -11,6 +11,8 @@ from sqlalchemy import (
     UniqueConstraint,
 )
 
+from cre_brain.state.immutability import register_append_only
+
 metadata = MetaData()
 VERSIONED = ("facts", "assumptions", "calcs", "questions", "deliverables")
 
@@ -87,3 +89,5 @@ corrections = Table(
     Column("task_id", String(128), nullable=False),
     Column("payload", JSON, nullable=False),
 )
+
+register_append_only(metadata, (*VERSIONED, "events", "corrections"))
