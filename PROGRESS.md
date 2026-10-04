@@ -516,6 +516,10 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
   production service was used. T010's `DeliverableKind`/NOI acceptance dependency remains
   unresolved; this entry reports isolated T034 source readiness only.
 
+- Coordinator assembly on fresh `dev` (`eb19d0b`) retained both additive progress histories. Source review reproduced a current-directory module-shadowing defect in the PDF subprocess: a benign `cre_brain/__init__.py` beside the caller's current directory prevented real parsing. The new regression failed first; the worker now launches Python with `-I -B`, rejecting current-directory/user-site/PYTHON-environment imports and disabling bytecode writes. Official interpreter semantics: https://docs.python.org/3.12/using/cmdline.html#cmdoption-I and https://docs.python.org/3.12/using/cmdline.html#cmdoption-B. Environment budgets/offline SDK flags remain; this is not OS sandbox containment.
+- Fresh coordinator verification after the repair: focused regression `1 passed`; extraction verifier `62 passed, 1 skipped` (only approved optional REDUCTO license); task replay `62 passed, 319 deselected`; `T034: AC1 PASSED, AC2 PASSED, AC3 PASSED`; `make check` `369 passed, 1 skipped, 11 integration deselected`; Ruff lint/format, strict mypy and pre-commit all pass. No existing assertions or task flags changed. Independent source review and fresh hosted head/merge checks remain pending. T034 stays false and unmerged because the inherited T010 enum-contract acceptance defect remains owner-held.
+- Rights-approved public reference import is now materialized outside Git: 15 government/reference PDFs (1,003 source pages; 2,419 cited chunks), with current artifact/chunk integrity verified. HUD MAP extraction exceeded the unchanged 30-second CPU cap; HUD EMAD returned HTTP 202, so neither is claimed imported. Commercial books remain citation-only unless licensed; no SEC, private eval, tenant facts, credentials or model training entered this cache. This is reference access, not evidence of analyst quality.
+
 ## 2026-10-04 — T034 coordinator hardening and verification
 
 - Assembled the reviewed pre-parser on fresh `dev`, retaining the inherited blockers. A red-first
@@ -533,13 +537,3 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - The T034 feature flag remains false and integration remains held because T010 still requires the
   owner-held deliverable-enum contract correction. Existing T010 and T014 assertions were not
   changed.
-
-## 2026-10-04 — Rights-approved CRE reference import
-
-- Materialized 15 government/reference PDFs outside Git under the dedicated public-knowledge
-  cache: 1,003 source pages, 975 reusable pages and 2,419 cited chunks, with artifact/chunk hashes
-  verified. HUD MAP exceeded the unchanged 30-second CPU cap and HUD EMAD returned HTTP 202, so
-  neither is claimed imported.
-- Commercial books remain citation-only unless licensed. No SEC/EDGAR material, private evals,
-  tenant facts, credentials or model-training output entered the cache. Reference access is not
-  evidence of analyst quality.
