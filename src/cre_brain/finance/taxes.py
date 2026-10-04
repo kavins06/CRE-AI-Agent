@@ -50,9 +50,11 @@ def reassess_taxes(
         raise ValueError("Tax projection requires at least one year")
 
     reassessed_value = (
-        assessment.sale_price if rule.full_reassessment else assessment.current_assessed_value
+        assessment.sale_price * rule.assessment_ratio
+        if rule.full_reassessment
+        else assessment.current_assessed_value
     )
-    raw_target = reassessed_value * rule.assessment_ratio * rule.millage / Decimal(1000)
+    raw_target = reassessed_value * rule.millage / Decimal(1000)
     value_increased = assessment.sale_price > assessment.current_assessed_value
     floor_applied = (
         rule.full_reassessment and value_increased and raw_target < assessment.current_annual_tax

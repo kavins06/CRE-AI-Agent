@@ -76,10 +76,9 @@ def build_value_add_schedule(
             )
             premium_units += Decimal(units) * ramp_fraction
         renovation_cost = Decimal(units_turned) * plan.cost_per_unit
-        rent_impact = (
-            premium_units * plan.monthly_rent_premium
-            - Decimal(offline_units) * plan.current_monthly_rent_per_unit
-        )
+        premium_income = premium_units * plan.monthly_rent_premium
+        offline_rent_loss = Decimal(offline_units) * plan.current_monthly_rent_per_unit
+        rent_impact = premium_income - offline_rent_loss
         prefix = f"month:{month}"
         outputs.update(
             {
@@ -88,6 +87,8 @@ def build_value_add_schedule(
                 f"{prefix}:offline_units": Decimal(offline_units),
                 f"{prefix}:premium_units_equivalent": premium_units,
                 f"{prefix}:renovation_cost": renovation_cost,
+                f"{prefix}:premium_rent_income": premium_income,
+                f"{prefix}:offline_rent_loss": offline_rent_loss,
                 f"{prefix}:gross_rent_impact": rent_impact,
             }
         )

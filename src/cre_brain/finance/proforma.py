@@ -3,7 +3,7 @@
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import BeforeValidator, Field, model_validator
+from pydantic import BeforeValidator, Field
 
 from cre_brain.domain import CalcResult
 from cre_brain.domain.base import Identifier
@@ -21,33 +21,31 @@ def _reject_float(value: object) -> object:
 
 NonnegativeDecimal = Annotated[Decimal, BeforeValidator(_reject_float), Field(ge=0)]
 Ratio = Annotated[Decimal, BeforeValidator(_reject_float), Field(ge=0, le=1)]
+Growth = Annotated[Decimal, BeforeValidator(_reject_float), Field(gt=-1)]
 
 
 class ProFormaInput(DomainModel):
     input_id: Identifier
     base_monthly_revenue: NonnegativeDecimal
     base_monthly_operating_expenses: NonnegativeDecimal
-    annual_revenue_growth: NonnegativeDecimal
-    annual_expense_growth: NonnegativeDecimal
+    annual_revenue_growth: Growth
+    annual_expense_growth: Growth
     vacancy_rate: Ratio
     credit_loss_rate: Ratio
     monthly_reserves: NonnegativeDecimal
     projection_months: int = Field(strict=True, ge=1, le=360)
-
-    @model_validator(mode="after")
-    def viable(self) -> "ProFormaInput":
-        if self.vacancy_rate == 1:
-            raise ValueError("Vacancy rate must leave potential revenue")
-        return self
 
 
 def _schedule_value(schedule: CalcResult | None, key: str) -> Decimal:
     if schedule is None:
         return ZERO
     try:
-        return schedule.outputs[key]
+        value = schedule.outputs[key]
     except KeyError as error:
         raise ValueError(f"Schedule is missing required output {key!r}") from error
+    if value < 0:
+        raise ValueError(f"Schedule output {key!r} must be nonnegative")
+    return value
 
 
 @_calculation
@@ -91,15 +89,17 @@ def build_proforma(
             },
         )
         growth_period = year - 1
-        base_revenue = (
-            assumptions.base_monthly_revenue
-            * (Decimal(1) + assumptions.annual_revenue_growth) ** growth_period
-        )
+        revenue_growth = (Decimal(1) + assumptions.annual_revenue_growth) ** growth_period
+        base_revenue = assumptions.base_monthly_revenue * revenue_growth
         operating_expenses = (
             assumptions.base_monthly_operating_expenses
             * (Decimal(1) + assumptions.annual_expense_growth) ** growth_period
         )
-        value_add_rent = _schedule_value(value_add, f"month:{month}:gross_rent_impact")
+        premium_income = _schedule_value(value_add, f"month:{month}:premium_rent_income")
+        offline_rent_loss = (
+            _schedule_value(value_add, f"month:{month}:offline_rent_loss") * revenue_growth
+        )
+        value_add_rent = premium_income - offline_rent_loss
         renovation_cost = _schedule_value(value_add, f"month:{month}:renovation_cost")
         gross_revenue = base_revenue + value_add_rent
         if gross_revenue < 0:
