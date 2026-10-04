@@ -56,7 +56,7 @@
         "rules": [
           {
             "_id": "missing_terms",
-            "predicate": "price == null or dd_days == null or close_days == null or deposit_percent == null or financing_contingency == null",
+            "predicate": "price == null or dd_days == null or close_days == null or deposit_percent == null or (require_financing_contingency and financing_contingency == null)",
             "classification": "\"review_required\"",
             "reason_code": "\"missing_terms\"",
             "required_checks": "[\"verify_loi_terms\"]"

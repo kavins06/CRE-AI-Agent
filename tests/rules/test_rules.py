@@ -277,6 +277,12 @@ def test_t021_ac3_loi_policy_examples(payload, expected):
     assert rules.evaluate("loi_policy.default", payload).decision.classification == expected
 
 
+def test_t021_ac3_loi_optional_financing_contingency_can_be_omitted():
+    payload = loi(policy=LoiPolicy(require_financing_contingency=False))
+    del payload["financing_contingency"]
+    assert rules.evaluate("loi_policy.default", payload).decision.classification == "within_policy"
+
+
 @pytest.mark.parametrize(
     "payload,expected",
     [
