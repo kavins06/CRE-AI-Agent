@@ -48,11 +48,12 @@ def assert_snapshot_contents(data: bytes, expected: bytes) -> None:
     names: set[str] = set()
     found: bytes | None = None
     decompressed_bytes = 0
-    buffer = io.BytesIO(decoded)
-    with tarfile.open(fileobj=buffer, mode="r:") as archive:
+    archive_end = 0
+    with tarfile.open(fileobj=io.BytesIO(decoded), mode="r:") as archive:
         for index, member in enumerate(archive):
             assert index < 256
             assert member.isfile() and member.size <= MAX_BYTES
+            assert not member.issparse(), "Snapshot member must be a non-sparse regular file"
             decompressed_bytes += member.size
             assert decompressed_bytes <= MAX_BYTES, "Snapshot decompressed content exceeds limit"
             parts = PurePosixPath(member.name).parts
@@ -76,9 +77,10 @@ def assert_snapshot_contents(data: bytes, expected: bytes) -> None:
             assert b"contract-credential-probe" not in payload
             if member.name == "memory/own.txt":
                 found = payload
-        # The parser consumed the first zero block; only zero padding may follow.
-        trailer = buffer.read()
-        assert len(trailer) >= 512 and not any(trailer), "Truncated or non-padding TAR trailer"
+            archive_end = member.offset_data + ((member.size + 511) // 512) * 512
+        # Tarfile may swallow bad headers; trust only the last validated member's end.
+        trailer = decoded[archive_end:]
+        assert len(trailer) >= 1024 and not any(trailer), "Truncated or non-padding TAR trailer"
     assert found == expected
     assert "memory/peer-secret.txt" not in names
 

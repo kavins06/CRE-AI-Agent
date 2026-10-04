@@ -61,6 +61,10 @@ does not restore/extract archives. It bounds the full decoded TAR, scans names,
 PAX metadata and payloads for its synthetic credential canary, rejects aliases
 and duplicate destinations, and accepts single-stream TAR/GZIP/BZIP2/XZ within
 its size/memory bounds. Unsupported or concatenated compression fails closed.
+Entries must be non-sparse regular files. The contract locates termination from
+the last validated file's physical TAR data offset, requires both zero end
+blocks and rejects any non-padding trailing data, including malformed headers
+that Python's TAR iterator can otherwise swallow.
 
 For the local factory, set `CRE_SANDBOX_STATE`, `CRE_SANDBOX_NAMESPACE`,
 `CRE_SANDBOX_IMAGE`, and optionally `CRE_SANDBOX_DOMAINS` (space-separated),
