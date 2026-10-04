@@ -409,19 +409,19 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - Initial exact verification passed with explicitly built `cre-box:t031`/`cre-extract:t031`. Final verification below also exercised fresh-runner bootstrap: only `DOCKER_HOST=unix:///tmp/cre-t031-420/socket` and `CRE_SANDBOX_DOCKER=$PWD/.cache/docker-runtime/docker/docker` were supplied. The physical integration fixture builds default reference images once per pytest process using a credential-free client environment, so existing main/nightly feature verification needs no guard/CI changes. Explicit owner image overrides are never rebuilt. Final commands were serialized to avoid pytest basetemp collisions. Output tail (existing Typer/Click deprecation warnings omitted):
   ```text
   uv run pytest tests/sandbox -q
-  ...........................                                              [100%]
-  27 passed in 142.19s (0:02:22)
+  ............................                                             [100%]
+  28 passed in 141.98s (0:02:21)
 
   uv run python scripts/check_task.py T031
   .........                                                                [100%]
-  9 passed, 281 deselected, 2 warnings in 46.95s
+  9 passed, 282 deselected, 2 warnings in 47.18s
   T031: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
 
   make check
   All checks passed!
   85 files already formatted
   Success: no issues found in 54 source files
-  279 passed, 11 deselected, 2 warnings in 55.42s
+  280 passed, 11 deselected, 2 warnings in 58.56s
 
   uv run pre-commit run --all-files
   ruff lint................................................................Passed
@@ -429,4 +429,5 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
   strict source types......................................................Passed
   ```
 - Review: checked correctness, simplicity, protocol/image boundaries, bounded operations and tenant/secret/egress safety; ownership preflight and mount-source delimiter regressions added. No existing assertion/guard or other task flag changed; only T031 becomes true after fresh verification. Reusable `python -m tests.sandbox.contract --factory module:factory --image IMAGE` executes policy-disabled shell isolation against an owner's real provider.
+- Final host-transfer review reproduced a symlink-ancestor escape in a failing regression. Host upload, download, and extraction reads now reuse the bounded, file-descriptor-based no-follow helper from the filesystem root, rejecting symlink ancestors and avoiding check-then-unbounded-read races. The regression also verifies downloads cannot create nested directories through a symlink ancestor.
 - Next: integrate the tested task branch into dev for coordinator review/replay, then T032 tool-server/session wiring. Disposable daemon/images retained for coordinator replay; no main promotion from this worker. Blockers: none.

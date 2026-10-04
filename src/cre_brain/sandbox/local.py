@@ -15,7 +15,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from cre_brain.sandbox.base import Box, ExecResult, SandboxError
-from cre_brain.sandbox.files import MAX_BYTES, WORK, WRITABLE, validate_path
+from cre_brain.sandbox.files import MAX_BYTES, WORK, WRITABLE, read_file, validate_path, write_file
 from cre_brain.sandbox.proxy import validate_domains
 
 
@@ -415,15 +415,14 @@ class LocalDockerProvider:
 
     async def put(self, box: Box, local: Path, remote: str) -> None:
         validate_path(remote)
-        if local.is_symlink() or not local.is_file() or local.stat().st_size > MAX_BYTES:
-            raise ValueError("Transfer requires a bounded regular local file")
-        await self._file(box, "put", remote, local.read_bytes())
+        data = read_file(local.absolute().parts[1:], root=Path("/"))
+        await self._file(box, "put", remote, data)
 
     async def get(self, box: Box, remote: str, local: Path) -> None:
         data = await self._file(box, "get", remote)
         if local.is_symlink():
             raise ValueError("Refusing local symlink destination")
-        local.write_bytes(data)
+        write_file(local.absolute().parts[1:], data, root=Path("/"))
 
     async def snapshot(self, box: Box) -> str:
         await self._inspect(box)
@@ -450,9 +449,7 @@ class LocalDockerProvider:
         """Trusted pre-parser launches a disposable box with exactly one parsed JSON file."""
         if image not in self.config.images:
             raise SandboxError("Image is not approved")
-        if parsed.is_symlink() or not parsed.is_file() or parsed.stat().st_size > MAX_BYTES:
-            raise ValueError("Extraction requires a bounded parsed JSON file")
-        data = parsed.read_bytes()
+        data = read_file(parsed.absolute().parts[1:], root=Path("/"))
         if not isinstance(json.loads(data), dict):
             raise ValueError("Parsed document must be a JSON object")
         box = Box(

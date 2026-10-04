@@ -44,3 +44,29 @@ async def test_foreign_box_rejected_before_runtime(tmp_path: Path) -> None:
         await provider.exec(Box(user_id="alice", box_id="someone-else"), ["true"], 1)
     with pytest.raises(SandboxError, match="approved"):
         await provider.create("alice", "attacker-image")
+
+
+@pytest.mark.asyncio
+async def test_host_transfer_rejects_symlink_ancestors(tmp_path: Path) -> None:
+    class CaptureProvider(LocalDockerProvider):
+        async def _file(self, *args, **kwargs) -> bytes:
+            return b"result"
+
+    provider = CaptureProvider(
+        DockerConfig(state_dir=tmp_path / "state", namespace="tests", images=("image",))
+    )
+    directory = tmp_path / "actual"
+    directory.mkdir()
+    source = directory / "file"
+    source.write_bytes(b"private")
+    alias = tmp_path / "alias"
+    alias.symlink_to(directory, target_is_directory=True)
+    box = Box(user_id="alice", box_id=provider._name("alice"))
+    with pytest.raises(OSError):
+        await provider.put(box, alias / "file", "/home/agent/work/memory/file")
+    with pytest.raises(OSError):
+        await provider.get(box, "/home/agent/work/memory/file", alias / "output")
+    assert not (directory / "output").exists()
+    with pytest.raises(OSError):
+        await provider.get(box, "/home/agent/work/memory/file", alias / "nested" / "output")
+    assert not (directory / "nested").exists()
