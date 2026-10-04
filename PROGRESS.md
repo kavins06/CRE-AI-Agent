@@ -917,3 +917,15 @@ T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
 - Red first: five of six new oracle cases reproduced incorrect proceeds or rejection (the high-precision guard for `x=1.23456789e-70` already passed). New cases cover `x=1.23456789e-70`/`1.23456789e-110` and no guard versus `1e-100`/`1e-170` unrelated quotes. Pre-existing assertions remain intact.
 - Fees and proceeds now use exact Fraction arithmetic after the existing 256-digit input-budget check; positive-proceeds validation is exact, and each rational is independently converted into the bounded working Decimal context. This eliminates product-cancellation dependence without expanding public interfaces or unbounding input arithmetic.
 - Replay: all 30 precision regressions pass; T015 focused 45 and exact checker 57 pass; T016 focused/exact checker 99 pass. Correction to the preceding log: the prior T015 checker had 51 tests, not 49. Full checks and independent review of this newest head are outstanding; both task flags remain false.
+
+## 2026-10-04 — T015/T016 accepted at exact reviewed source
+- Independent read-only review passed exact source head `c6a8e2081ea6799e9ba360515a3af12678b994fb3`: R1–R5 fixed; 4,723 independent assertions, six exact fee-cancellation oracles, quote invariance, 256-digit budget edge, exact sign boundaries and hostile caller context all passed with zero failures.
+- Fresh same-session task acceptance replay exits zero:
+```text
+57 passed, 616 deselected
+T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
+99 passed, 574 deselected
+T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Source-head hosted checks passed: check, dependency-audit, test-count, sandbox physical and merge validation, plus Devin Review; the task-flag metadata commit requires its own final hosted replay before dev integration.
+- T015 and T016 flags are now true. No model, SEC, private-eval, UI, runtime, guard or owner-security change.

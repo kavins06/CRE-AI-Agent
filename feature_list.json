@@ -118,7 +118,7 @@
         "T014"
       ],
       "verify": "uv run pytest tests/finance -q -k debt && uv run python scripts/check_task.py T015",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T016",
@@ -129,7 +129,7 @@
         "T015"
       ],
       "verify": "uv run pytest tests/finance -q -k returns && uv run python scripts/check_task.py T016",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T017",
