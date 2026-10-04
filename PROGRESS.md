@@ -819,3 +819,29 @@ T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
 T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Both flags remain false. Next: coupled full checks/hooks and push for independent review. No PR or dev/main integration; no blocker.
+
+## 2026-10-04 — T015/T016 repair coupled-head replay (acceptance pending)
+- Separate source/test repair commits preserve incoming history: T015 `fde540db85cf503280331e80a90e549a71c4d21b`; T016 `6729438cd68e501e280683e626224720a8f141fd`.
+- Exact verifiers replayed sequentially on that coupled source head:
+```text
+27 passed, 74 deselected in 0.52s
+27 passed, 575 deselected, 2 warnings in 1.44s
+T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
+45 passed, 56 deselected in 1.57s
+45 passed, 557 deselected, 2 warnings in 2.58s
+T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Full `make check` exits 0:
+```text
+uv run --locked ruff check src tests
+All checks passed!
+uv run --locked ruff format --check src tests
+108 files already formatted
+uv run --locked mypy src
+Success: no issues found in 69 source files
+uv run --locked pytest tests -m "not integration" -q
+590 passed, 1 skipped, 11 deselected, 2 warnings in 89.88s (0:01:29)
+```
+- The sole skip remains the approved Reducto-license seam; integration is excluded by the documented fast suite. All pre-commit hooks (Ruff lint/format, strict source types) and `uv lock --check` pass. Typer/Click deprecation warnings are unchanged.
+- Additional independent 160-digit closed-form payment oracle and contractual final-balance checks pass for 120 combinations spanning principal 1200/1e9, 1–600 months and annual rates 0, 1e-80, 1e-27, 1e-26, 1e-25, 1e-15, .01, .06, .12 and 1. Replaying the ten new T016 regression cases in-memory against incoming `8fff2d4` reconfirms 9 failures and one pass without modifying tracked source.
+- Feature flags stay false; no existing tests/assertions, schemas, pins or protected guards changed. Ready for task-branch push and independent review; no PR, dev/main merge, main promotion, live models, private eval, SEC or UI testing. No blocker.
