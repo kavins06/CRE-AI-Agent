@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import posixpath
 import zipfile
+from collections.abc import Iterator
 from xml.etree import ElementTree as ET
 
 from openpyxl import load_workbook
@@ -75,9 +76,9 @@ def csv_table(raw: bytes, doc_id: str, seed: str, limits: Limits, delimiter: str
     return ParsedTable(table_id=digest((seed, "CSV")), sheet="CSV", cells=tuple(cells))
 
 
-def _csv_rows(content: str, delimiter: str, limits: Limits) -> list[list[str]]:
+def _csv_rows(content: str, delimiter: str, limits: Limits) -> Iterator[list[str]]:
     """Parse the explicit CSV dialect without the stdlib's process-global field limit."""
-    rows: list[list[str]] = []
+    row_count = 0
     fields: list[str] = []
     characters: list[str] = []
     state = "start"
@@ -90,15 +91,17 @@ def _csv_rows(content: str, delimiter: str, limits: Limits) -> list[list[str]]:
         if len(fields) > limits.max_columns:
             raise PreparseError("CSV column limit exceeded")
 
-    def finish_row() -> None:
-        nonlocal row_started
+    def finish_row() -> list[str]:
+        nonlocal row_started, row_count
         if row_started or fields or characters or state == "closed":
             finish_field()
-        rows.append(fields.copy())
+        row = fields.copy()
         fields.clear()
         row_started = False
-        if len(rows) > limits.max_rows:
+        row_count += 1
+        if row_count > limits.max_rows:
             raise PreparseError("CSV row limit exceeded")
+        return row
 
     for character in content:
         if previous_cr and character == "\n":
@@ -118,7 +121,7 @@ def _csv_rows(content: str, delimiter: str, limits: Limits) -> list[list[str]]:
             state = "start"
             row_started = True
         elif character in ("\r", "\n"):
-            finish_row()
+            yield finish_row()
             state = "start"
             previous_cr = character == "\r"
         elif state == "start" and character == '"':
@@ -135,8 +138,7 @@ def _csv_rows(content: str, delimiter: str, limits: Limits) -> list[list[str]]:
     if state == "quoted":
         raise PreparseError("Unclosed CSV quote")
     if row_started or fields or characters or state == "closed":
-        finish_row()
-    return rows
+        yield finish_row()
 
 
 def _xml(raw: bytes) -> ET.Element:

@@ -571,3 +571,19 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
   strict mypy and `380 passed, 1 skipped, 11 deselected`; all pre-commit hooks passed.
 - Acceptance remains held: T034 is false; existing T010/T014 assertions and protected owner guards
   are unchanged.
+
+## 2026-10-04 — T034 streaming budget refinement
+
+- Independent exact-head review of c925817 found no required defects, with 390,624 exhaustive CSV
+  dialect comparisons, 4,000 writer round-trips and 17 budget-boundary probes. It identified eager
+  row allocation as a nonblocking optimization. Converted the row tokenizer to an iterator so the
+  aggregate cell/text budgets can stop consumption before parsing the remaining records.
+- A red-first regression proved the former eager implementation scanned a malformed tail instead
+  of stopping at the earlier aggregate cell limit. The streaming implementation now fails closed
+  at that limit; quote, newline, row-position and field-limit semantics are unchanged.
+- Fresh exact verification: extraction `74 passed, 1 skipped`; task replay `74 passed,
+  319 deselected`; `T034: AC1 PASSED, AC2 PASSED, AC3 PASSED`. `make check`: Ruff lint/format,
+  strict mypy and `381 passed, 1 skipped, 11 deselected`; all pre-commit hooks passed.
+- Installed-wheel extraction replay on c925817 passed all 73 tests with the one approved license
+  skip. The new streaming head will receive another installed-wheel replay and independent review.
+- T034 remains false and integration remains held on T010; no existing assertions or guards changed.

@@ -221,6 +221,18 @@ def test_t034_ac1_preparse_csv_blank_records_preserve_source_row_numbers(parser:
     ]
 
 
+def test_t034_ac1_preparse_csv_cell_budget_precedes_unparsed_tail(parser: Preparser):
+    (parser.raw_root / "streamed.csv").write_text('a\nb\n"unterminated')
+    bounded = Preparser(
+        raw_root=parser.raw_root,
+        output_root=parser.output_root,
+        scope=parser.scope,
+        limits=Limits(max_cells=1),
+    )
+    with pytest.raises(PreparseError, match="Cell/text item limit exceeded"):
+        bounded.parse("streamed.csv", doc_id="streamed")
+
+
 def test_t034_ac1_preparse_xlsx_never_evaluates_formulas_or_follows_links(parser: Preparser):
     book = Workbook()
     sheet = book.active
