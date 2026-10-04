@@ -7,6 +7,7 @@ from typing import Any
 
 from cre_brain.domain import Deliverable, GateResult
 from cre_brain.domain.base import TenantScope
+from cre_brain.gates.snapshot import ArtifactSnapshot
 from cre_brain.runner.policy import ADVISORY, Refusal, required_gates
 from cre_brain.runner.tools import files
 from cre_brain.runner.tools.contracts import Artifact, Finalize
@@ -15,9 +16,9 @@ from cre_brain.runner.tools.registry import ToolRegistry, ok, refused
 from cre_brain.runner.tools.state import ToolState
 
 
-def artifact(
+def artifact_snapshot(
     registry: ToolRegistry, state: ToolState, identity: str, *, final_replay: bool = False
-) -> Artifact:
+) -> tuple[Artifact, ArtifactSnapshot]:
     anchor = registry.inputs.artifact(registry.context, identity)
     if anchor is None:
         raise Refusal(
@@ -54,16 +55,17 @@ def artifact(
         raise Refusal(
             "stale_evidence", "Regenerate the artifact after source or assumption changes."
         )
-    if files.digest(files.read(registry.workspace, Path(expected.path))) != anchor.sha256:
+    data = files.read(registry.workspace, Path(expected.path))
+    if files.digest(data) != anchor.sha256:
         raise Refusal(
             "untrusted_artifact",
             "Artifact bytes changed; host must register a new canonical version.",
         )
-    return anchor
+    return anchor, ArtifactSnapshot(data, anchor.sha256)
 
 
 def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dict[str, Any]:
-    anchor = registry.artifact(state, request.deliverable_id, final_replay=True)
+    anchor, snapshot = registry.artifact_snapshot(state, request.deliverable_id, final_replay=True)
     registry.require_gates()
     assert registry.gates is not None
     d = anchor.deliverable
@@ -91,7 +93,7 @@ def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dic
     failures = []
     for gate in required_gates(d.kind, anchor.extraction):
         try:
-            result = registry.gates.check(gate, d)
+            result = registry.gates.check_bytes(gate, d, snapshot)
             if type(result.passed) is not bool:
                 raise ValueError("Gate verdict must be a genuine boolean")
             result = GateResult.model_validate(result.model_dump(warnings=False))
@@ -113,6 +115,7 @@ def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dic
             {
                 "deliverable_id": d.d_id,
                 "gate": gate,
+                "sha256": snapshot.sha256,
                 "result": result.model_dump(mode="json", warnings=False),
             },
         )
@@ -124,7 +127,8 @@ def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dic
             **refused("gate_failure", "Resolve all required blocking gates before release."),
             "failures": failures,
         }
-    # Check bytes and canonical identity again after checker execution.
+    # Revalidate canonical identity/freshness and the current published bytes.
+    # The gates consumed only the immutable authenticated snapshot above.
     registry.deadline(state)
     registry.artifact(state, d.d_id)
     final = Deliverable.model_validate(
@@ -136,6 +140,7 @@ def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dic
             "gate_results": results,
         }
     )
+    registry.deadline(state)
     state.append(final)
     state.event(
         "deliverable",

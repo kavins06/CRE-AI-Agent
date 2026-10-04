@@ -5,7 +5,7 @@
 | | |
 |---|---|
 | Milestone | M2: First working analyst (thin slice: SCREEN + UW_MODEL via cre run) |
-| Depends on | T012, T018, T020, T021, T030 |
+| Depends on | T012, T018, T020, T021, T037 |
 | Read first | SPEC §10.3–10.4 |
 | Allowed to modify | `src/cre_brain/runner/tools/**`, `src/cre_brain/runner/policy.py`, `tests/runner/**`, `tests/protected/**`, `PROGRESS.md`, `feature_list.json` (this task's `passes` only) |
 | Must NOT modify | Anything else in `scripts/protected_paths.txt`; other tasks' entries; existing tests' assertions |
@@ -13,6 +13,11 @@
 
 ## Goal
 One registry exposing tools via `cre mcp serve` and `cre tool <name>`.
+
+The offline registry and transports depend on the deterministic gate implementation,
+not a live Codex execution. Under the owner's implementation-flexibility approval,
+T037 replaces T030 in this task's dependency list. T030 remains mandatory for T033;
+this does not waive isolated-runtime, live compatibility, or analyst-quality evidence.
 
 ## Acceptance criteria
 Each ACn needs at least one passing, non-skipped test named `test_t032_ac<n>_*`.

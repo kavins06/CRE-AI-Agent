@@ -48,6 +48,9 @@ class Gates:
         self.fail = fail
         self.calls = []
 
+    def check_bytes(self, name, deliverable, snapshot):
+        return self.check(name, deliverable)
+
     def check(self, name, deliverable):
         self.calls.append(name)
         return GateResult(

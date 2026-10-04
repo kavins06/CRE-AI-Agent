@@ -32,17 +32,27 @@ Answer/resume endpoint wiring remains with the control-plane coordinator.
 
 `InputProvider.artifact` authenticates canonical Deliverable identity, kind,
 version, deal, bytes hash and extraction classification. A separate
-`GateProvider` with authenticated scope and check(name, deliverable) implements
-the small GateService seam. The tool selects every required SPEC gate, including
+`GateProvider` with authenticated scope and
+`check_bytes(name, deliverable, ArtifactSnapshot)` implements the host-only seam.
+The immutable snapshot holds the same bytes whose SHA-256 was authenticated;
+all required gates receive that snapshot. `GateService` (T037) implements this
+interface directly, retaining original canonical identity while routing every
+prose/workbook reader through a private read-only copy in host-private scratch.
+Temporary copies are cleaned up on success and failure. The host must keep this
+scratch outside analyst mounts. Its existing path interfaces capture bytes once
+before checking; `check_all` shares that capture across gates. Neither CLI nor
+MCP can select providers or snapshots. The offline Gates fixture adds only a
+`check_bytes` adapter delegating to its existing `check` overrides, so malicious
+verdict, deadline and gate-count tests keep their original assertions/meaning.
+The tool selects every required SPEC gate, including
 extraction coverage/checksums, and treats only entailment/verifier as advisory.
 Missing/invalid providers, malformed verdicts, failures, changed bytes, stale
 state or elapsed session deadlines refuse release. Gate results and the final
 append-only transition are persisted in one scoped transaction. Release replay
 checks the current final version and artifact bytes. A newer draft needs a new
-request ID. T037 source was read only to align this seam; its current service is
-not imported or certified safe. The coordinator must adapt its repaired evidence
-provider to the stored field references, finance input snapshots and direct
-CalcResult lineage before installing it here.
+request ID. The host must still supply T037's authenticated evidence provider,
+using the stored field references, finance input snapshots and direct CalcResult
+lineage. Adapter tests prove byte binding, not live analyst capability or quality.
 
 Excel accepts only the host's hash-pinned mapped mf_standard reference template
 and stored trusted proforma inputs. It stores a server-created WorkbookBuild;
@@ -57,11 +67,18 @@ proof is inferred from these tests.
 
 Drafts are plain local JSON, written exclusively under
 outbox/deal/task. Recipients are configured IDs, not model-issued addresses.
-Sending obeys host off/ask/on toggles (default OFF). Ask returns a durable cid and
+Sending obeys host off/ask/on toggles (default OFF), shared across the authenticated
+user/firm tenant's tasks. Partial host updates merge against the latest durable
+policy under the tenant transaction lock; monotonic revisions order updates
+independently of task sequence numbers and clocks. Legacy snapshots have a
+deterministic timestamp/task/sequence/ID fallback. Confirmation and request/send
+idempotency ledgers remain task-bound. Pending confirmation replays resolve the
+current tenant policy again. Ask returns a durable cid and
 confirmation_request immediately. Only the host's authenticated confirmation
 endpoint may invoke confirm; there is no confirmation tool or caller PASS field.
 Even an enabled/confirmed send needs an allowlisted tenant connector and a body
-that exactly matches a gate-finalized canonical LOI or BROKER_QUESTIONS artifact.
+that exactly matches the authenticated immutable bytes of a gate-finalized
+canonical LOI or BROKER_QUESTIONS artifact, at both reservation and delivery.
 The send intent commits before the connector runs. Concurrent/repeated attempts
 cannot resend; an uncertain outcome requires host reconciliation. Connectors
 must also honor the stable tenant/task/draft idempotency key. Offline tests never
@@ -74,8 +91,9 @@ locks coordinate the existing state interfaces. Host state writers must honor
 these locks and invalidate graph descendants. Caps are task/session scoped;
 the box/control plane remains responsible for account-wide nightly limits,
 active process limits and terminating blocked processes. Failed calls count
-against the durable tool budget; the tool checks deadlines again before release
-or reserving delivery. Host record_host_tokens supplies authenticated usage.
+against the durable tool budget; the tool checks deadlines again after the last
+artifact validation, immediately before the final append, or before reserving
+delivery. Host record_host_tokens supplies authenticated usage.
 
 Canonical JSON is sorted, ASCII and compact, bounded to 128 KiB and depth 20.
 Duplicate keys/nonfinite values/extra authority fields are rejected. Low-level

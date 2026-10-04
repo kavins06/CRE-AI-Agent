@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from cre_brain.config.settings import ToggleSettings
 from cre_brain.domain import Deliverable, DeliverableKind
 from cre_brain.domain.base import TenantScope
 from cre_brain.runner.policy import Refusal
@@ -29,10 +28,7 @@ def prepare_send(registry: ToolRegistry, state: ToolState, request: SendExternal
     raw = files.read(registry.workspace, Path(draft["path"]))
     if files.digest(raw) != draft["digest"]:
         raise Refusal("untrusted_artifact", "Draft changed; create a new immutable outbox draft.")
-    toggles = registry.settings.toggles
-    updates = [e.payload["host_toggles"] for e in state.history() if "host_toggles" in e.payload]
-    if updates:
-        toggles = ToggleSettings.model_validate(updates[-1])
+    toggles = registry.host_toggles(state)
     toggle = getattr(toggles, draft["kind"])
     if toggle == "off":
         raise Refusal("policy_off", "External sending is off; draft remains in the local outbox.")
@@ -117,7 +113,7 @@ def released_draft(
     request = DraftExternal.model_validate(parse(raw.decode()))
     if request.deliverable_id is None:
         raise Refusal("untrusted_artifact", "Sending requires a gate-finalized canonical artifact.")
-    anchor = registry.artifact(state, request.deliverable_id, final_replay=True)
+    anchor, snapshot = registry.artifact_snapshot(state, request.deliverable_id, final_replay=True)
     current = state.current(Deliverable, request.deliverable_id)
     expected_kind = (
         DeliverableKind.LOI if request.kind == "send_loi" else DeliverableKind.BROKER_QUESTIONS
@@ -131,7 +127,7 @@ def released_draft(
         and e.payload.get("sha256") == anchor.sha256
         for e in state.history()
     )
-    if not released or files.read(registry.workspace, Path(current.path)).decode() != request.body:
+    if not released or snapshot.data.decode() != request.body:
         raise Refusal("untrusted_artifact", "Draft must match the finalized artifact exactly.")
     registry.deadline(state)
     return request

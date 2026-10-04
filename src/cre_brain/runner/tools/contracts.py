@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 from cre_brain.domain import Deliverable, Fact, GateResult
 from cre_brain.domain.base import TenantScope
 from cre_brain.excel.models import TemplateMap
+from cre_brain.gates.snapshot import ArtifactSnapshot
 from cre_brain.rules.models import Policy
 
 ID = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9_.:-]{1,128}$")]
@@ -129,7 +130,9 @@ class GateProvider(Protocol):
 
     scope: TenantScope
 
-    def check(self, name: str, deliverable: Deliverable) -> GateResult: ...
+    def check_bytes(
+        self, name: str, deliverable: Deliverable, snapshot: ArtifactSnapshot
+    ) -> GateResult: ...
 
 
 class ExternalConnector(Protocol):

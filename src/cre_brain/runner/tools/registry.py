@@ -22,6 +22,7 @@ from cre_brain.domain import (
     Question,
 )
 from cre_brain.excel.base import ExcelEngine
+from cre_brain.gates.snapshot import ArtifactSnapshot
 from cre_brain.runner.policy import HostContext, Limits, Refusal, charge
 from cre_brain.runner.tools import files, finance
 from cre_brain.runner.tools.contracts import (
@@ -207,9 +208,7 @@ class ToolRegistry:
                                 "A new artifact version requires a new release request ID.",
                             )
                         self.artifact(state, arguments["deliverable_id"], final_replay=True)
-                    if response["status"] != "pending_confirmation" or not self.confirmed(
-                        state, response["cid"]
-                    ):
+                    if response["status"] != "pending_confirmation":
                         return dict(response)
                 try:
                     with state.connection.begin_nested():
@@ -522,9 +521,14 @@ class ToolRegistry:
         return assumption, identity
 
     def artifact(self, state: ToolState, identity: str, *, final_replay: bool = False) -> Artifact:
-        from cre_brain.runner.tools.finalization import artifact
+        return self.artifact_snapshot(state, identity, final_replay=final_replay)[0]
 
-        return artifact(self, state, identity, final_replay=final_replay)
+    def artifact_snapshot(
+        self, state: ToolState, identity: str, *, final_replay: bool = False
+    ) -> tuple[Artifact, ArtifactSnapshot]:
+        from cre_brain.runner.tools.finalization import artifact_snapshot
+
+        return artifact_snapshot(self, state, identity, final_replay=final_replay)
 
     def finalize(self, state: ToolState, request: Finalize) -> dict[str, Any]:
         from cre_brain.runner.tools.finalization import finalize
@@ -556,14 +560,46 @@ class ToolRegistry:
                 "budget_exceeded", "Host deadline elapsed; request a host-authorized resume."
             )
 
-    def set_host_toggles(self, **updates: str) -> None:
-        toggles = ToggleSettings.model_validate(
-            {**self.settings.toggles.model_dump(warnings=False), **updates}
+    def host_toggle_updates(self, state: ToolState) -> list[dict[str, Any]]:
+        # Revisions are assigned under the tenant tools lock, independent of task
+        # sequence numbers or wall-clock changes. Legacy events precede revisions.
+        updates = [e for e in state.history(task_only=False) if "host_toggles" in e.payload]
+        for event in updates:
+            revision = event.payload.get("host_toggle_revision", 0)
+            if type(revision) is not int or revision < 0:
+                raise Refusal("policy_conflict", "Host toggle ledger requires reconciliation.")
+        updates.sort(
+            key=lambda e: (
+                e.payload.get("host_toggle_revision", 0),
+                e.ts,
+                e.task_id,
+                e.seq or 0,
+                e.event_id,
+            )
         )
-        # Host-only method; not a tool nor a CLI flag.
+        return [e.payload for e in updates]
+
+    def host_toggles(self, state: ToolState) -> ToggleSettings:
+        updates = self.host_toggle_updates(state)
+        return ToggleSettings.model_validate(
+            updates[-1]["host_toggles"] if updates else self.settings.toggles.model_dump()
+        )
+
+    def set_host_toggles(self, **updates: str) -> None:
+        # Host-only method; not a tool nor a CLI flag. Merge inside the tenant
+        # transaction so another task's OFF cannot be lost to startup defaults.
         with self.transaction() as state:
+            history = self.host_toggle_updates(state)
+            toggles = ToggleSettings.model_validate(
+                {**self.host_toggles(state).model_dump(warnings=False), **updates}
+            )
+            revision = history[-1].get("host_toggle_revision", 0) + 1 if history else 1
             state.event(
-                "confirmation_response", {"host_toggles": toggles.model_dump(warnings=False)}
+                "confirmation_response",
+                {
+                    "host_toggles": toggles.model_dump(warnings=False),
+                    "host_toggle_revision": revision,
+                },
             )
 
     def confirmed(self, state: ToolState, cid: str) -> bool:

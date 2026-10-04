@@ -219,10 +219,10 @@
         "T018",
         "T020",
         "T021",
-        "T030"
+        "T037"
       ],
       "verify": "uv run pytest tests/runner -q -k tools && uv run pytest tests/protected -q -k policy && uv run python scripts/check_task.py T032",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T033",

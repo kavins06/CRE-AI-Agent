@@ -1070,3 +1070,26 @@ git diff --check: passed
 ```
 - Set only T037's flag after that exact verifier. No live analyst quality, isolated-runtime, private-eval or hosted-CI completion is claimed. Trusted host adapters and atomic gated release remain T032 composition responsibilities; LibreOffice remains trusted-reference-only.
 - Next: integrate into local dev and finish independently reviewed T032, then T033/T035 and SCREEN. Dev push and milestone promotion remain held on the unresolved GitHub-hosted-CI/no-cloud boundary. T030 still requires genuine isolated-runtime evidence and owner approval for its two contradictory existing assertions.
+
+## 2026-10-04 — T032 reviewed offline tool server locally accepted
+- Implemented the shared typed CLI/MCP registry, scoped canonical evidence, explicit deterministic finance dispatch, workbook adapters, scoped questions, persistent policy/budgets, trusted gated finalization and durable confirmed external delivery. No caller can supply PASS objects, gate subsets or release authority.
+- Independent GPT-6.1 Sol review rejected outbound-byte substitution, A-B-A gate substitution, stale partial policy merges, task-local OFF and deadline expiry during final artifact validation. Five additive regressions failed red before repairs; the final suite includes a workbook snapshot control. The repaired exact source received SOURCE PASS with independent in-memory replays. Existing assertions remain unchanged; only the host gate fixture gained its byte-bound interface adapter.
+- Gates now consume authenticated immutable bytes through a host-only snapshot adapter; native workbook readers use temporary host-private copies. Sends compare that same digest-verified snapshot with the outbox body. Tenant/user toggle revisions merge under the existing SQL lock across tasks, while confirmations, request IDs and delivery ledgers remain task-scoped. Release deadlines are checked immediately before append.
+- Decisions: T032's offline implementation actually imports T037's gates, not the Codex runtime. Replaced its T030 dependency with accepted T037 in the task and feature metadata under the owner's implementation-flexibility approval. T033 still requires T030/T031/T032; isolated runtime, genuine CLI compatibility, private scoring and quality bars are unchanged. This is not live-runtime acceptance.
+- Same-session coordinator verification after final source repairs and dependency correction (exit 0):
+```text
+make check
+Ruff check: all checks passed
+Ruff format: 171 files already formatted
+Strict mypy: success, 109 source files
+1112 passed, 2 skipped, 15 deselected in 267.86s
+uv run pytest tests/runner -q -k tools
+43 passed in 25.52s
+uv run pytest tests/protected -q -k policy
+22 passed, 56 deselected in 3.53s
+uv run python scripts/check_task.py T032
+57 passed, 1072 deselected in 11.96s
+T032: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
+```
+- The author sandbox's full check was not accepted: its masked temporary Git paths, offline wheel cache and read-only Git metadata caused unrelated fixture failures. The coordinator reran the unchanged tests in the normal local checkout; all 1112 passed. No runtime isolation, live Codex/MCP, real connector, private-eval or hosted-CI completion is claimed.
+- Set only T032's acceptance flag after the exact verifier passed. Next: commit/push the task branch without opening a CI-triggering PR, integrate locally, and compose T033/T035 then SCREEN/UW_MODEL. Dev push/main promotion stay held on the hosted-CI clarification. T030 still needs isolated-runtime proof and authorization for its two contradictory assertions; T033's bounded streaming/record/replay source is being implemented separately with its flag false.

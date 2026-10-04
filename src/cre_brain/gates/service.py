@@ -6,6 +6,7 @@ produce actionable failures. Advisory registrations never invoke a model in v1.
 
 import re
 import tempfile
+from copy import copy
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from fractions import Fraction
@@ -22,7 +23,13 @@ from cre_brain.finance.returns import ReturnsInput, calculate_returns
 from cre_brain.finance.scenarios import EvaluatedScenario, FragilityInput, assess_fragility
 from cre_brain.gates.authority import input_unit, numeric_inputs, output_unit
 from cre_brain.gates.catalog import REGISTRY, required_gates
-from cre_brain.gates.limits import GateFailure, bounded_decimal, bounded_file, bounded_values
+from cre_brain.gates.limits import (
+    MAX_FILE_BYTES,
+    GateFailure,
+    bounded_decimal,
+    bounded_file,
+    bounded_values,
+)
 from cre_brain.gates.models import (
     EvidenceRef,
     FinanceRecipe,
@@ -34,6 +41,7 @@ from cre_brain.gates.models import (
 )
 from cre_brain.gates.numbers import extract_numbers, has_label, number_context
 from cre_brain.gates.presentation import displayed_decimal, visible_text
+from cre_brain.gates.snapshot import ArtifactSnapshot
 from cre_brain.gates.state import CanonicalState, GateStore
 from cre_brain.rules.engine import evaluate
 from cre_brain.rules.models import AssumptionInput, BuyBoxInput, LoiInput, Policy, RuleInput
@@ -80,7 +88,9 @@ class GateService:
         self.scope = scope
         self.settings = GateSettings.model_validate(settings.model_dump())
         self.inputs = inputs
+        # Host-private scratch must remain outside analyst mounts.
         self.scratch = scratch
+        self._snapshot_path: Path | None = None
         self.state = CanonicalState(engine, scope, inputs, as_of or datetime.now(UTC).date())
 
     def for_gate(self, name: str) -> "BoundGate":
@@ -89,7 +99,52 @@ class GateService:
         return BoundGate(self, name)
 
     def check(self, gate: str, deliverable: Deliverable) -> GateResult:
-        """Check one named gate. The service is the bound SPEC check(deliverable) seam."""
+        """Preserve the path interface, but capture bytes before invoking readers."""
+        try:
+            path = Path(deliverable.path)
+            bounded_file(path)
+            data = path.read_bytes()
+            return self.check_bytes(
+                gate, deliverable, ArtifactSnapshot(data, sha256(data).hexdigest())
+            )
+        except Exception as error:
+            category = error.category if isinstance(error, GateFailure) else "invalid_evidence"
+            return _result([f"{gate}: {category}"])
+
+    def check_bytes(
+        self, gate: str, deliverable: Deliverable, snapshot: ArtifactSnapshot
+    ) -> GateResult:
+        """Host-only byte-bound adapter; never reread the seller/analyst artifact.
+
+        A private copy supplies native path-based workbook readers. The original
+        Deliverable remains intact for canonical identity and evidence checks.
+        Each invocation uses a separate service view, including concurrent calls.
+        """
+        try:
+            snapshot = ArtifactSnapshot(snapshot.data, snapshot.sha256)
+            if len(snapshot.data) > MAX_FILE_BYTES:
+                raise GateFailure("resource_limit")
+            self.scratch.mkdir(mode=0o700, parents=True, exist_ok=True)
+            with tempfile.TemporaryDirectory(
+                prefix="gate-snapshot-", dir=self.scratch
+            ) as directory:
+                path = Path(directory) / ("artifact" + Path(deliverable.path).suffix)
+                with path.open("xb") as stream:
+                    stream.write(snapshot.data)
+                path.chmod(0o400)
+                bound = copy(self)
+                bound._snapshot_path = path
+                return bound._check_snapshot(gate, deliverable)
+        except Exception as error:
+            category = error.category if isinstance(error, GateFailure) else "invalid_evidence"
+            return _result([f"{gate}: {category}"])
+
+    def _artifact_path(self, deliverable: Deliverable) -> Path:
+        if self._snapshot_path is None:
+            raise GateFailure("authority_unavailable")
+        return self._snapshot_path
+
+    def _check_snapshot(self, gate: str, deliverable: Deliverable) -> GateResult:
         if gate not in REGISTRY:
             return _result(["unknown_gate"])
         if not REGISTRY[gate].blocking:
@@ -119,7 +174,7 @@ class GateService:
                 raise ValueError("Deliverable is stale, superseded or blocked")
             self.state.fresh(deliverable.d_id)
             bounded_values(plan)
-            bounded_file(Path(deliverable.path))
+            bounded_file(self._artifact_path(deliverable))
             plan = GatePlan.model_validate(plan.model_dump())
             result = self._check(gate, deliverable, plan)
             # Dependency diagnostics may include source values, paths or identities.
@@ -147,7 +202,15 @@ class GateService:
                 results={"number_provenance": result}, blocking_failures=("number_provenance",)
             )
         names = required_gates(canonical.kind, extraction=plan.extraction)
-        results = {name: self.check(name, deliverable) for name in names}
+        try:
+            path = Path(deliverable.path)
+            bounded_file(path)
+            data = path.read_bytes()
+            snapshot = ArtifactSnapshot(data, sha256(data).hexdigest())
+            results = {name: self.check_bytes(name, deliverable, snapshot) for name in names}
+        except Exception as error:
+            category = error.category if isinstance(error, GateFailure) else "invalid_evidence"
+            results = {name: _result([f"{name}: {category}"]) for name in names}
         return GateReport(
             results=results,
             blocking_failures=tuple(
@@ -178,7 +241,7 @@ class GateService:
         return self._numbers(text, d, plan, match_model=gate == "numbers_match_model")
 
     def _text(self, d: Deliverable, plan: GatePlan, *, visible: bool = False) -> str:
-        path = Path(d.path)
+        path = self._artifact_path(d)
         bounded_file(path)
         if path.suffix.lower() == ".xlsx":
             # Numbers in real workbooks are checked by mapped integrity, not by
@@ -303,12 +366,12 @@ class GateService:
             raise ValueError("Required trusted workbook template/map/deal identity unavailable")
         w = plan.workbook
         bounded_file(w.template)
-        bounded_file(Path(d.path))
+        bounded_file(self._artifact_path(d))
         # Validate source authority and magnitudes before the writer does finance.
         self._workbook_numbers(d, plan)
         # Regenerate authoritative expectations through the existing product path,
         # including current-input recomputation. Never trust serialized descriptors.
-        self.scratch.mkdir(parents=True, exist_ok=True)
+        self.scratch.mkdir(mode=0o700, parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=self.scratch) as directory:
             build = build_workbook(
                 w.template,
@@ -323,7 +386,7 @@ class GateService:
                 as_of=self.state.as_of,
             )
             return check_parity(
-                Path(d.path), build.expected, gates=self.settings, mapping=build.mapping
+                self._artifact_path(d), build.expected, gates=self.settings, mapping=build.mapping
             )
 
     def _workbook_numbers(self, d: Deliverable, plan: GatePlan) -> None:
@@ -345,8 +408,8 @@ class GateService:
                     if r.kind == "fact"
                 )
         template = load_workbook(w.template, data_only=False)
-        display = load_workbook(d.path, data_only=False)
-        values = load_workbook(d.path, data_only=True)
+        display = load_workbook(self._artifact_path(d), data_only=False)
+        values = load_workbook(self._artifact_path(d), data_only=True)
         try:
             for sheet in template:
                 if sheet.max_row * sheet.max_column > 20000:
