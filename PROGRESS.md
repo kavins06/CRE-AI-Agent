@@ -457,3 +457,79 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - Current-session hosted verifier exited 0 on exact head `d09bb7ab0a53750b2dc5119678ee305d9ea5383c` and synthetic merge `eaadc857d6744dfedfef0d2e2bf52eb9cc2b4fbb` (combined with dev `11705ea`). Checkout and recorded merge SHA were confirmed in full job logs. Each ephemeral runner passed 55 sandbox tests and then the unchanged task checker: `30 passed, 288 deselected`; `T031: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED`. Evidence: PR #3 https://github.com/kavins06/CRE-AI-Agent/pull/3; head job `111417167439`, merge job `111417167550`. Hosted full `make check` job `111417099867` passed 307 tests, 11 integration tests deselected, Ruff/format and strict mypy; dependency audit and test count also passed. The main-only verify-features job was correctly not applicable to this dev PR, not substituted for the exact T031 checker.
 - Independent source PASS at `049025d` and exact metadata-only delta confirmation at `d09bb7a` remain applicable. Only after this corrected-source physical evidence was confirmed is T031 completion reasserted. This does not revive the rejected shared-host containment evidence or certify arbitrary runtime/model safety. No private-eval/model credentials or host Docker runtime were used. Owner review/label gates still apply to main promotion.
 - This task-metadata/evidence commit changes no source/tests/workflows or verifier; it receives a final head/merge hosted replay before dev integration. T014 remains blocked; reviewed T021 and independent T034 pre-parsing implementation are next.
+### 2026-10-04: T021 rules — OFFLINE SOURCE-ONLY, ready for independent review
+- Branch: `task/T021-rules`, independent checkout from `origin/dev` at `11705ea9055305a093c805b7646dc0439e34d31f`. Initial and final fetch confirmed this base; other workers' remote branches were preserved.
+- Changed: strict Pydantic classification/policy/input/trace models, zen-engine 2.1.2 wrapper, seven packaged JDM tables, and 93 non-skipped rules tests. AC3 examples per table: buy-box 10, assumption ranges 9, LOI 9, missing data 7, escalation 8, rent regulation 8, tax reassessment 8. Extra tests exercise typed replay, real ZEN delegation, exact precision/boundaries, configurable policy/profile hashes, path rejection, code-node rejection and no input mutation.
+- TDD RED: wrote tests before the adapter/tables; `uv run pytest tests/rules -q` exited **2**, with `ImportError: cannot import name 'engine' from 'cre_brain.rules'`, one collection error. After implementation, 93 rules tests pass; no existing test assertion was changed, removed or skipped.
+
+#### Decisions
+- Official references consulted: [Python loader/evaluate guide](https://github.com/gorules/zen/blob/master/bindings/python/README.md), [official JDM table](https://github.com/gorules/zen/blob/master/test-data/table.json), [official trace snapshot](https://github.com/gorules/zen/blob/master/core/engine/tests/snapshots/engine__decision-table-discounts_0.snap), and installed 2.1.2 Python stubs. A real engine probe confirmed `{"trace": True}`, response `result`/`trace`/`performance`, node `traceData` with matching rule `_id`/`index`, and full-expression table predicates before designing the adapter.
+- Decimal-only boundary: strict typed Decimal inputs/policy thresholds; cents for amounts, millionths for ratios, integer counts; each transported integer is bounded by `2**53-1`. Scaling uses Decimal tuples and integer division, never float conversion or context-sensitive Decimal arithmetic. Unsupported numeric types, non-finite values, precision and ranges raise validation errors rather than round. Tests include a two-digit Decimal context, millionth boundary differences, cent differences at the maximum exact integer and randomized signed bounded transports.
+- Seven allowlisted bundled IDs only. No caller filesystem paths, user-supplied JDM, nested decisions or code nodes. `importlib.resources` loads JSON from the package, not the checkout/CWD. Hatch's existing package selection includes all seven tables, so no build configuration or dependency/lock change was needed.
+- Business thresholds are explicit **illustrative configurable firm policy**, not verified market truth: buy-box units 50–500, DSCR minimum 1.25, price maximum 100000000, tiers A/B; LOI DD 15–60 days, closing 30–120 days, deposit maximum 0.03 and financing contingency by default. Assumption profiles explicitly select market tier/class/vintage and configured ranges, with unsupported/overlapping profiles rejected or sent to review. Missing-data critical fields and external-action escalation policy are configurable too.
+- No jurisdiction/legal facts are bundled. Rent/tax outcomes require a caller-supplied policy attested verified, nonempty evidence IDs, matching jurisdiction and known status; absent/unverified/mismatched/unknown policy or the `unknown` jurisdiction requires verified policy/evidence. Caller attestation must come from trusted verified evidence in future tool wiring; these classification results neither verify legal truth nor authorize external actions.
+- Deterministic immutable trace includes engine/table/policy versions, SHA-256 of source table/policy/input, exact typed input JSON, source and assumption IDs, selected profile, sorted engine nodes and matching rule/index/trace data. Runtime timing is intentionally excluded. Classification is separate from stored Fact/Assumption records and canonical finance CalcResults; no state/database/model calls or T010 DeliverableKind import.
+
+#### Verification evidence
+- Exact verifier: `uv run pytest tests/rules -q && uv run python scripts/check_task.py T021` → **exit 0**. Exact output tail:
+  ```text
+  ........................................................................ [ 77%]
+  .....................                                                    [100%]
+  93 passed in 0.60s
+
+  ........................................................................ [ 77%]
+  .....................                                                    [100%]
+  =============================== warnings summary ===============================
+  .venv/lib/python3.12/site-packages/typer/__init__.py:24
+    /srv/infra/devin-outpost/sessions/devin-92e9e2c3c33b453fb6809c5ffd3a8c9d/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:24: DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_binary_stream as get_binary_stream
+
+  .venv/lib/python3.12/site-packages/typer/__init__.py:25
+    /srv/infra/devin-outpost/sessions/devin-92e9e2c3c33b453fb6809c5ffd3a8c9d/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:25: DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_text_stream as get_text_stream
+
+  -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+  93 passed, 291 deselected, 2 warnings in 1.18s
+
+  T021: AC1 PASSED, AC2 PASSED, AC3 PASSED
+  ```
+- `make check` → **exit 0**, offline units only (`not integration`), exact output tail:
+  ```text
+  uv run --locked ruff check src tests
+  All checks passed!
+  uv run --locked ruff format --check src tests
+  88 files already formatted
+  uv run --locked mypy src
+  Success: no issues found in 56 source files
+  uv run --locked pytest tests -m "not integration" -q
+  ........................................................................ [ 19%]
+  ........................................................................ [ 38%]
+  ........................................................................ [ 57%]
+  ........................................................................ [ 77%]
+  ........................................................................ [ 96%]
+  .............                                                            [100%]
+  =============================== warnings summary ===============================
+  .venv/lib/python3.12/site-packages/typer/__init__.py:24
+    /srv/infra/devin-outpost/sessions/devin-92e9e2c3c33b453fb6809c5ffd3a8c9d/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:24: DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_binary_stream as get_binary_stream
+
+  .venv/lib/python3.12/site-packages/typer/__init__.py:25
+    /srv/infra/devin-outpost/sessions/devin-92e9e2c3c33b453fb6809c5ffd3a8c9d/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:25: DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+      from click.utils import get_text_stream as get_text_stream
+
+  -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+  373 passed, 11 deselected, 2 warnings in 56.20s
+  ```
+- `uv run pre-commit run --all-files` → **exit 0**:
+  ```text
+  ruff lint................................................................Passed
+  ruff format..............................................................Passed
+  strict source types......................................................Passed
+  ```
+- Wheel: `uv build --wheel` → exit 0, seven JSON resources inspected in `dist/cre_brain-0.1.0-py3-none-any.whl`; installed wheel into project-local `.cache/t021-wheel-venv` and evaluated **all seven** tables with its Python `-I` isolated interpreter. Import path was the wheel environment's `site-packages`, not `src`; resource/hash/deterministic repeat checks all passed. Offline dependency-cache attempt was unavailable; normal project-local pinned dependency install succeeded. No services were involved.
+
+#### Review readiness and dependency acceptance
+- Source branch is ready for coordinator **independent review** after exact verifier, offline make check and hooks passed. No milestone/product completion is claimed. T021 flag remains **false**; no feature flag, existing assertion, owner guard, dev/main integration or PR is changed/created.
+- **Dependency acceptance BLOCKED/pending (not a local implementation failure):** coordinator reports unresolved T010 uppercase DeliverableKind versus two erroneous lowercase assertions. This wrapper is independent of that enum and does not decide/fix its contract. A passing local offline suite does not resolve that coordinator acceptance issue; T010 acceptance must be settled before integrated T021 acceptance.
+- Shared-VPS boundary honored: only source work, project-local uv Python dependencies, public official documentation HTTP, offline unit checks and local wheel verification. No Docker/containerd installation, startup/build, containers, rootful daemon, host permission/sysctl/AppArmor/cgroup changes, shared databases/live services, production/private-eval/SEC data, runtime/integration tests or live model calls.
+- Next: push **only** `task/T021-rules` for independent coordinator replay/review. Coordinator retains integration/dependency acceptance; do not merge this branch into dev/main or flip T021 here.
