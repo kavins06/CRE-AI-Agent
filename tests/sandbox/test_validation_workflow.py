@@ -11,6 +11,7 @@ def test_t031_ac4_ci_uses_hosted_runner_and_unchanged_physical_verifier() -> Non
     workflow = yaml.safe_load(WORKFLOW.read_text())
     events = workflow.get("on", workflow.get(True))
     assert events["pull_request"]["branches"] == ["dev"]
+    assert "**" in events["pull_request"]["paths"]
     assert {
         ".github/workflows/sandbox-validation.yml",
         "src/cre_brain/sandbox/**",
@@ -54,3 +55,18 @@ def test_t031_ac4_ci_cannot_inject_credentials_or_use_shared_host() -> None:
     assert "CODEX_API_KEY" not in text
     assert "env" not in workflow
     assert "env" not in workflow["jobs"]["sandbox-physical"]
+
+
+def test_t031_ac4_ci_also_validates_the_synthetic_merge_commit() -> None:
+    workflow = yaml.safe_load(WORKFLOW.read_text())
+    job = workflow["jobs"]["sandbox-merge"]
+    assert job["runs-on"] == "ubuntu-latest"
+    assert job["timeout-minutes"] == 20
+    checkout = next(
+        step for step in job["steps"] if step.get("uses", "").startswith("actions/checkout@")
+    )
+    assert checkout["with"] == {"persist-credentials": False}
+    commands = [step["run"] for step in job["steps"] if "run" in step]
+    assert "git rev-parse HEAD" in commands
+    assert "uv run pytest tests/sandbox -q && uv run python scripts/check_task.py T031" in commands
+    assert not any("continue-on-error" in step for step in job["steps"])
