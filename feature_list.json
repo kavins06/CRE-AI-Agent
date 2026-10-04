@@ -207,7 +207,7 @@
         "T001"
       ],
       "verify": "uv run pytest tests/sandbox -q && uv run python scripts/check_task.py T031",
-      "passes": true
+      "passes": false
     },
     {
       "id": "T032",
