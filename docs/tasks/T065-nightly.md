@@ -14,7 +14,7 @@
 An unattended nightly improvement run with safe releases.
 
 ## Acceptance criteria
-- [ ] AC1: `cre learn nightly` rotates deliverable kinds by gap to bar, respects `nightly_usd`, and writes a PR + PROGRESS entry
+- [ ] AC1: `cre learn nightly` rotates deliverable kinds by gap to bar, respects `nightly_sessions`/`nightly_wallclock_h`, and writes a PR + PROGRESS entry
 - [ ] AC2: Weekly end-to-end non-inferiority check; rollback tested
 - [ ] `make check` passes.
 

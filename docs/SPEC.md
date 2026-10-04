@@ -30,6 +30,8 @@ scripts/               # check_protected.py, verify_features.py, ...
 tests/                 # unit and integration tests
 tests/protected/       # PROTECTED: gate and evaluator contract tests
 docker/box/            # local user-computer image (Section 3)
+templates/codex/       # config.toml with profiles analyst/extractor/verifier/classifier + MCP server `cre`
+clients/ts/            # generated typed TypeScript API client for the owner's UI
 ```
 
 **Python 3.12, uv, ruff, mypy (strict on `src/`), pytest + hypothesis.** One package: `cre_brain`. A single `cre` CLI entry point (Typer).
@@ -39,7 +41,8 @@ docker/box/            # local user-computer image (Section 3)
 ```python
 class Runner(Protocol):                      # runner/base.py
     async def run(self, task: Task, box: Box, policy: Policy) -> AsyncIterator[AgentEvent]: ...
-    # Implementations: ClaudeRunner (v1), FakeRunner (replays recorded transcripts), OpenAIRunner (M6)
+    # Implementations: CodexRunner (v1, development + training), FakeRunner (replays recorded transcripts),
+    #   ClaudeRunner / OpenAIAgentsRunner (pre-commercial, M6). All share the same tools, skills, policy and gates.
 
 class SandboxProvider(Protocol):             # sandbox/base.py
     async def create(self, user_id: str, image: str) -> Box: ...
@@ -55,7 +58,7 @@ class DecisionModel(Protocol):               # decisions/base.py
     async def choice(self, state: dict, question: str, options: dict[str, str]) -> ChoiceResult: ...
     async def score(self, state: dict, question: str, levels: list[str]) -> ScoreResult: ...
     async def yes_no(self, state: dict, question: str) -> float: ...
-    # Implementations: JevDecisionModel (typesafe-sdk), LLMDecisionModel (Haiku fallback)
+    # Implementations: JevDecisionModel (typesafe-sdk, optional), CodexDecisionModel (one-shot `codex exec` with output schema)
 
 class MarketDataProvider(Protocol):          # connectors/market_data.py
     async def rent_comps(self, geo: Geo, unit_mix: UnitMix) -> list[Comp]: ...
@@ -80,7 +83,7 @@ The owner's infrastructure must provide boxes that satisfy this contract. `docke
 - Linux x86_64, at least 2 vCPU, 4 GB RAM, 20 GB persistent disk. Sleeps when idle and resumes with its disk intact.
 - Installed:
   - Python 3.12 with `cre_brain` installed
-  - the Claude Agent SDK and its CLI dependency (Node.js; see LIBRARY_NOTES)
+  - the Codex CLI (Node.js), authenticated by the owner's setup; the Claude Agent SDK is added later
   - LibreOffice headless with the recalc macro installed
   - Chromium via Playwright
   - fonts for PDF rendering
@@ -89,11 +92,21 @@ The owner's infrastructure must provide boxes that satisfy this contract. `docke
   firms/<firm_id>/playbook/   # read-only sync from control plane
   memory/                     # this user's private memory
   deals/<deal_id>/{docs,work,model,deliverables,todo.md,progress.md}
-  inbox/   outbox/   .claude/skills/  (synced from brain/skills + firm skills)
+  inbox/   outbox/   .agents/skills/  (synced from brain/skills + firm skills; the Agent Skills standard, which Codex reads)
+  .codex/config.toml          # MCP server `cre`, profiles (analyst, extractor, verifier)
   ```
 - Network: outbound access to the model APIs and the allowed data domains only. **Inbound: none, except from the control plane.**
 - Secrets are injected as environment variables at session start. They are never written to disk.
+- **The Codex CLI is installed and authenticated** by the owner's setup. It is the v1 analyst runtime (§10).
+- **OS-level enforcement.** This is the primary layer; tool policy is the second layer:
+  - the agent runs as a non-root `agent` user
+  - `firms/` is read-only
+  - only `deals/`, `outbox/`, `memory/` and the scratch dir are writable
+  - all egress goes through an allowlisting proxy (model API, allowed data domains)
+  - Codex runs with `--sandbox workspace-write`, with the workspace set to the deal folder
+- A small **box agent** service runs in each box (§10.8).
 - **Isolation tests** (T031):
+  - with all tool policy disabled, a shell write outside the allowed paths fails, and so does a `curl` to a non-allowlisted domain
   - user A's box cannot read user B's files
   - a box has no route to other boxes
   - secrets are absent from snapshots
@@ -118,6 +131,20 @@ class Deliverable(BaseModel): d_id; deal_id; kind: DeliverableKind; status: Lite
                          path: str; gate_results: list[GateResult]; depends_on: list[str]
 class Task(BaseModel): task_id; user_id; firm_id; deal_id; request: str; files: list[str]
                          requested: list[DeliverableKind] | None; created_at
+```
+
+```python
+class AgentEvent(BaseModel):          # one schema for streaming, replay, audit, FakeRunner transcripts
+    event_id: str          # ULID
+    task_id: str; seq: int # per-task monotonic sequence
+    ts: datetime
+    source: Literal["agent","subagent","tool","gate","user","system"]
+    kind: Literal["message","tool_call","tool_result","question","answer","user_message",
+                  "gate_result","deliverable","compaction","budget","confirmation_request",
+                  "confirmation_response","stuck","error","escalation","runner_raw"]
+    cause_id: str | None   # the event this responds to (e.g. tool_result -> tool_call)
+    release_id: str; runner: str; schema_version: int = 1
+    payload: dict          # REDACTED before storage/streaming (§15)
 ```
 
 `DeliverableKind`: `SCREEN`, `UW_MODEL`, `IC_MEMO`, `DD_TRACKER`, `LOI`, `BROKER_QUESTIONS`, `LEASE_ABSTRACT`, `DEAL_COMPARISON`, `ESCALATION`.
@@ -173,86 +200,123 @@ Tables in `rules/tables/`:
 The wrapper returns a typed result plus a trace.
 
 ## 9. Models and config
-`config/models.yaml`:
+`config/models.yaml` maps each **role** to a runner and model. v1 uses the Codex CLI for all LLM roles:
 ```yaml
+runner: codex                 # codex | fake | claude_sdk | openai_agents (later)
 roles:
-  lead:          {provider: anthropic, model: claude-opus-5-5}
-  extraction:    {provider: anthropic, model: claude-sonnet-5-5}
-  fast_decision: {provider: typesafe,  model: jev-latest, fallback: {provider: anthropic, model: claude-haiku-4-5}}
-  verifier:      {provider: openai,    model: "<set at deploy>", fallback: {provider: anthropic, model: claude-opus-5-5, prompt: verifier_independent}}
-  reflection:    {provider: anthropic, model: claude-opus-5-5}
+  lead:          {runner: codex, profile: analyst,   model: "<codex default>"}
+  extraction:    {runner: codex, profile: extractor, model: "<codex default or faster>"}
+  verifier:      {runner: codex, profile: verifier,  model: "<codex default>"}   # separate session, different prompt
+  fast_decision: {provider: typesafe, model: jev-latest, fallback: {runner: codex, profile: classifier}}
+  reflection:    {runner: codex, profile: analyst,   model: "<codex default>"}   # GEPA reflection
 ```
-- Model IDs live **only** in config.
-- `config.live_enabled(role)` returns false when the role's key is missing. Callers must then skip live work cleanly and log `SKIPPED_NO_KEY`. They must not fail.
-- CI never calls live models.
+- Model names live **only** in config. The owner sets them.
+- `config.live_enabled(role)` is true when the role's runner is usable: the Codex CLI is installed and authenticated (`codex login status` succeeds), or the SDK key is present for later runners. When it is false, callers skip live work cleanly and log `SKIPPED_NO_RUNNER`.
+- CI never calls live models; it uses FakeRunner.
+- **Later:** when the product commercializes, add the Claude Agent SDK and/or OpenAI Agents/Codex SDK runners. Re-run the full eval suite on each, and re-tune the per-runner prompt overlays (`brain/prompts/overlays/<runner>/`).
 
 ## 10. Runner and the agent loop (`runner/`)
 
-### 10.1 ClaudeRunner
-- Uses `claude_agent_sdk.ClaudeSDKClient`, running **inside the user's box** with `cwd=/home/agent/deals/<deal_id>`.
-- Options:
-  - lead model from config
-  - `allowed_tools` = files, bash and web tools + the in-process CRE MCP server
-  - Skills loaded from `.claude/skills/`
-  - `max_turns` and budget from `budget.yaml`
-  - hooks (10.3)
-  - subagent definitions (10.2)
-- The lead system prompt is assembled from `brain/prompts/lead.md` + the firm playbook summary + user-memory retrieval + the deliverable catalog.
-- The agent keeps `todo.md` (plan recitation) and `progress.md` in the deal folder.
+### 10.1 CodexRunner (v1)
+- Runs the **Codex CLI headless inside the user's box**:
+  ```
+  codex exec --json --profile analyst --cd /home/agent/deals/<deal_id> --sandbox workspace-write "<task prompt>"
+  ```
+  The JSONL events stream to the box agent, which normalizes them into `AgentEvent`s; the raw form is kept as `runner_raw`.
+- Analyst instructions:
+  - the deal folder's `AGENTS.md`, generated per task from `brain/prompts/lead.md`, the firm playbook summary, retrieved user memory and the deliverable catalog
+  - Skills from `.agents/skills/`
+- Tools: the `cre` MCP server (10.4), configured in `.codex/config.toml`. Codex's built-in shell and file tools work inside the sandbox.
+- Plan recitation: the agent keeps `todo.md` and `progress.md` in the deal folder.
+- Sessions:
+  - a task can span several `codex exec` segments
+  - `codex exec resume <session_id>` continues a segment
+  - the session ID is persisted in the state DB
+- [verify in T030]:
+  - the exact flags, profile and config keys
+  - the `--output-schema` support
+  - the resume command
+  - the non-interactive MCP tool-approval setting (openai/codex issue #24135); pin the working setting in `.codex/config.toml`
 
-### 10.2 Quarantined extraction subagents
-- One subagent per document or document group: rent roll, T-12, OM, each lease, each third-party report.
-- `tools: []`, plus an `output_format` JSON schema per document type.
-- A PreToolUse hook denies any tool call that originates from a subagent, as defense in depth.
-- **Pre-parse:** XLSX/CSV is read natively as cells. PDFs go through Docling, with the Reducto adapter optional and licensed. Subagents receive parsed text and tables plus page and cell anchors, never the raw file path.
+### 10.2 Quarantined extraction
+- Each document or document group is extracted in a **separate one-shot `codex exec`** with these settings:
+  - `--profile extractor`
+  - `--sandbox read-only`
+  - **no MCP servers**
+  - network disabled
+  - input is only the pre-parsed text and tables file plus page and cell anchors
+  - `--output-schema` set to the JSON schema for that document type
+- Pre-parse: XLSX/CSV is read natively as cells; PDFs go through Docling, with the Reducto adapter optional.
 - Output → `Fact`s with `claim_type=SELLER_ASSERTION` and provenance → the checksum and coverage gates.
+- The lead analyst session never reads raw seller text. It reads typed facts through `facts_get`.
+- Extractions run in parallel up to `budget.yaml:max_parallel_extractions`.
 
-### 10.3 Hooks (`runner/hooks.py`): the enforcement layer
-| Hook | Rule |
+### 10.3 Enforcement layers (runner-agnostic)
+| Layer | Enforces |
 |---|---|
-| PreToolUse | Deny external actions whose toggle is off (`toggles.yaml` per user). Deny writes outside `deals/<id>/`, `outbox/`, `memory/`. Deny network to non-allowlisted domains. Deny any tool call from extraction subagents. Enforce per-task budget (turns, cost, wall-clock). |
-| PreToolUse on `finalize_deliverable` | Run the deliverable's gates (Section 11). Return deny with the gate failures as feedback if any fail. |
-| PostToolUse | Append an audit event. Update the cost meter. |
-| PreCompact | Make sure `todo.md` and `progress.md` are current before compaction. |
+| **OS / infra** (§3) | Writable paths, egress allowlist, non-root user, cross-user isolation |
+| **Codex sandbox** | `workspace-write` for analyst sessions; `read-only` and no network for extraction, verifier and classifier sessions |
+| **Tool server policy** (`runner/policy.py`, inside every `cre` tool) | External-action toggles (`off` / `ask` / `on`, default `off`); budgets (turns, sessions, wall-clock); `finalize_deliverable` runs the gates and refuses with the failure list; `send_external` refuses unless the toggle is `on`; with `ask` it emits a `confirmation_request` and waits |
+| **Stuck detector** (`runner/stuck.py`, in the box agent) | Watches the event stream for repeated identical tool calls and results, repeated errors and no-progress loops. It nudges once (a message to the session), then stops the segment and emits `ESCALATION` |
+| **SDK hooks** (later runners only) | A defence-in-depth mirror of the tool-server policy |
 
-### 10.4 CRE tools (in-process SDK MCP server `cre`)
+Gates live in the tool server, not in the runner. Any runner (Codex, Claude, OpenAI, Devin acting as the analyst) therefore gets the same enforcement.
+
+### 10.4 CRE tools (`cre` MCP server **and** `cre tool …` CLI)
+Every tool is available in two forms: as an MCP tool, and as an identical CLI command (`cre tool finance_run --json '{...}'`). The tools are:
 - `facts_get` / `facts_put` / `assumption_set`
 - `finance_run(fn, args)`
 - `excel_build(template, deal)` → path
 - `excel_recalc_parity(path)`
 - `rules_eval(table, input)`
 - `market_data(query)`
-- `decide(kind, state, question)` via DecisionModel
+- `decide(kind, state, question)`
+- `browse(url, goal)`: Playwright, toggle-gated, egress-allowlisted
 - `ask_user(question, why, default, affects)`
 - `finalize_deliverable(kind, path)`
 - `draft_external(kind, to, body)` → `outbox/`
-- `send_external(...)` → allowed only when the toggle is on
+- `send_external(...)`: requires the toggle
 
 Tools return concise JSON with actionable error messages.
 
 ### 10.5 Ask-and-continue protocol
 1. `ask_user` creates a `Question`, emits an event, records `default_used` as an `Assumption(set_by="agent")`, and links the edges to the items it `affects`.
 2. The agent continues.
-3. On `answer_question` from the API, the control plane updates the assumption, calls `mark_stale`, and resumes the agent session with a short message listing the stale items.
+3. On `POST /tasks/{id}/answers`, the control plane updates the assumption, calls `mark_stale`, and starts a resume segment with a short message listing the stale items.
 4. The agent regenerates the stale items.
 
-The question-handling eval suite measures this end to end.
+`POST /tasks/{id}/messages` (a mid-task user instruction) works the same way: it is delivered at the next segment boundary, or immediately via interrupt-and-resume.
 
-### 10.6 Screen-first fast path
+### 10.6 Screen-first fast path and parallelism
 - `SCREEN` runs before anything else when the request includes it or when the deal is new. Steps:
-  1. classify the documents (fast_decision)
+  1. classify the documents
   2. extract the OM headline numbers and the summary rent roll
   3. run the buy-box
   4. emit a screen deliverable
 - **Target: under 5 minutes at p50.**
-- Deeper deliverables start in parallel where they don't depend on each other.
+- **Parallelism:**
+  - extraction sessions run concurrently, up to `max_parallel_extractions`
+  - deliverables that don't depend on each other run as separate analyst segments, up to `max_parallel_sessions` (default 2)
+  - the box minimum is 4 vCPU and 8 GB RAM when parallelism is above 1
 
 ### 10.7 FakeRunner
-- Replays a recorded transcript (JSONL of `AgentEvent`s and tool calls) against the real tools and gates.
-- This is how CI tests the orchestration without live models.
-- Record new transcripts with `cre record --task ...` when a key is present.
+- Replays a recorded `AgentEvent` JSONL transcript against the real tools and gates.
+- This is how CI tests orchestration without any live model.
+- Record new transcripts with `cre record --task …` when a live runner is available.
 
-## 11. Gates (`gates/`), PROTECTED after M3
+### 10.8 Box agent contract (control plane ↔ box)
+- `cre-boxd` is a small service in each box. It **connects outbound** to the control plane over an authenticated WebSocket; boxes accept no inbound traffic.
+- Commands:
+  - `start_or_attach(task_id, segment_no)`: **idempotent**; the same key never starts a second session
+  - `interrupt(task_id)`, `pause`, `resume`
+  - `deliver_message(task_id, text)`
+  - `sync_playbook(firm_id)`
+- Events stream outbound with `seq` and are acknowledged by the control plane. Unacknowledged events are re-sent after reconnect, and duplicates are dropped by `(task_id, seq)`.
+- Heartbeat every 10 s. Missing 3 heartbeats marks the box `unreachable`. The task waits up to `budget.yaml:box_reconnect_s`, then re-attaches when the box returns.
+- **Recovery when the box disk is lost:** create a fresh box, re-sync the firm playbook and memory, and rebuild the deal folder from the state DB (facts, assumptions, deliverables, `todo.md` snapshot). Then start a new segment with a recovery message. Events record the recovery.
+- DBOS steps use step keys `(task_id, segment_no)` so re-execution is idempotent.
+
+## 11. Gates (`gates/`), PROTECTED after M3; invoked by `finalize_deliverable` in the tool server
 Each gate implements `check(deal_id, deliverable) -> GateResult(passed, failures: list[str], metrics)`. The catalog maps each `DeliverableKind` to its gate list:
 
 | Kind | Gates |
@@ -268,19 +332,26 @@ Each gate implements `check(deal_id, deliverable) -> GateResult(passed, failures
 **Provenance + entailment:** every number in prose is extracted and must resolve to a fact or calc ID within tolerance. A verifier-model call checks that the cited source supports the claim.
 
 ## 12. Control plane (`control/`)
-- **FastAPI:**
-  - `POST /tasks`
-  - `POST /tasks/{id}/answers`
-  - `GET /tasks/{id}`
-  - `GET /tasks/{id}/events` (SSE)
-  - `GET /tasks/{id}/deliverables`
-  - `POST /corrections`
-  - `POST /firms/{id}/onboard`
+- **FastAPI, authenticated.** Every route requires a token carrying `user_id` and `firm_id` claims. Every query is scoped by them. An API isolation test proves that user A gets 404 on user B's tasks.
+  - `POST /tasks` · `GET /tasks/{id}` · `GET /tasks/{id}/deliverables`
+  - `POST /tasks/{id}/answers` · `POST /tasks/{id}/messages` (mid-task instruction)
+  - `POST /tasks/{id}/interrupt` · `/pause` · `/resume`
+  - `POST /tasks/{id}/confirmations/{cid}` (approve or deny an `ask`-toggled action)
+  - `GET /tasks/{id}/events?after_seq=&limit=` (paged) and `GET /tasks/{id}/events/stream` (SSE, resumable with `Last-Event-ID`)
+  - `POST /corrections` · `POST /firms/{id}/onboard` · `PUT /users/{id}/toggles`
+- **OpenAPI.** The spec is published at `/openapi.json`. A generated typed TypeScript client goes in `clients/ts/` for the owner's UI team.
 - **DBOS:**
-  - `@DBOS.workflow()` per task; steps are box resume, runner session segments, gate runs, and deliverable publish
+  - `@DBOS.workflow()` per task; steps are box attach, runner segments, gate runs and deliverable publish, keyed as in §10.8
   - a crashed task resumes from its last completed step
-- **Events** are stored in the `events` table and streamed. A session can be replayed from events.
+- **Events** are stored in the `events` table after redaction, then streamed. A session can be replayed from events.
 - **Budget meter** per task and per user. A hard stop emits a `BLOCKED` escalation deliverable.
+- **Stress test (T041):**
+  - N concurrent tasks
+  - a slow SSE consumer
+  - a killed control-plane worker
+  - a dropped box connection
+
+  Every case must stay within its latency and memory budgets.
 
 ## 13. Memory (`memory/`)
 | Layer | Store | Access |
@@ -305,10 +376,10 @@ Each gate implements `check(deal_id, deliverable) -> GateResult(passed, failures
 ## 15. Security and data handling
 - Seller documents are untrusted; quarantine is enforced (10.2).
 - Secrets come only from the environment.
-- Traces are redacted.
+- **Redaction.** Secrets and credentials are masked in events, traces and exports before they are stored or streamed. Tenant identifiers are excluded from any global or learning artifact. Planted-secret tests cover this.
 - Per-tenant encryption keys are an infrastructure concern documented in HUMAN_SETUP.
 - No firm's data appears in global artifacts. This is enforced by the sanitization gate plus a CI test.
-- Never use LiteLLM, HyperFormula (unless licensed), Marker, or ii-agent's bundled office skills.
+- Never use LiteLLM, HyperFormula (unless licensed), Marker, ii-agent's bundled office skills, or OpenHands code as a dependency. OpenHands patterns are borrowed and re-implemented (MIT, attribution in comments).
 
 ## 16. Observability
 - OpenTelemetry spans for each tool call, model call and gate, exported to Langfuse (self-hosted) when configured.

@@ -16,7 +16,7 @@ Karpathy-style experiment loop on frozen per-deliverable fixtures.
 ## Acceptance criteria
 - [ ] AC1: Fixture builder checkpoints deal state just before each deliverable kind
 - [ ] AC2: The loop follows program.md: branch, one artifact edit, k=3 eval, keep/revert, `results.tsv`, PR at the end
-- [ ] AC3: Skips cleanly without a key; stops at the budget
+- [ ] AC3: Analyst sessions via CodexRunner; scoring as a separate blind process; skips cleanly without a runner; stops at session/wall-clock caps
 - [ ] `make check` passes.
 
 ## Verify (must exit 0, paste the tail into PROGRESS.md)

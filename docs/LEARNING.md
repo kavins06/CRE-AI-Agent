@@ -15,6 +15,12 @@ The loop follows Andrej Karpathy's autoresearch pattern: propose a change, run a
 
 The optimizer process runs with read-only access to the evaluator, and it never sees the holdout data or rubric text.
 
+**Runner for training (v1):**
+- Every candidate is evaluated by running **Codex CLI analyst sessions** (`CodexRunner`) on the frozen fixtures.
+- GEPA reflection also runs as a Codex session.
+- No separate model API keys are needed.
+- When an SDK runner is added before launch, the accepted brain is re-validated on it, and any per-runner prompt overlay is tuned there.
+
 ## 2. The loop (`learning/runner.py`, configured by [program.md](../program.md))
 
 ```
@@ -86,8 +92,13 @@ The rule's unit tests must show it **rejects pure noise**: two identical brains 
 - Every accepted change is re-run weekly in an end-to-end non-inferiority check: no deliverable metric may drop by more than 2 points.
 
 ## 8. Nightly operation (`learning/nightly.py`)
-1. Stop immediately with `SKIPPED_NO_KEY` if `config.live_enabled("lead")` is false.
-2. Read the budget from `config/budget.yaml` (`nightly_usd`, default 25). Stop cleanly when the cumulative spend reaches the cap.
+1. Stop immediately with `SKIPPED_NO_RUNNER` if `config.live_enabled("lead")` is false (for example, the Codex CLI is missing or not authenticated).
+2. Read the budget from `config/budget.yaml`:
+   - `nightly_sessions`, default 150 Codex sessions
+   - `nightly_wallclock_h`, default 8
+   - `nightly_usd`, applies only to API-billed runners
+
+   Stop cleanly when any cap is reached.
 3. Rotate target deliverable kinds by largest gap to their bar.
 4. Write the experiment PR and a summary to `PROGRESS.md`.
 

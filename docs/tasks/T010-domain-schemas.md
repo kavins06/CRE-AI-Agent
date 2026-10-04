@@ -11,12 +11,13 @@
 | Must NOT modify | Sealed paths (see AGENTS.md), other tasks' entries, existing tests' assertions |
 
 ## Goal
-Pydantic v2 models for Fact, Provenance, ClaimType, Assumption, CalcResult, Question, Deliverable and Task, exactly as in SPEC §4.
+Pydantic v2 models for Fact, Provenance, ClaimType, Assumption, CalcResult, Question, Deliverable, Task and AgentEvent, exactly as in SPEC §4.
 
 ## Acceptance criteria
 - [ ] AC1: All models from SPEC §4 exist with field types; money uses `Decimal`
 - [ ] AC2: `DeliverableKind` enum matches SPEC §4
-- [ ] AC3: JSON round-trip tests for every model; hypothesis strategies exported for reuse in later tests
+- [ ] AC3: `AgentEvent` has the full schema from SPEC §4 (ULID id, per-task seq, source, kind, cause_id, release_id, runner, schema_version, payload); FakeRunner transcripts use it
+- [ ] AC4: JSON round-trip tests for every model; hypothesis strategies exported for reuse in later tests
 - [ ] `make check` passes.
 
 ## Verify (must exit 0, paste the tail into PROGRESS.md)

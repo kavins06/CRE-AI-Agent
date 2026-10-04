@@ -11,11 +11,11 @@
 | Must NOT modify | Sealed paths (see AGENTS.md), other tasks' entries, existing tests' assertions |
 
 ## Goal
-Parse documents and extract typed facts through tool-less subagents.
+Parse documents and extract typed facts through quarantined, read-only Codex sessions.
 
 ## Acceptance criteria
 - [ ] AC1: Native XLSX/CSV cell reader; Docling PDF parsing with page/bbox anchors (origin normalized); optional Reducto adapter
-- [ ] AC2: Subagent definitions per document type with JSON schemas; outputs → `Fact`s (`SELLER_ASSERTION`) with provenance
+- [ ] AC2: Per-document one-shot `codex exec --profile extractor --sandbox read-only` (no MCP servers, network off) with `--output-schema` per document type; input is only the pre-parsed file; outputs → `Fact`s (`SELLER_ASSERTION`) with provenance; parallel up to `max_parallel_extractions`
 - [ ] AC3: Coverage and checksum gates run on the extracted facts
 - [ ] AC4: Scores ≥95% critical-field accuracy on synthetic set A (FakeRunner transcripts in CI; live when a key exists)
 - [ ] `make check` passes.

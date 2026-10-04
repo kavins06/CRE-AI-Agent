@@ -56,11 +56,13 @@ flowchart LR
   CP -->|events, questions, deliverables| UI
   CP --> BOX
   subgraph BOX[User computer - one per user]
-    AG[Lead agent<br/>Claude Agent SDK loop]
-    SUB[Quarantined extraction subagents<br/>no tools, schema-only output]
-    TOOLS[CRE tools<br/>finance, Excel, rules, state, research]
-    HOOKS[Hooks<br/>policy, budgets, gates]
+    BA[cre-boxd box agent<br/>outbound link, stuck detector]
+    AG[Lead analyst session<br/>Codex CLI v1]
+    SUB[Quarantined extraction sessions<br/>read-only, no tools, schema output]
+    TOOLS[CRE tool server - MCP + CLI<br/>finance, Excel, rules, state, research<br/>policy + gates enforced here]
+    HOOKS[OS limits<br/>non-root, paths, egress proxy]
     WS[(firms/ memory/ deals/ inbox/ outbox/)]
+    BA --> AG
     AG --> SUB
     AG --> TOOLS
     HOOKS -. enforce .- AG
@@ -70,21 +72,36 @@ flowchart LR
   EV -->|new Brain Release| CP
 ```
 
-### 3.1 Agent core: the Claude Agent SDK
-The agent runs on the **Claude Agent SDK**, the same agent loop that powers Claude Code. It is the strongest proven autonomous loop available, and it gives us:
-- a real computer: files, bash and web
-- planning, subagents and automatic context compaction
-- Skills
-- **hooks that can block actions in code**
-- sessions with resume
+### 3.1 Agent core: Codex CLI now, an SDK runner before commercial launch
+**Development and training (now): the Codex CLI.**
+- The analyst runs as headless Codex CLI sessions (`codex exec --json`) inside each user's computer.
+- The Codex CLI is a full autonomous agent loop, with planning, shell and file tools, sandboxing, MCP tools, `AGENTS.md` and Agent Skills.
+- It is already installed and authenticated on the build machine, so the brain is trained without separate model API keys.
+- **Roles are separate:**
+  - Devin *builds* the system.
+  - Codex sessions *play the analyst*.
+  - Scoring is a separate, blind step (Section 7).
 
-Building a loop ourselves would take longer and would be weaker.
+**Before commercial launch:** add the Claude Agent SDK and/or the OpenAI Agents/Codex SDK as runners. Re-run every eval on each runner and keep the best per deliverable.
 
-**Portability.** Everything that makes the agent good at CRE is plain files or Python and does not depend on the SDK: skills, tools, finance code, rules, gates, memory and evals. The SDK sits behind a `Runner` interface. An OpenAI Agents SDK runner is added in M6, and the two runners compete on the same evals. v1 runs Claude models only.
+**Portability:** everything that makes the agent good at CRE is runner-independent:
+- skills, tools, finance code, rules, **gates (enforced inside the tool server, not the runner)**, memory and evals
+- runners sit behind one `Runner` interface
+- only small per-runner prompt overlays differ
+
+**Borrowed patterns:** from OpenHands (MIT), re-implemented, not depended on:
+- a typed event stream
+- stuck detection
+- interrupt, pause and mid-task messages
+- confirm-before-act
+- secret redaction
+- an agent service inside the box
+- stress tests
 
 **Rejected options:**
 - Writing our own loop on Pydantic AI or LangGraph: it would be weaker.
-- ii-agent as the runtime: it brings a large codebase, its bundled office skills are licence-encumbered, and its UI duplicates the owner's.
+- ii-agent as the runtime: large codebase, licence-encumbered office skills, and its UI duplicates the owner's.
+- Forking OpenHands: coding-agent focus, LiteLLM dependency, single-tenant server, heavy churn, enterprise licence.
 - LiteLLM: supply-chain incident in 2026.
 
 ### 3.2 One computer per user
@@ -97,10 +114,10 @@ Building a loop ourselves would take longer and would be weaker.
 1. **Intake.** A request and any files arrive through the control-plane API. A durable DBOS workflow starts, so the task resumes if anything crashes.
 2. **Plan.** The lead agent writes `todo.md` and picks the deliverables the request needs from the catalog.
 3. **Screen first.** Fast classification and headline extraction run, then the buy-box check. A screen result streams to the user within minutes.
-4. **Parallel extraction.** Quarantined subagents read the seller documents. They have no tools and schema-only JSON output, and return typed facts with page and cell provenance. The lead agent never reads raw seller text, which defends against prompt injection.
+4. **Parallel extraction.** Quarantined extraction sessions read the seller documents. They are read-only, have no tools and no network, and produce schema-only JSON output. and return typed facts with page and cell provenance. The lead agent never reads raw seller text, which defends against prompt injection.
 5. **Work.** The lead agent calls the CRE tools: deterministic finance, the Excel build and recalc, rules, state and research. **The LLM never does arithmetic.**
 6. **Ask and continue.** When information is missing or ambiguous, the agent calls `ask_user`, records a default assumption, and keeps going. When the answer arrives, the dependency graph marks affected outputs stale and they are recomputed.
-7. **Gates.** A deliverable can only be finalized when its gates pass (Section 4). Hooks enforce this in code.
+7. **Gates.** A deliverable can only be finalized when its gates pass (Section 4). The tool server enforces this in code, for every runner. OS limits and a stuck detector back it up.
 8. **Deliver.** Outputs go to `deals/<id>/deliverables/`, with events streamed to the UI. When the agent cannot finish, the escalation is itself a deliverable (`BLOCKED` or `CONDITIONAL`, with the open questions and the defaults used).
 
 ### 3.4 Deliverable catalog
@@ -126,20 +143,23 @@ Firm onboarding ingests the firm's:
 Together these form the **firm playbook**. The agent always works in the firm's format.
 
 ### 3.6 Actions and connectors
-- **Every capability is built.** Every external action is a **per-user toggle that defaults to OFF**: browsing, licensed data logins, emailing brokers, sending LOIs.
+- **Every capability is built.** Every external action is a **per-user toggle: `off` (the default), `ask` (the user confirms each action), or `on`**. External actions are browsing, licensed data logins, emailing brokers and sending LOIs.
+- **Users can steer mid-task:** interrupt, pause, resume, or send a new instruction while the agent works.
 - With a toggle off, the agent drafts into `outbox/` instead of sending.
 - Connectors are interfaces with stub implementations in v1: `EmailConnector`, `DataRoomConnector`, `MarketDataProvider`, `DocumentStore` and `Notifier`. The owner implements the real ones later.
 - Licensed sources are welcome (CoStar, Yardi Matrix, Trepp, Reducto, Microsoft Graph Excel). All of them sit behind these interfaces.
 
 ### 3.7 Models (by role, set in `config/models.yaml`)
-| Role | Default | Why |
-|---|---|---|
-| Lead agent | `claude-opus-5-5` | Judgment and long-horizon reliability |
-| Extraction subagents | `claude-sonnet-5-5` | High volume, so cost and speed matter; checksums enforce accuracy |
-| Fast decisions (document type, routing, red-flag triage) | Jev (`typesafe-sdk`), with `claude-haiku-4-5` as fallback | Sub-second typed decisions; Jev is used only after it is calibrated on our labelled cases |
-| Verifier | A non-Claude flagship (OpenAI or Google) if its key exists, otherwise a separately prompted Claude instance | A different model family produces less correlated errors |
-| Learning reflection | `claude-opus-5-5` | Runs offline, so quality matters more than cost |
-| Arithmetic, rules, Excel | **No LLM** (Python, ZEN, LibreOffice or Excel) | LLMs make numeric errors |
+| Role | v1 (development/training) | Later (commercial) | Why |
+|---|---|---|---|
+| Lead analyst | Codex CLI session, profile `analyst` | Claude Agent SDK or OpenAI SDK, chosen by evals | Judgment and long-horizon reliability |
+| Extraction | One-shot Codex session, profile `extractor` (read-only, no tools, output schema) | Same pattern on the chosen SDK | Quarantine against seller-document injection |
+| Fast decisions | Jev (`typesafe-sdk`) if configured, else a one-shot Codex classifier | Same | Typed decisions; Jev only after calibration |
+| Verifier and judges | A **separate** Codex session with an independent prompt, read-only | A different model family from the lead | Less correlated errors |
+| Learning reflection | Codex session, profile `analyst` | Strongest available | Offline, quality first |
+| Arithmetic, rules, Excel | **No LLM** (Python, ZEN, LibreOffice or Excel) | Same | LLMs make numeric errors |
+
+Model names are set by the owner in config and never hard-coded.
 
 ### 3.8 Speed
 "As fast as possible" in practice means:
@@ -182,6 +202,7 @@ Every deliverable has a latency budget, and latency is tracked as an eval metric
    - It optimizes **one deliverable type at a time against frozen fixtures**.
    - GEPA proposes edits from failure categories.
    - Every experiment is logged in `results.tsv`.
+   - In v1, every experiment runs as Codex CLI analyst sessions, so the brain is trained without separate API keys. The budget is counted in sessions.
 2. **Keep rule.** All of the following must hold:
    - paired runs (k=3) with a bootstrap 95% CI lower bound above 0
    - a confirmation run on the holdout
@@ -201,6 +222,13 @@ We have no owner deals yet, so v1 evals use:
 
 **North star: Clean Autonomous Task Rate.** A task counts when it is completed with zero critical errors, an appropriate question rate, and deliverables accepted without material edits.
 
+**Blind scoring.** The analyst session never sees answers:
+- ground truth for an eval case is materialized only after the deliverables are committed
+- scoring runs as a separate process
+- the sealed test seed exists only in CI
+
+The builder (Devin) never acts as the analyst when evals run.
+
 **Autonomy is earned per deliverable type** by meeting its bars on sealed sets. Shadow runs on real deals are added once they arrive.
 
 **Honest limit:** public and synthetic data make the machine work. Expertise comes from real deals and corrections, which are added through `inbox/` and the correction API.
@@ -213,7 +241,7 @@ Each milestone is delivered as one PR. Task detail is in [docs/tasks/](docs/task
 | M0 | Scaffold, CI guards, config, release manifest |
 | M1 | Domain schemas, state + invalidation, finance library, Excel mirror + recalc + parity, rules |
 | M2 | Public data clients, CMBS gold pairs, synthetic generator + defects, adversarial, task and question suites, eval harness, judges |
-| M3 | Agent SDK spike, user computer, CRE tools, hooks, extraction, decision model, gates, deliverables, lead-agent orchestration, control plane, end-to-end smoke |
+| M3 | Codex CLI runner spike, user computer + box agent, CRE tool server (MCP + CLI) with policy, stuck detection, extraction, decision model, gates, deliverables, lead-analyst orchestration, control plane (auth, control verbs, events), end-to-end + stress tests |
 | M4 | Firm onboarding, memory layers, sanitization |
 | M5 | Autoresearch runner, GEPA, keep rule, ACE queue, DAgger corrections, releases + nightly runs |
-| M6 | Connectors + toggles, inbox, OpenAI runner, baseline report + runbook |
+| M6 | Connectors + toggles, inbox, commercial SDK runners (Claude Agent SDK, OpenAI) compared on evals, baseline report + runbook |

@@ -6,6 +6,12 @@
 - **Deterministic checks first.** LLM judges come second and are only used once calibrated. Pairwise comparison is used only for prose quality.
 - **Real data gates decisions; synthetic data trains and diagnoses.**
 - **Protected.** After M2, `evals/**` is hash-checked in CI, owned by CODEOWNERS, and never edited by the learning loop.
+- **Blind scoring.**
+  - The analyst session's workspace contains only the deal package and the brain. It never contains truth files.
+  - Truth is generated from the case seed by the scorer process **after** the deliverables are committed.
+  - The scorer runs as a separate process, outside the analyst sandbox.
+  - The sealed seed exists only in CI.
+  - The builder agent never runs as the analyst during scored evals.
 - **Split by deal lineage, not by document chunk.** Related properties, sponsors, templates and generated ancestors all stay in the same split.
 
 ## 2. Eval sets
@@ -106,5 +112,6 @@ Bars measured on synthetic data alone are **necessary, not sufficient**. Real-de
 
 ## 6. Running evals
 - `make eval SUITE=<name>` runs inspect-ai tasks. Logs go to `logs/evals/`. A summary is written to `evals/reports/<date>.md`.
-- In CI, without keys, the FakeRunner transcripts plus deterministic scorers run, which proves the plumbing works.
-- With keys, live suites run nightly within budget.
+- In CI, FakeRunner transcripts plus deterministic scorers run, which proves the plumbing works.
+- Where the Codex CLI is available (the build machine), live suites run through `CodexRunner` within the session budget.
+- **Stress suite (T041):** concurrent tasks, a slow SSE consumer, a killed worker, a dropped box connection.

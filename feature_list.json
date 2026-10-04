@@ -224,10 +224,11 @@
     {
       "id": "T030",
       "milestone": "M3",
-      "title": "Claude Agent SDK spike + FakeRunner",
-      "task_file": "docs/tasks/T030-agent-sdk-spike.md",
+      "title": "Codex CLI runner spike + FakeRunner",
+      "task_file": "docs/tasks/T030-codex-runner-spike.md",
       "depends_on": [
-        "T003"
+        "T003",
+        "T010"
       ],
       "verify": "uv run pytest tests/runner -q",
       "passes": false
@@ -261,12 +262,12 @@
     {
       "id": "T033",
       "milestone": "M3",
-      "title": "Hooks: policy, budgets, quarantine, gates",
-      "task_file": "docs/tasks/T033-hooks.md",
+      "title": "Stuck detection and event redaction",
+      "task_file": "docs/tasks/T033-stuck-redaction.md",
       "depends_on": [
         "T032"
       ],
-      "verify": "uv run pytest tests/runner -q -k hooks && uv run pytest tests/protected -q",
+      "verify": "uv run pytest tests/runner -q -k 'stuck or redact' && uv run pytest tests/protected -q",
       "passes": false
     },
     {
@@ -342,13 +343,26 @@
       "passes": false
     },
     {
+      "id": "T042",
+      "milestone": "M3",
+      "title": "Box agent (cre-boxd) and control-plane link",
+      "task_file": "docs/tasks/T042-box-agent.md",
+      "depends_on": [
+        "T031",
+        "T030",
+        "T033"
+      ],
+      "verify": "uv run pytest tests/sandbox -q -k boxd",
+      "passes": false
+    },
+    {
       "id": "T040",
       "milestone": "M3",
       "title": "Control plane: API, DBOS workflow, events",
       "task_file": "docs/tasks/T040-control-plane.md",
       "depends_on": [
         "T039",
-        "T031"
+        "T042"
       ],
       "verify": "uv run pytest tests/control -q",
       "passes": false
@@ -356,7 +370,7 @@
     {
       "id": "T041",
       "milestone": "M3",
-      "title": "End-to-end smoke",
+      "title": "End-to-end smoke and stress test",
       "task_file": "docs/tasks/T041-e2e-smoke.md",
       "depends_on": [
         "T040",
@@ -494,12 +508,12 @@
     {
       "id": "T072",
       "milestone": "M6",
-      "title": "OpenAI Agents SDK runner",
-      "task_file": "docs/tasks/T072-openai-runner.md",
+      "title": "Commercial SDK runners: Claude Agent SDK and OpenAI",
+      "task_file": "docs/tasks/T072-sdk-runners.md",
       "depends_on": [
         "T041"
       ],
-      "verify": "uv run pytest tests/runner -q -k openai",
+      "verify": "uv run pytest tests/runner -q -k 'claude or openai'",
       "passes": false
     },
     {

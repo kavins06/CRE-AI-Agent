@@ -15,10 +15,11 @@ The per-user computer interface, the reference image and isolation tests.
 
 ## Acceptance criteria
 - [ ] AC1: `SandboxProvider` protocol per SPEC §2; `LocalDockerProvider` implementation
-- [ ] AC2: `docker/box/Dockerfile` satisfies the SPEC §3 image contract (Python, cre_brain, Agent SDK runtime, LibreOffice + macro, Chromium/Playwright)
+- [ ] AC2: `docker/box/Dockerfile` satisfies the SPEC §3 image contract (Python, cre_brain, Codex CLI, LibreOffice + macro, Chromium/Playwright); Codex auth is mounted/injected by the owner setup, never baked in
 - [ ] AC3: Workspace layout created on `create()`; `resume()` preserves disk
-- [ ] AC4: Isolation tests: user A cannot read user B; no box-to-box network; secrets absent from snapshot
-- [ ] AC5: A contract test suite the owner can run against their own provider (`tests/sandbox/contract.py`)
+- [ ] AC4: OS-level enforcement per SPEC §3: non-root agent user, read-only firms/, writable only deals/ outbox/ memory/ scratch, egress allowlist proxy
+- [ ] AC5: Isolation tests with all tool policy disabled: shell write outside allowed paths fails; curl to non-allowlisted domain fails; user A cannot read user B; no box-to-box network; secrets absent from snapshot
+- [ ] AC6: A contract test suite the owner can run against their own provider (`tests/sandbox/contract.py`)
 - [ ] `make check` passes.
 
 ## Verify (must exit 0, paste the tail into PROGRESS.md)

@@ -14,9 +14,9 @@
 Typed config loading with model roles, budgets, gate tolerances and toggles.
 
 ## Acceptance criteria
-- [ ] AC1: `config/models.yaml`, `budget.yaml`, `gates.yaml` and `toggles.default.yaml` exist with the SPEC §9 defaults; every toggle defaults to false
+- [ ] AC1: `config/models.yaml` (runner: codex, roles with profiles), `budget.yaml` (incl. nightly_sessions, nightly_wallclock_h, max_parallel_extractions, max_parallel_sessions, box_reconnect_s), `gates.yaml`, `toggles.default.yaml` exist with SPEC §9 defaults; toggles are `off|ask|on`, default `off`
 - [ ] AC2: `cre_brain.config.load()` returns validated Pydantic settings; env vars override the files
-- [ ] AC3: `config.live_enabled(role)` returns false when the role's provider key is missing, and callers can log `SKIPPED_NO_KEY`
+- [ ] AC3: `config.live_enabled(role)` returns true only if the role's runner is usable (Codex CLI installed and `codex login status` succeeds, or the SDK key is present for later runners); callers log `SKIPPED_NO_RUNNER`
 - [ ] AC4: No model ID appears anywhere in `src/` outside the config package (enforced by a test that greps for it)
 - [ ] `make check` passes.
 

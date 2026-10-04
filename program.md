@@ -7,7 +7,7 @@
 2. Read `docs/LEARNING.md`, `brain/`, and the fixture manifest for the target deliverable kind.
 3. Check that the frozen fixtures exist: `uv run cre fixtures check --kind <K>`.
 4. Create `results.tsv` with only the header row. It is not committed.
-5. Confirm a live model key is present. If none is, write `SKIPPED_NO_KEY` to `PROGRESS.md` and stop.
+5. Confirm the Codex CLI is installed and authenticated (`codex login status`). If it isn't, write `SKIPPED_NO_RUNNER` to `PROGRESS.md` and stop.
 
 ## What you may edit
 - `brain/skills/**`, `brain/prompts/**`, `brain/playbook/global.md`. Edit **one artifact per experiment**.
@@ -32,12 +32,13 @@ Maximize the primary score for deliverable kind K on the dev split, without viol
 ## Budget per experiment
 - `max_metric_calls` = 40 per candidate (k=3 over the dev fixtures for K).
 - Kill any experiment that runs longer than 20 minutes wall-clock and log it as `crash`.
-- Nightly cap: `config/budget.yaml:nightly_usd`. Stop cleanly when it is reached.
+- Nightly caps: `config/budget.yaml` `nightly_sessions` and `nightly_wallclock_h` (and `nightly_usd` for API-billed runners). Stop cleanly when any cap is reached.
+- Analyst sessions run via `CodexRunner`. Scoring is a separate blind process. Never read truth files.
 
 ## Output format
 Append one row per experiment to `results.tsv` (tab-separated):
 ```
-commit	kind	score	ci_low	cost_usd	status	description
+commit	kind	score	ci_low	sessions	status	description
 ```
 `status` is one of `keep`, `discard`, `crash`. `ci_low` is the Bonferroni-adjusted lower bound of the paired improvement.
 

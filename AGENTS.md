@@ -42,18 +42,20 @@ If you are blocked (a missing secret, an unclear spec, an external outage):
 - **Never** change a task's `passes` without its verify command exiting 0 in that same session.
 - **Never** read `evals/holdout/` or try to reconstruct the sealed test set.
 - **Never** hard-code model IDs, API keys, emails or personal data. Config and environment variables only.
-- **Never** call live model APIs in tests or CI. Use `FakeRunner` and recorded transcripts.
+- **Never** call live models (including the Codex CLI) in unit tests or CI. Use `FakeRunner` and recorded transcripts. Live Codex sessions are allowed only in `make eval`, `cre record`, and the learning loop.
+- **Never** act as the analyst yourself during scored evals, and never read eval truth files. Analyst sessions run through `CodexRunner`, and scoring is a separate blind process.
+- **Never** use `--dangerously-bypass-approvals-and-sandbox` outside an isolated box.
 - **Never** add these dependencies: LiteLLM, HyperFormula, Marker, or any of ii-agent's bundled office skills.
 - **Never** let the LLM do arithmetic in product code. All math goes through `cre_brain.finance`.
 - **Never** merge to `main`, force-push, or rewrite history on `main`.
 
 ## Environment variables (names only; Devin Secrets supply the values)
-- **Live model calls:** `ANTHROPIC_API_KEY`. Optional: `OPENAI_API_KEY` / `GOOGLE_API_KEY` for the verifier, judge and M6 runner; `TYPESAFE_API_KEY` for Jev.
+- **Analyst runtime (v1):** the **Codex CLI**, pre-installed and authenticated on this machine. No model key is needed. Check it with `codex login status`. Optional: `TYPESAFE_API_KEY` (Jev). Later (M6): `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` for the SDK runners.
 - **Public data:** `SEC_USER_AGENT` (required for EDGAR), `FRED_API_KEY`, `CENSUS_API_KEY`, `HUD_API_TOKEN`, `BLS_API_KEY`, `SOCRATA_APP_TOKEN`.
 - **Infrastructure:** `DBOS_DATABASE_URL` (default `sqlite:///./.local/dbos.sqlite`), `DATABASE_URL` (default SQLite).
 - **CI only:** `EVAL_SEALED_SEED`.
 
-When a key is missing, the code must skip live work and log `SKIPPED_NO_KEY`. It must never crash.
+When a runner or key is unavailable, the code must skip live work and log `SKIPPED_NO_RUNNER` / `SKIPPED_NO_KEY`. It must never crash.
 
 ## Code standards
 - Python 3.12, uv, ruff (format + lint), mypy strict on `src/`, pytest + hypothesis.

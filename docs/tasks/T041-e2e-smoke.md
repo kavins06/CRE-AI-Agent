@@ -1,4 +1,4 @@
-# T041: End-to-end smoke
+# T041: End-to-end smoke and stress test
 
 > Product: an autonomous CRE acquisition analyst ("the Devin of real estate"). Follow the session protocol in `AGENTS.md`.
 
@@ -15,7 +15,8 @@ A deal through the whole system.
 
 ## Acceptance criteria
 - [ ] AC1: CI: a synthetic deal → POST /tasks → local Docker box → FakeRunner → deliverables + gates pass → events replayable
-- [ ] AC2: Live (key present): the same with ClaudeRunner; latency and cost per deliverable recorded to `evals/reports/`
+- [ ] AC2: Live (Codex CLI available): the same with CodexRunner; latency and sessions per deliverable recorded to `evals/reports/`
+- [ ] AC3: Stress test: N concurrent tasks, slow SSE consumer, killed control-plane worker, dropped box connection; stays within latency/memory budgets
 - [ ] `make check` passes.
 
 ## Verify (must exit 0, paste the tail into PROGRESS.md)

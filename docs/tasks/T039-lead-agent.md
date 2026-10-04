@@ -14,10 +14,10 @@
 Task-driven planning, ask-and-continue, revision on answers, escalation.
 
 ## Acceptance criteria
-- [ ] AC1: The lead prompt is assembled per SPEC §10.1; the agent writes `todo.md` and selects deliverables from the request
-- [ ] AC2: `ask_user` → default recorded → continues; on answer, stale items are regenerated (SPEC §10.5)
+- [ ] AC1: Per-task deal-folder AGENTS.md assembled per SPEC §10.1; CodexRunner analyst session writes `todo.md` and selects deliverables from the request; multi-segment tasks resume via session id
+- [ ] AC2: `ask_user` → default recorded → continues; on answer or mid-task user message, stale items are regenerated in a resume segment (SPEC §10.5)
 - [ ] AC3: ESCALATION deliverable when blocked or out of budget
-- [ ] AC4: Task-request suite G and question suite H run via FakeRunner in CI; live scores recorded when a key exists
+- [ ] AC4: Task-request suite G and question suite H run via FakeRunner in CI; live scores via CodexRunner recorded when the Codex CLI is available (blind scoring)
 - [ ] `make check` passes.
 
 ## Verify (must exit 0, paste the tail into PROGRESS.md)

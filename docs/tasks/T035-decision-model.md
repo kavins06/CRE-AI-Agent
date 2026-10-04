@@ -14,8 +14,8 @@
 Fast typed decisions behind one interface.
 
 ## Acceptance criteria
-- [ ] AC1: `JevDecisionModel` (typesafe-sdk) and `LLMDecisionModel` (fast_decision fallback model)
-- [ ] AC2: Uses Jev only if a key exists AND `config` marks it calibrated; otherwise the fallback
+- [ ] AC1: `JevDecisionModel` (typesafe-sdk) and `CodexDecisionModel` (one-shot `codex exec --profile classifier` with output schema) as fallback
+- [ ] AC2: Uses Jev only if a key exists AND config marks it calibrated; otherwise the Codex fallback; offline tests via FakeRunner
 - [ ] AC3: Document-type classification and request-routing helpers; a calibration script producing reliability stats on labelled cases
 - [ ] `make check` passes.
 

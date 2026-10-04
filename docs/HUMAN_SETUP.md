@@ -19,8 +19,8 @@
 
 | Secret | Required? | What it does |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | Required for live runs | Without it, everything builds and tests on recorded transcripts, but live evals and the learning loop skip |
-| `OPENAI_API_KEY` or `GOOGLE_API_KEY` | Optional | Cross-family verifier and judge; M6 OpenAI runner |
+| *(none for models in v1)* | n/a | The analyst runs on the **Codex CLI**, which you install and authenticate on the build machine and in boxes. The brain is trained through it |
+| `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | Later | Only when the commercial SDK runners are added (M6) |
 | `TYPESAFE_API_KEY` | Optional | Jev |
 | `SEC_USER_AGENT` | Required | Your company name plus a contact address, as the SEC requires |
 | `FRED_API_KEY`, `CENSUS_API_KEY`, `HUD_API_TOKEN`, `BLS_API_KEY` | Recommended | Free public data keys |
@@ -29,7 +29,11 @@
 
 - [ ] Optional: let a coordinator session hand independent tasks to child Devins. `feature_list.json` dependencies show which tasks can run in parallel.
 
-**Remember:** Devin's ACUs pay for Devin's own work. The analyst's model calls during evals and learning are billed to the API keys above. The nightly cap is `config/budget.yaml:nightly_usd`, $25 by default.
+**Remember:**
+- Devin's ACUs pay for Devin's own work (building).
+- The analyst's sessions during evals and learning run on the **Codex CLI** under whatever account you authenticated it with.
+- Nightly caps are in `config/budget.yaml`: `nightly_sessions` (default 150) and `nightly_wallclock_h` (default 8).
+- [ ] Confirm `codex login status` succeeds on the machine Devin uses.
 
 ## 3. Infrastructure handoff (your team)
 - [ ] Your per-user computer must satisfy the **box image contract** in `docs/SPEC.md` §3. Implement the `SandboxProvider` Protocol for your infrastructure. Devin ships a local Docker reference implementation and contract tests that you can run against yours.

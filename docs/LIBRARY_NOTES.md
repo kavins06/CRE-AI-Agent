@@ -6,7 +6,31 @@ Versions were checked on PyPI on 2026-10-04.
 - **Pin exact versions** in `pyproject.toml`. Upgrade only in a dedicated task.
 - Items marked **[verify]** must be confirmed against the installed package in task T030 (the Agent SDK spike) or the task that first uses them. Record what you find in PROGRESS.md and correct this file in the same PR.
 
-## claude-agent-sdk (Python), `pip install claude-agent-sdk`
+## Codex CLI: the v1 analyst runner
+- Docs: https://developers.openai.com/codex/noninteractive and https://developers.openai.com/codex/cli/reference
+- It is installed and authenticated on the build machine and in user boxes by the owner's setup. **Never handle or store its credentials in code.**
+- Check availability with `codex login status` (exit 0 means usable) [verify the command].
+- Headless runs: `codex exec --json "<prompt>"` streams JSONL events, one per state change, on stdout. Capture them, normalize them into `AgentEvent`, and keep the raw event as `runner_raw`.
+- Useful flags [verify each in T030]:
+  - `--cd <dir>`
+  - `--sandbox read-only|workspace-write`
+  - `--profile <name>`
+  - `-m <model>`
+  - `--output-schema <file.json>` (structured final output)
+  - `codex exec resume <session_id>` / `--last`
+- MCP servers are configured in `~/.codex/config.toml` (or a project `.codex/config.toml`):
+  ```toml
+  [mcp_servers.cre]
+  command = "uv"
+  args = ["run", "cre", "mcp", "serve"]
+  [profiles.analyst]      # sandbox/approval/model per profile [verify keys]
+  [profiles.extractor]    # read-only, no MCP servers, network off
+  ```
+- **Known gotcha:** non-interactive MCP tool calls may need an explicit approval setting. See openai/codex issue #24135, "no way to allow MCP tool calls non-interactively without --dangerously-bypass-approvals-and-sandbox". T030 must find the narrowest working setting. **Never use `--dangerously-bypass-approvals-and-sandbox` outside the isolated box**, and never on the control plane.
+- It reads `AGENTS.md` in the working directory and Agent Skills from `.agents/skills/` [verify the skills path].
+- `CODEX_API_KEY` exists for API-key auth in `codex exec`. It is not needed when the owner's setup authenticates the CLI.
+
+## claude-agent-sdk (Python), `pip install claude-agent-sdk`: LATER (pre-commercial runner)
 - Docs: https://code.claude.com/docs/en/agent-sdk/python and https://code.claude.com/docs/en/agent-sdk/hosting
 - **Requirements:**
   - Python ≥3.10
