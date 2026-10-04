@@ -45,14 +45,12 @@ type Delimiter = Literal[",", ";", "\t", "|"]
 def _pdf_worker(raw: bytes, limits: Limits) -> PdfContent:
     environment = {
         "PATH": os.defpath,
-        "PYTHONHASHSEED": "0",
         "HF_HUB_OFFLINE": "1",
         "TRANSFORMERS_OFFLINE": "1",
         "OMP_NUM_THREADS": "1",
         "OPENBLAS_NUM_THREADS": "1",
         "MKL_NUM_THREADS": "1",
         "TOKENIZERS_PARALLELISM": "false",
-        "PYTHONDONTWRITEBYTECODE": "1",
     }
     with tempfile.TemporaryFile() as source, tempfile.TemporaryFile() as target:
         source.write(raw)
@@ -61,6 +59,8 @@ def _pdf_worker(raw: bytes, limits: Limits) -> PdfContent:
             process = subprocess.run(
                 [
                     sys.executable,
+                    "-I",
+                    "-B",
                     "-m",
                     "cre_brain.extraction.preparse.worker",
                     limits.model_dump_json(),

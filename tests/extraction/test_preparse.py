@@ -308,6 +308,20 @@ def test_t034_ac2_preparse_real_docling_pdf_text_page_bbox_top_left(parser: Prep
     assert doc == parser.parse("om.pdf", doc_id="om")
 
 
+def test_t034_ac2_preparse_worker_ignores_current_directory_package(
+    parser: Preparser, tmp_path: Path, monkeypatch
+):
+    (parser.raw_root / "native.pdf").write_bytes(pdf_bytes())
+    shadow = tmp_path / "cre_brain"
+    shadow.mkdir()
+    (shadow / "__init__.py").write_text("raise RuntimeError('Untrusted package was imported')\n")
+    monkeypatch.chdir(tmp_path)
+    doc = parser.parse("native.pdf", doc_id="native")
+    assert doc.parser == "docling-native"
+    assert len(doc.pages) == 2
+    assert doc.texts[0].text == "Exact rent 1234.567890"
+
+
 def test_t034_ac2_preparse_docling_empty_page_is_honest_not_ocr_success(parser: Preparser):
     (parser.raw_root / "scan.pdf").write_bytes(pdf_bytes(blank_page=True))
     doc = parser.parse("scan.pdf", doc_id="scan")
