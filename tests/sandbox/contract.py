@@ -45,6 +45,7 @@ def assert_snapshot_contents(data: bytes, expected: bytes) -> None:
             assert stream is not None
             payload = stream.read(MAX_BYTES + 1)
             assert len(payload) <= MAX_BYTES
+            assert b"contract-credential-probe" not in payload
             if member.name == "memory/own.txt":
                 found = payload
     assert found == expected
