@@ -199,6 +199,28 @@ def test_t034_ac1_preparse_csv_explicit_dialect_and_bom(parser: Preparser):
     assert doc.config_sha256 != parser.parse("simple.csv", doc_id="simple").config_sha256
 
 
+def test_t034_ac1_preparse_csv_respects_configured_large_cell_limit(parser: Preparser):
+    text = "x" * 150_000
+    (parser.raw_root / "large.csv").write_text(text)
+    bounded = Preparser(
+        raw_root=parser.raw_root,
+        output_root=parser.output_root,
+        scope=parser.scope,
+        limits=Limits(max_cell_chars=200_000),
+    )
+    doc = bounded.parse("large.csv", doc_id="large")
+    assert doc.tables[0].cells[0].text == text
+
+
+def test_t034_ac1_preparse_csv_blank_records_preserve_source_row_numbers(parser: Preparser):
+    (parser.raw_root / "blank-row.csv").write_text("A\n\nB\n")
+    doc = parser.parse("blank-row.csv", doc_id="blank-row")
+    assert [(cell.anchor.cell, cell.text) for cell in doc.tables[0].cells] == [
+        ("A1", "A"),
+        ("A3", "B"),
+    ]
+
+
 def test_t034_ac1_preparse_xlsx_never_evaluates_formulas_or_follows_links(parser: Preparser):
     book = Workbook()
     sheet = book.active
@@ -214,6 +236,29 @@ def test_t034_ac1_preparse_xlsx_never_evaluates_formulas_or_follows_links(parser
     assert doc.tables[0].cells[0].cached_text is None
     assert doc.tables[0].cells[1].text == "link label"
     assert "external_links_not_followed" in doc.warnings
+
+
+def test_t034_ac1_preparse_xlsx_preserves_explicit_normal_formula(parser: Preparser):
+    raw = xlsx_bytes()
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        worksheet = archive.read("xl/worksheets/sheet1.xml")
+    assert b"<f>1+2</f>" in worksheet
+    worksheet = worksheet.replace(b"<f>1+2</f>", b'<f t="normal">1+2</f>')
+    raw = rewrite_zip(raw, "xl/worksheets/sheet1.xml", worksheet)
+    (parser.raw_root / "normal-formula.xlsx").write_bytes(raw)
+    doc = parser.parse("normal-formula.xlsx", doc_id="normal-formula")
+    formula = next(cell for cell in doc.tables[0].cells if cell.anchor.cell == "B2")
+    assert formula.kind == "formula"
+    assert formula.text == "=1+2"
+
+
+def test_t034_ac3_preparse_csv_delimiter_does_not_change_xlsx_output(parser: Preparser):
+    (parser.raw_root / "delimiter-independent.xlsx").write_bytes(xlsx_bytes())
+    first = parser.parse("delimiter-independent.xlsx", doc_id="delimiter-independent")
+    second = parser.parse(
+        "delimiter-independent.xlsx", doc_id="delimiter-independent", csv_delimiter=";"
+    )
+    assert first == second
 
 
 @pytest.mark.parametrize("relative", ["../outside.csv", "/etc/passwd", "a/../../x", "a\\b.csv"])

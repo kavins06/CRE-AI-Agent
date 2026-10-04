@@ -132,23 +132,24 @@ class Preparser:
             self.raw_root, self._raw_identity, relative_path, self.limits.max_file_bytes
         )
         source_hash = hashlib.sha256(raw).hexdigest()
-        configuration = digest(
-            {
-                "schema": "1.0.0",
-                "parser": (
-                    "reducto"
-                    if reducto is not None
-                    else {
-                        ".csv": "native-csv",
-                        ".xlsx": "native-xlsx",
-                        ".pdf": "docling-native",
-                    }[extension]
-                ),
-                "limits": self.limits.model_dump(),
-                "csv_delimiter": delimiter,
-                "pdf": "native-threads1-no-images-no-ocr-no-enrichment",
-            }
-        )
+        configuration_values = {
+            "schema": "1.0.0",
+            "parser": (
+                "reducto"
+                if reducto is not None
+                else {
+                    ".csv": "native-csv",
+                    ".xlsx": "native-xlsx",
+                    ".pdf": "docling-native",
+                }[extension]
+            ),
+            "limits": self.limits.model_dump(),
+        }
+        if extension == ".csv":
+            configuration_values["csv_delimiter"] = delimiter
+        if extension == ".pdf" and reducto is None:
+            configuration_values["pdf"] = "native-threads1-no-images-no-ocr-no-enrichment"
+        configuration = digest(configuration_values)
         versions: tuple[tuple[str, str], ...] = (
             (("python", ".".join(map(str, sys.version_info[:3]))),)
             if extension == ".csv"

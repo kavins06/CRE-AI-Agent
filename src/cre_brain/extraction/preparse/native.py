@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import csv
 import io
 import posixpath
 import zipfile
@@ -54,9 +53,7 @@ def csv_table(raw: bytes, doc_id: str, seed: str, limits: Limits, delimiter: str
     cells = []
     try:
         decoded = raw.decode("utf-8-sig")
-        _validate_csv(decoded, delimiter, limits)
-        reader = csv.reader(io.StringIO(decoded, newline=""), delimiter=delimiter, strict=True)
-        for row_number, row in enumerate(reader, 1):
+        for row_number, row in enumerate(_csv_rows(decoded, delimiter, limits), 1):
             if row_number > limits.max_rows or len(row) > limits.max_columns:
                 raise PreparseError("CSV row/column limit exceeded")
             for column, text in enumerate(row, 1):
@@ -71,53 +68,75 @@ def csv_table(raw: bytes, doc_id: str, seed: str, limits: Limits, delimiter: str
                         budget,
                     )
                 )
-    except (UnicodeError, csv.Error) as error:
+    except UnicodeError as error:
         raise PreparseError(
             "CSV must be valid UTF-8 with valid explicit-dialect quoting"
         ) from error
     return ParsedTable(table_id=digest((seed, "CSV")), sheet="CSV", cells=tuple(cells))
 
 
-def _validate_csv(content: str, delimiter: str, limits: Limits) -> None:
-    # Bound fields before csv.reader materializes a row; reject quotes in bare fields.
+def _csv_rows(content: str, delimiter: str, limits: Limits) -> list[list[str]]:
+    """Parse the explicit CSV dialect without the stdlib's process-global field limit."""
+    rows: list[list[str]] = []
+    fields: list[str] = []
+    characters: list[str] = []
     state = "start"
-    row, column, chars = 1, 1, 0
+    row_started = False
     previous_cr = False
+
+    def finish_field() -> None:
+        fields.append("".join(characters))
+        characters.clear()
+        if len(fields) > limits.max_columns:
+            raise PreparseError("CSV column limit exceeded")
+
+    def finish_row() -> None:
+        nonlocal row_started
+        if row_started or fields or characters or state == "closed":
+            finish_field()
+        rows.append(fields.copy())
+        fields.clear()
+        row_started = False
+        if len(rows) > limits.max_rows:
+            raise PreparseError("CSV row limit exceeded")
+
     for character in content:
         if previous_cr and character == "\n":
             previous_cr = False
             continue
         previous_cr = False
-        if row > limits.max_rows:
-            raise PreparseError("CSV row limit exceeded")
         if state == "quoted":
             if character == '"':
                 state = "closed"
             else:
-                chars += 1
+                characters.append(character)
         elif state == "closed" and character == '"':
             state = "quoted"
-            chars += 1
+            characters.append('"')
         elif character == delimiter:
-            column += 1
-            state, chars = "start", 0
-            if column > limits.max_columns:
-                raise PreparseError("CSV column limit exceeded")
+            finish_field()
+            state = "start"
+            row_started = True
         elif character in ("\r", "\n"):
-            row += 1
-            column, chars, state = 1, 0, "start"
+            finish_row()
+            state = "start"
             previous_cr = character == "\r"
         elif state == "start" and character == '"':
             state = "quoted"
+            row_started = True
         elif state == "closed" or character == '"':
             raise PreparseError("Malformed CSV quoting")
         else:
             state = "bare"
-            chars += 1
-        if chars > limits.max_cell_chars:
+            row_started = True
+            characters.append(character)
+        if len(characters) > limits.max_cell_chars:
             raise PreparseError("CSV cell text limit exceeded")
     if state == "quoted":
         raise PreparseError("Unclosed CSV quote")
+    if row_started or fields or characters or state == "closed":
+        finish_row()
+    return rows
 
 
 def _xml(raw: bytes) -> ET.Element:
@@ -259,7 +278,7 @@ def xlsx_tables(
                 kind = node.get("t", "n")
                 formula = node.find(f"{MAIN}f")
                 if formula is not None:
-                    if formula.attrib or formula.text is None:
+                    if formula.attrib not in ({}, {"t": "normal"}) or formula.text is None:
                         raise PreparseError("Shared/array/data-table formulas are unsupported")
                     cached = value.text if value is not None else None
                     text, kind = "=" + formula.text, "formula"

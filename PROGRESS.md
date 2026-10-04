@@ -556,3 +556,18 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
   Same-UID/root hostile mutation and OS containment are not proven by parser file-boundary tests.
 - T034 remains false and unmerged pending the T010 enum-contract correction and final review/CI.
   Existing T010/T014 assertions and owner guards remain untouched.
+
+## 2026-10-04 — T034 PR review follow-up
+
+- Automated PR review found three concrete native-format defects. Red-first regressions reproduced
+  the standard-library CSV field ceiling despite a larger configured limit, rejection of valid
+  explicit `t="normal"` formulas, and irrelevant CSV delimiter configuration changing XLSX
+  identities. Native CSV now uses a bounded local strict-dialect parser, ordinary formulas accept
+  only the explicit normal type, and parser hashes contain only format-applicable options.
+- The fourth review claim was not a defect: both Python's reader and the implementation preserve a
+  blank record as a row position, so `A\n\nB\n` anchors `B` at `A3`. A regression now pins this.
+- Fresh exact verification: extraction `73 passed, 1 skipped`; task replay `73 passed,
+  319 deselected`; `T034: AC1 PASSED, AC2 PASSED, AC3 PASSED`. `make check`: Ruff lint/format,
+  strict mypy and `380 passed, 1 skipped, 11 deselected`; all pre-commit hooks passed.
+- Acceptance remains held: T034 is false; existing T010/T014 assertions and protected owner guards
+  are unchanged.
