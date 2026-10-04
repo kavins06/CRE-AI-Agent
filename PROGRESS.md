@@ -973,3 +973,21 @@ T018: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Final serialized validation: T017 ACs also pass; locked sync/check, Ruff lint/format, strict mypy (74 sources), `make check` (708 passed, one existing approved license skip, 11 integration deselected), and all pre-commit hooks pass. No live model/analyst, SEC, private evaluator, UI, new host runtime, security controls or protected paths touched.
 - Next: push the task branch for independent review. T017/T018 `passes` remain false; no PR, dev/main integration, acceptance or promotion. No approval/runtime blocker.
+
+## 2026-10-04 — T017/T018 independent review repairs, acceptance pending
+- Owner selected the authenticated Codex CLI for delegated developer implementation/review instead of additional Devin child sessions. The staged Devin workflow was stopped; its completed candidate `b1837ec8d996ee84c8e76e79ae4dd73772591a74` was preserved on a separate task branch. This changes builder orchestration only, not the analyst runtime, unit-test/CI model ban, or quality gates.
+- Independent read-only Codex review reproduced three required findings: hidden discount-rounding noise broke equal hold/sell ranks; assumption names could overwrite metrics/shocks; aggregate IDs could alias evaluator IDs and create self-referential provenance. Additive regressions were run red before repair; further cancellation and normalized/direct-provenance regressions were also reproduced red. No existing assertions changed.
+- Decision: decision-date money is netted exactly by date; whole ACT/365-year discounting stays rational. Published 28-digit NPVs drive ranking and incremental NPV, so indistinguishable published values tie rather than allowing hidden approximation noise to manufacture a preference.
+- Decision: canonical assumption/shock keys encode the index/name pair as compact ASCII JSON in namespaces disjoint from legacy cell/scenario keys. Every assumption/shock remains available canonically; unambiguous legacy aliases remain, ambiguous joint aliases are omitted, and the computed grid metric retains its legacy key.
+- Aggregate IDs are normalized before evaluation and must not alias evaluator IDs or appear in evaluator/direct aggregate provenance. Existing immutable-ID checks remain. Arbitrary transitive dependency cycles remain the state graph's responsibility.
+- Exact serialized task verification exits 0:
+```text
+27 passed, 214 deselected in 1.15s
+39 passed, 703 deselected, 2 warnings in 2.11s
+T017: AC1 PASSED, AC2 PASSED, AC3 PASSED
+45 passed, 196 deselected in 3.69s
+45 passed, 697 deselected, 2 warnings in 4.67s
+T018: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- `make check`: 730 passed, one existing approved Reducto-license skip, 11 integration deselected. Ruff lint/format, strict mypy, all pre-commit hooks, lock verification and `git diff --check` passed. No dependency, guard, protected-path or accepted-test changes.
+- Next: independent exact repaired-source review and hosted CI; T017/T018 flags remain false until acceptance. Excel follows.

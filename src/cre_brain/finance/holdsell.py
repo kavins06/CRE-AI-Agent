@@ -3,9 +3,11 @@
 Operating flows are net equity cash flows after debt service. Refinancing records
 draw less old payoff, fees and prepayment; the terminal exit must include the
 then-outstanding new debt payoff. No implied debt amortization or missing balloon
-is invented. Equal exact decision values receive the same competition rank.
+is invented. Decision values indistinguishable at public precision share a competition rank
+and zero incremental NPV; hidden working-precision noise cannot break ties.
 """
 
+from datetime import date
 from decimal import Decimal
 from fractions import Fraction
 from typing import Literal
@@ -48,6 +50,35 @@ class HoldSellInput(DomainModel):
     historical_flows: tuple[DatedEquityFlow, ...] = Field(max_length=598)
     finance_rate: Rate
     reinvest_rate: Rate
+
+
+def _decision_npv(
+    flows: list[tuple[date, Fraction]], rate: Decimal, decision_date: date, precision: int
+) -> Decimal:
+    # Net same-date money before approximating discount factors. Whole ACT/365
+    # years are rational, so retain exact cancellation across those dates too.
+    grouped: dict[date, Fraction] = {}
+    for day, amount in flows:
+        grouped[day] = grouped.get(day, Fraction(0)) + amount
+    base = 1 + Fraction(rate)
+    exact = Fraction(0)
+    fractional: list[tuple[date, Fraction]] = []
+    for day, amount in sorted(grouped.items()):
+        if not amount:
+            continue
+        days = (day - decision_date).days
+        if days % 365:
+            fractional.append((day, amount))
+        else:
+            years = days // 365
+            if years * max(base.numerator.bit_length(), base.denominator.bit_length()) > 65536:
+                raise ValueError("Decision discounting exceeds the rational complexity budget")
+            exact += amount / base**years
+            # Apply the existing rational budget to every accumulated value.
+            decimal_value(exact, precision)
+    if fractional:
+        exact += Fraction(dated_value(fractional, rate, decision_date, precision))
+    return decimal_value(exact)
 
 
 @_calculation
@@ -127,8 +158,10 @@ def compare_hold_sell(
             outputs[f"{a.kind}:refinance_proceeds"] = decimal_value(proceeds)
         exit_amounts = _exit_amounts(a.exit)
         future.append((a.terminal_date, exit_amounts["net_equity_proceeds"]))
-        values[a.kind] = dated_value(future, source.discount_rate, source.decision_date, precision)
-        outputs[f"{a.kind}:npv"] = decimal_value(Fraction(values[a.kind]))
+        values[a.kind] = _decision_npv(
+            future, source.discount_rate, source.decision_date, precision
+        )
+        outputs[f"{a.kind}:npv"] = values[a.kind]
         outputs.update({f"{a.kind}:exit:{k}": decimal_value(v) for k, v in exit_amounts.items()})
         ledger = sorted([*((f.date, Fraction(f.amount)) for f in source.historical_flows), *future])
         if len(ledger) > 600:

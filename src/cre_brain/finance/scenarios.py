@@ -17,17 +17,25 @@ strictly with price, later cash flows are nonnegative and at least one is positi
 This proves monotonicity and excludes ambiguous IRRs. Bisection brackets target
 dated NPV and then certifies the achieved XIRR/tolerance using the returns core.
 Nonconventional flows, unbracketed solutions and unresolved tolerances fail closed.
+
+Assumptions and shocks have canonical keys: assumption:[index,"name"] and
+shock:[index,"name"], with compact ASCII JSON encoding of the index/name pair.
+These namespaces cannot overlap legacy cell/scenario keys, even for names with
+colons, quotes or Unicode. Unambiguous legacy aliases remain available; an
+ambiguous joint alias is omitted, and the grid metric always owns its legacy key.
+Every value remains available canonically, so collisions never discard data.
 """
 
 from collections.abc import Callable
 from decimal import Decimal, localcontext
 from fractions import Fraction
 from itertools import product
+from json import dumps
 from math import prod
 from random import Random
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import Field, TypeAdapter, model_validator
 
 from cre_brain.domain import CalcResult
 from cre_brain.domain.base import Identifier
@@ -130,11 +138,22 @@ def _metric(result: CalcResult, key: str, input_id: str | None = None) -> Decima
     return value
 
 
-def _immutable_result(known: dict[str, CalcResult], result: CalcResult) -> None:
+def _immutable_result(known: dict[str, CalcResult], result: CalcResult, aggregate_id: str) -> None:
+    if result.calc_id == aggregate_id or aggregate_id in result.inputs.values():
+        raise ValueError("An aggregate calculation ID cannot alias or feed an evaluator result")
     previous = known.get(result.calc_id)
     if previous is not None and previous != result:
         raise ValueError("A stored calculation ID is immutable across evaluations")
     known[result.calc_id] = result.model_copy(deep=True)
+
+
+def _check_aggregate_inputs(inputs: dict[str, str], aggregate_id: str) -> None:
+    if aggregate_id in inputs.values():
+        raise ValueError("An aggregate calculation cannot reference itself in input provenance")
+
+
+def _canonical_key(kind: str, index: int, name: str) -> str:
+    return kind + ":" + dumps([index, name], ensure_ascii=True, separators=(",", ":"))
 
 
 @_calculation
@@ -145,6 +164,7 @@ def sensitivity_grid(
     calc_id: str,
     code_version: str,
 ) -> CalcResult:
+    calc_id = TypeAdapter(Identifier).validate_python(calc_id)
     ranges = _ranges(source.ranges)
     if set(source.axes) != set(ranges):
         raise ValueError("Grid axes must exactly match assumption range names")
@@ -164,10 +184,14 @@ def sensitivity_grid(
     for index, values in enumerate(product(*(source.axes[name] for name in names))):
         assumptions = dict(zip(names, values, strict=True))
         result = evaluator(assumptions.copy())
-        _immutable_result(known, result)
+        _immutable_result(known, result, calc_id)
         outputs[f"cell:{index}:metric"] = _metric(result, source.metric_key, source.input_id)
         inputs[f"cell:{index}:result"] = result.calc_id
-        outputs.update({f"cell:{index}:{name}": value for name, value in assumptions.items()})
+        for name, value in assumptions.items():
+            outputs[_canonical_key("assumption", index, name)] = value
+            if name != "metric":
+                outputs[f"cell:{index}:{name}"] = value
+    _check_aggregate_inputs(inputs, calc_id)
     return CalcResult(
         calc_id=calc_id,
         fn="sensitivity_grid",
@@ -222,7 +246,9 @@ def joint_downside_scenarios(
     calc_id: str,
     code_version: str,
 ) -> CalcResult:
-    _ranges(source.ranges)
+    ranges = _ranges(source.ranges)
+    # Decide aliases from the complete namespace before writing any values.
+    ambiguous = set(ranges) & {"shock:" + name for name in ranges}
     precision = working_precision(
         [v for r in source.ranges for v in (r.p10, r.base, r.p90)]
         + [v for row in source.correlation for v in row]
@@ -257,8 +283,14 @@ def joint_downside_scenarios(
                 value = decimal_value(
                     Fraction(r.base) + Fraction(shock) * (Fraction(endpoint) - Fraction(r.base))
                 )
-                outputs[f"scenario:{accepted}:{r.name}"] = min(r.p90, max(r.p10, value))
-                outputs[f"scenario:{accepted}:shock:{r.name}"] = decimal_value(Fraction(shock))
+                value = min(r.p90, max(r.p10, value))
+                shock_value = decimal_value(Fraction(shock))
+                outputs[_canonical_key("assumption", accepted, r.name)] = value
+                outputs[_canonical_key("shock", accepted, r.name)] = shock_value
+                if r.name not in ambiguous:
+                    outputs[f"scenario:{accepted}:{r.name}"] = value
+                if "shock:" + r.name not in ambiguous:
+                    outputs[f"scenario:{accepted}:shock:{r.name}"] = shock_value
             accepted += 1
     if accepted != source.count:
         raise ValueError("Could not generate joint downside within the bounded attempt budget")
@@ -286,6 +318,7 @@ def assess_fragility(
     calc_id: str,
     code_version: str,
 ) -> CalcResult:
+    calc_id = TypeAdapter(Identifier).validate_python(calc_id)
     ranges = _ranges(source.ranges)
     if not 1 <= len(scenarios) <= 4096:
         raise ValueError("Fragility requires 1–4096 evaluated scenarios")
@@ -301,7 +334,7 @@ def assess_fragility(
     outputs = {"base_go": Decimal(base_go), "margin_to_flip": decimal_value(margin)}
     flip = False
     known: dict[str, CalcResult] = {}
-    _immutable_result(known, base)
+    _immutable_result(known, base, calc_id)
     scenario_ids: set[str] = set()
     for i, scenario in enumerate(scenarios):
         if scenario.input_id in scenario_ids:
@@ -311,7 +344,7 @@ def assess_fragility(
             raise ValueError("Scenario assumptions must exactly cover every policy range")
         working_precision(list(scenario.assumptions.values()))
         value = _metric(scenario.result, source.metric_key, scenario.input_id)
-        _immutable_result(known, scenario.result)
+        _immutable_result(known, scenario.result, calc_id)
         within = all(
             ranges[name].p10 <= value <= ranges[name].p90
             for name, value in scenario.assumptions.items()
@@ -340,6 +373,7 @@ def assess_fragility(
         conditional=Decimal(conditional),
         sensitivity_only=Decimal(not conditional),
     )
+    _check_aggregate_inputs(inputs, calc_id)
     return CalcResult(
         calc_id=calc_id,
         fn="assess_fragility",
