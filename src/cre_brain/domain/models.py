@@ -5,15 +5,59 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum, auto
-from typing import Annotated, ClassVar, Literal, Self
+from typing import Annotated, ClassVar, Literal, Self, TypedDict
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, PlainSerializer, model_validator
 
 from cre_brain.domain.base import Identifier
 
 PositiveInt = Annotated[int, Field(strict=True, ge=1)]
 NonnegativeInt = Annotated[int, Field(strict=True, ge=0)]
-FactValue = Decimal | str | date | bool
+FactValueData = str | Decimal | date | bool
+
+
+class DecimalValueJson(TypedDict):
+    type: Literal["decimal"]
+    value: str
+
+
+class DateValueJson(TypedDict):
+    type: Literal["date"]
+    value: str
+
+
+FactValueJson = str | bool | DecimalValueJson | DateValueJson
+
+
+def _encode_value(value: FactValueData) -> FactValueJson:
+    if isinstance(value, Decimal):
+        return DecimalValueJson(type="decimal", value=str(value))
+    if isinstance(value, date):
+        return DateValueJson(type="date", value=value.isoformat())
+    return value
+
+
+def _decode_value(value: object) -> object:
+    if not isinstance(value, dict):
+        return value
+    if set(value) != {"type", "value"} or not isinstance(value["value"], str):
+        raise ValueError("Tagged fact values need only type and a string value")
+    if value["type"] == "decimal":
+        try:
+            return Decimal(value["value"])
+        except ArithmeticError as error:
+            raise ValueError("Invalid decimal fact value") from error
+    if value["type"] == "date":
+        return date.fromisoformat(value["value"])
+    raise ValueError("Unknown fact value type")
+
+
+# JSON strings cannot distinguish a date/Decimal from literal text.
+FactValue = Annotated[
+    FactValueData,
+    BeforeValidator(_decode_value, json_schema_input_type=FactValueData | FactValueJson),
+    PlainSerializer(_encode_value, return_type=FactValueJson, when_used="json"),
+]
 
 
 class DomainModel(BaseModel):

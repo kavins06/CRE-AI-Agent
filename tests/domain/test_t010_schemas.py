@@ -167,7 +167,75 @@ def test_t010_ac2_deliverable_kind_includes_required_analyses() -> None:
 @given(facts)
 def test_t010_ac3_fact_json_round_trip(fact: Fact) -> None:
     restored = Fact.model_validate_json(fact.model_dump_json())
-    assert restored.model_dump(mode="json") == fact.model_dump(mode="json")
+    assert restored == fact
+
+
+@pytest.mark.parametrize("value", [date(2026, 1, 2), "00123", Decimal("1.20"), True])
+def test_t010_ac3_fact_value_types_survive_json(value: Decimal | str | date | bool) -> None:
+    fact = Fact(
+        fact_id="f",
+        deal_id="d",
+        key="k",
+        value=value,
+        claim_type=ClaimType.VERIFIED_FACT,
+        provenance=[],
+        known_at=datetime(2026, 10, 4, tzinfo=UTC),
+        version=1,
+    )
+    restored = Fact.model_validate_json(fact.model_dump_json())
+    assert restored.value == value
+    assert type(restored.value) is type(value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        {"type": "other", "value": "1"},
+        {"type": "date", "value": "not-a-date"},
+        {"type": "decimal", "value": "not-a-number"},
+        {"type": "decimal", "value": "NaN"},
+        {"type": "decimal", "value": "Infinity"},
+        {"type": "decimal", "value": 1.2},
+        {"type": "decimal", "value": "1.2", "unexpected": True},
+        {},
+    ],
+)
+def test_t010_ac3_malformed_value_tags_are_rejected(value: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        Fact.model_validate(
+            {
+                "fact_id": "f",
+                "deal_id": "d",
+                "key": "k",
+                "value": value,
+                "claim_type": "verified_fact",
+                "provenance": [],
+                "known_at": "2026-10-04T00:00:00Z",
+                "version": 1,
+            }
+        )
+
+
+def test_t010_ac3_assumption_values_round_trip() -> None:
+    assumption = Assumption(
+        key="completion",
+        value=date(2026, 10, 4),
+        low="00123",
+        high=Decimal("1.20"),
+        rationale="Explicit mixed-type boundary test",
+        sources=[],
+        is_proxy=True,
+        as_of=date(2026, 10, 4),
+        set_by="agent",
+    )
+    assert Assumption.model_validate_json(assumption.model_dump_json()) == assumption
+
+
+def test_t010_ac3_json_schemas_describe_tagged_values() -> None:
+    for mode in ("validation", "serialization"):
+        schema = Fact.model_json_schema(mode=mode)
+        assert schema["$defs"]["DateValueJson"]["properties"]["type"]["const"] == "date"
+        assert schema["$defs"]["DecimalValueJson"]["properties"]["type"]["const"] == "decimal"
 
 
 @given(calc_results)
