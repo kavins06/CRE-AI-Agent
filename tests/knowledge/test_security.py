@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import socket
@@ -7,7 +8,7 @@ import subprocess
 import threading
 import time
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, PropertyMock, patch
 
 import pytest
 from pydantic import ValidationError
@@ -19,6 +20,7 @@ from cre_brain.knowledge.fetch import (
     FetchError,
     PublicHTTPS,
     Response,
+    is_public_address,
     resolve_public,
 )
 from cre_brain.knowledge.models import Resource
@@ -77,6 +79,12 @@ def test_dns_pins_one_verified_public_ip_with_sanitized_environment() -> None:
         assert resolve_public("www.occ.gov", 2) == "8.8.8.8"
         assert run.call_args.kwargs["env"] == {}
         assert run.call_args.kwargs["timeout"] == 2
+
+
+def test_ipv4_mapped_ipv6_is_explicitly_rejected_across_python_patch_versions() -> None:
+    with patch.object(ipaddress.IPv6Address, "is_reserved", new_callable=PropertyMock) as reserved:
+        reserved.return_value = False
+        assert not is_public_address("::ffff:8.8.8.8")
 
 
 def test_fetch_timeout_and_unexpected_status_do_not_write_cache(cache_dir: Path) -> None:

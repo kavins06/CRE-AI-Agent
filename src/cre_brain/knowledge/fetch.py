@@ -39,6 +39,8 @@ class Transport(Protocol):
 
 def is_public_address(value: str) -> bool:
     address = ipaddress.ip_address(value)
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        return False
     return address.is_global and not address.is_multicast and not address.is_reserved
 
 
