@@ -9,7 +9,7 @@ Dates are contractual monthly anniversaries, clamped to the month's last day.
 
 from calendar import monthrange
 from datetime import date
-from decimal import Decimal
+from decimal import Decimal, getcontext, localcontext
 from typing import Annotated, Self
 
 from pydantic import BeforeValidator, Field, model_validator
@@ -213,7 +213,7 @@ def _cost(proceeds: Decimal, payments: list[Decimal]) -> Decimal:
         high *= 2
         if high > Decimal("1e30"):
             raise ValueError("Effective cost could not be bracketed")
-    for _ in range(200):
+    for _ in range(4 * getcontext().prec):
         mid = (low + high) / 2
         if mid == low or mid == high:
             break
@@ -247,41 +247,72 @@ def compare_debt_quotes(
         inputs["comparison"] = comparison.input_id
     outputs: dict[str, Decimal] = {}
     costs: list[tuple[Decimal, str]] = []
-    for quote in quotes:
-        month = _payoff_month(quote, comparison.payoff_month if comparison is not None else None)
-        schedule = _schedule(loan, quote)
-        fees = loan.principal * quote.fee_rate + quote.fixed_fee
-        proceeds = loan.principal - fees
-        if proceeds <= 0:
-            raise ValueError("Quote fees must leave positive net proceeds")
-        balance = schedule[f"month:{month}:balance_before_balloon"]
-        prepay = balance * quote.prepayment_rate if month < quote.term_months else ZERO
-        payments = [schedule[f"month:{m}:scheduled_payment"] for m in range(1, month + 1)]
-        payments[-1] += balance + prepay
-        cost = _cost(proceeds, payments)
-        costs.append((cost, quote.input_id))
-        inputs[f"quote:{quote.input_id}"] = quote.input_id
-        values = {
-            "effective_annual_cost": cost,
-            "fees": fees,
-            "prepayment_fee": prepay,
-            "balloon_payoff": balance,
-            "net_proceeds": proceeds,
-            "total_payments": sum(payments, ZERO),
-            "payoff_month": Decimal(month),
-            "annual_rate": quote.base_rate + quote.spread,
-            "io_months": Decimal(quote.io_months),
-            "amortization_months": Decimal(quote.amortization_months),
-            "term_months": Decimal(quote.term_months),
-        }
-        outputs.update({f"quote:{quote.input_id}:{key}": value for key, value in values.items()})
+    amounts = [
+        ONE,
+        loan.principal,
+        *(
+            value
+            for quote in quotes
+            for value in (
+                quote.base_rate,
+                quote.spread,
+                quote.fee_rate,
+                quote.fixed_fee,
+                quote.prepayment_rate,
+            )
+            if value
+        ),
+    ]
+    precision = max(
+        80,
+        max(value.adjusted() for value in amounts)
+        - min(int(value.as_tuple().exponent) for value in amounts)
+        + len(str(len(amounts)))
+        + 41,
+    )
+    if precision > 256:
+        raise ValueError("Quote exponent span requires more than 256 precision digits")
+    with localcontext() as context:
+        context.prec = precision
+        for quote in quotes:
+            month = _payoff_month(
+                quote, comparison.payoff_month if comparison is not None else None
+            )
+            schedule = _schedule(loan, quote)
+            fees = loan.principal * quote.fee_rate + quote.fixed_fee
+            proceeds = loan.principal - fees
+            if proceeds <= 0:
+                raise ValueError("Quote fees must leave positive net proceeds")
+            balance = schedule[f"month:{month}:balance_before_balloon"]
+            prepay = balance * quote.prepayment_rate if month < quote.term_months else ZERO
+            payments = [schedule[f"month:{m}:scheduled_payment"] for m in range(1, month + 1)]
+            payments[-1] += balance + prepay
+            cost = _cost(proceeds, payments)
+            costs.append((cost, quote.input_id))
+            inputs[f"quote:{quote.input_id}"] = quote.input_id
+            values = {
+                "effective_annual_cost": cost,
+                "fees": fees,
+                "prepayment_fee": prepay,
+                "balloon_payoff": balance,
+                "net_proceeds": proceeds,
+                "total_payments": sum(payments, ZERO),
+                "payoff_month": Decimal(month),
+                "annual_rate": quote.base_rate + quote.spread,
+                "io_months": Decimal(quote.io_months),
+                "amortization_months": Decimal(quote.amortization_months),
+                "term_months": Decimal(quote.term_months),
+            }
+            outputs.update(
+                {f"quote:{quote.input_id}:{key}": value for key, value in values.items()}
+            )
     for rank, (_, identifier) in enumerate(sorted(costs), 1):
         outputs[f"quote:{identifier}:rank"] = Decimal(rank)
     return CalcResult(
         calc_id=calc_id,
         fn="compare_debt_quotes",
         inputs=inputs,
-        outputs=outputs,
+        outputs={key: +value for key, value in outputs.items()},
         code_version=code_version,
     )
 

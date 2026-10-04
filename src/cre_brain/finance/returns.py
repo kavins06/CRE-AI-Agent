@@ -16,6 +16,8 @@ Working precision covers the full nonzero input exponent span, sum growth
 and 40 guard digits, so repeated-date aggregation is exact in any input order.
 No pyxirr float is converted into authoritative money or a reported root.
 Unresolvable precision/complexity fails closed rather than inventing an IRR.
+Excel NPV uses exact rational Horner arithmetic before one 28-digit rounding;
+inputs are bounded to 4096 decimal digits and intermediates to 65536 bits.
 """
 
 from datetime import date
@@ -420,20 +422,36 @@ def calculate_returns(source: ReturnsInput, *, calc_id: str, code_version: str) 
 
 @_calculation
 def excel_npv(source: NPVInput, *, calc_id: str, code_version: str) -> CalcResult:
-    discount = ONE / (ONE + source.discount_rate)
-    value = ZERO
+    def exact(amount: Decimal) -> Fraction:
+        digits = amount.as_tuple()
+        if amount and len(digits.digits) + abs(int(digits.exponent)) > 4096:
+            raise ValueError("NPV input exceeds the exact arithmetic complexity budget")
+        return Fraction(amount)
+
+    discount = Fraction(1) / (1 + exact(source.discount_rate))
+    rational = Fraction(0)
     for amount in reversed(source.cash_flows):
-        value = (value + amount) * discount
+        rational = (rational + exact(amount)) * discount
+        if max(rational.numerator.bit_length(), rational.denominator.bit_length()) > 65536:
+            raise ValueError("NPV exact arithmetic exceeds the rational complexity budget")
+    value = Decimal(rational.numerator) / Decimal(rational.denominator)
     scale = max(abs(amount) for amount in source.cash_flows)
     normalized = [float(amount / scale) if scale else 0.0 for amount in source.cash_flows]
     binary_rate = float(source.discount_rate)
-    supported = isfinite(binary_rate) and all(isfinite(amount) for amount in normalized)
+    supported = (
+        isfinite(binary_rate)
+        and (source.discount_rate == 0 or binary_rate != 0)
+        and all(
+            isfinite(binary) and (amount == 0 or binary != 0)
+            for binary, amount in zip(normalized, source.cash_flows, strict=True)
+        )
+    )
     backend = pyxirr.npv(binary_rate, normalized, start_from_zero=False) if supported else None
     consistent = (
         supported
         and backend is not None
         and isfinite(backend)
-        and (abs(backend - float(value / scale if scale else ZERO)) <= 1e-9 * max(1, abs(backend)))
+        and abs(Decimal.from_float(backend) * scale - value) <= Decimal("1e-9") * abs(value)
     )
     return CalcResult(
         calc_id=calc_id,

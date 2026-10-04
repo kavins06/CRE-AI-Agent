@@ -886,3 +886,21 @@ T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Full sequential validation exits 0: `make check` reports 631 passed, one approved Reducto-license skip, 11 integration deselected (89.67s); Ruff lint/format (109 files), strict mypy (69 source files), all pre-commit hooks and `uv lock --check` pass. No overlapping pytest commands, new runtime, host service/policy changes, UI, models, SEC or private evaluations.
 - Next: additive T016 source/test repair commit and push for fresh independent review. T015/T016 flags remain false. No PR, dev/main merge, promotion or acceptance; no approval/runtime blocker.
+
+## 2026-10-04 — T015/T016 final precision repair (acceptance pending)
+- The bounded workflow stopped after three independent review rounds, without accepting defective work. Last review reproduced positive borrowing costs rounded to zero and exact Excel NPV cancellation losing a representable unit; both repaired on a new branch from reviewed `539f50e`, not dev/main.
+- Red first: 20 new precision/complexity regressions failed before source edits. No pre-existing assertions, skips, schemas, pins or guards changed. The draft new complexity case incorrectly demanded rejection of an ordinary 600-period nine-digit rate; replaced that unreasonable uncommitted case with genuinely oversized arithmetic and added explicit normal-600-period support. The draft diagnostic assertion also wrongly required binary disagreement for every permutation; strengthened it to an independent Fraction check of whether the actual binary result agrees.
+- Decision: derive quote working precision from all positive input exponent spans plus 40 guard digits (80–256 bound); construct schedules, fees, proceeds and root search at that precision, scale the bisection budget accordingly, and round public outputs once to isolated 28 digits. Unsupported spans reject before calculation; a positive cost is never deliberately treated as free.
+- Decision: Excel-timed NPV uses exact Fraction Horner arithmetic, with one final 28-digit Decimal rounding. Bound initial operands to 4096 decimal digits and rational intermediates to 65536 bits; unsupported complexity fails closed. Binary64 pyxirr remains advisory and reports consistency only relative to the actual nonzero NPV, not the much larger gross-flow scale; conversion underflow is unsupported.
+- New coverage: tiny rates/fees down to 1e-180, principal scaling, quote ordering, 18 exact cancellation permutations, nonzero-discount cancellation, caller context/signals, CalcResult serialization, genuine complexity limits and a conventional 600-period model.
+- Exact/focused replay exits zero:
+```text
+134 passed, 29 deselected
+48 passed, 616 deselected
+T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
+97 passed, 567 deselected
+T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Full `make check`: 652 passed, one approved Reducto-license skip, 11 integration deselected; Ruff lint/format, strict mypy (69 source files), all pre-commit hooks and locked dependency check pass. No overlapping test processes.
+- Coordinator also replayed the accepted dev verifiers: all numerical/domain/state/parser checks passed. The interrupted duplicate replay caused a checkout-local pytest basetemp race in T002; serialized T002 replay is green. T031 physical verification is unavailable locally because Docker is deliberately absent; accepted hosted head/merge validation remains the physical evidence, not a claim of full local verify_features success.
+- Next: push repaired head for fresh independent review. Both task flags remain false; no PR, dev/main integration, live models, SEC, private eval or shared-host runtime changes.
