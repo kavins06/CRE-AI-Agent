@@ -1050,3 +1050,23 @@ Ruff, strict mypy, pre-commit, uv lock --check and git diff --check: passed
 ```
 - Set only T036's flag after the exact verifier exited zero. This proves deterministic generator plumbing on public synthetic data, not analyst quality or hidden-eval performance.
 - Next: commit and integrate locally into `dev`; pushing `dev` is held because open milestone PR #1 would trigger GitHub-hosted CI, and the owner has not yet clarified whether hosted Actions are permitted under the no-cloud-computer rule. T032 tools and T037 gate repairs continue independently on the Outpost.
+
+## 2026-10-04 — T037 deterministic gates locally accepted
+- Implemented the shared deterministic catalog, canonical Fact/Calc identity and finance-recipe recomputation, immutable artifact plans, workbook parity/error checks, coverage/checksum, assumption/IRR/fragility/buy-box/policy checks, numerical provenance/model matching and required sections. Advisory gates cannot authorize finalization.
+- Independent OpenAI GPT-6.1 Sol review found source authority, workbook/model identity, numeric rendering and ambiguity-disclosure defects. Additive red-first regressions and repairs preserve the existing assertions. The final Markdown-link negative-sign reproducer failed before the shared split-markup repair and passes after it; the existing independent-number formatting control remains supported. Final causal-path review returns SOURCE PASS.
+- Exact same-session verification after the final repair (exit 0):
+```text
+uv run pytest tests/gates tests/protected -q
+150 passed in 94.51s
+uv run python scripts/check_task.py T037
+150 passed, 853 deselected, 2 warnings in 100.69s
+T037: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
+make check
+Ruff lint/format: passed
+Strict mypy: success, 92 source files
+986 passed, 2 approved skips, 15 integration deselected in 233.75s
+Pre-commit Ruff lint/format and strict source types: passed
+git diff --check: passed
+```
+- Set only T037's flag after that exact verifier. No live analyst quality, isolated-runtime, private-eval or hosted-CI completion is claimed. Trusted host adapters and atomic gated release remain T032 composition responsibilities; LibreOffice remains trusted-reference-only.
+- Next: integrate into local dev and finish independently reviewed T032, then T033/T035 and SCREEN. Dev push and milestone promotion remain held on the unresolved GitHub-hosted-CI/no-cloud boundary. T030 still requires genuine isolated-runtime evidence and owner approval for its two contradictory existing assertions.
