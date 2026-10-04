@@ -96,7 +96,7 @@
         "T010"
       ],
       "verify": "uv run pytest tests/finance -q -k 'rentroll or t12' && uv run python scripts/check_task.py T013",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T014",

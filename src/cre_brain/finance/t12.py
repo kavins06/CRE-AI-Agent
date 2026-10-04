@@ -5,7 +5,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 
 from cre_brain.domain import CalcResult
 from cre_brain.domain.base import Identifier
@@ -30,6 +30,16 @@ class T12Entry(DomainModel):
         return value
 
 
+class ChartOfAccounts(DomainModel):
+    input_id: Identifier
+    mapping: dict[Identifier, Identifier] = Field(min_length=1)
+
+
+class MissingMonthRule(DomainModel):
+    input_id: Identifier
+    strategy: MissingMonthPolicy
+
+
 def _month_number(value: date) -> int:
     return value.year * 12 + value.month - 1
 
@@ -37,17 +47,13 @@ def _month_number(value: date) -> int:
 def normalize_t12(
     entries: list[T12Entry],
     *,
-    chart: dict[str, str],
-    chart_input_id: str,
-    missing_month_policy: MissingMonthPolicy,
-    missing_month_policy_input_id: str,
+    chart: ChartOfAccounts,
+    missing_month_rule: MissingMonthRule,
     calc_id: str,
     code_version: str,
 ) -> CalcResult:
     if not entries:
         raise ValueError("T-12 requires at least one ledger entry")
-    if missing_month_policy not in ("zero", "annualize_observed"):
-        raise ValueError("Unknown missing-month policy")
     if len({entry.input_id for entry in entries}) != len(entries):
         raise ValueError("T-12 ledger input IDs must be unique")
     months = {entry.month for entry in entries}
@@ -57,19 +63,17 @@ def normalize_t12(
     missing = 12 - len(months)
     factor = (
         Decimal(12) / Decimal(len(months))
-        if missing_month_policy == "annualize_observed"
+        if missing_month_rule.strategy == "annualize_observed"
         else Decimal(1)
     )
     recurring: defaultdict[str, Decimal] = defaultdict(Decimal)
     one_time: defaultdict[str, Decimal] = defaultdict(Decimal)
     unmapped_count = 0
     for entry in entries:
-        line = chart.get(entry.account)
+        line = chart.mapping.get(entry.account)
         if line is None:
             line = f"unmapped:{entry.account}"
             unmapped_count += 1
-        if not line.strip():
-            raise ValueError("Chart line names cannot be blank")
         (one_time if entry.one_time else recurring)[line] += entry.amount
     outputs = {
         f"line:{line}": recurring[line] * factor + one_time[line]
@@ -79,7 +83,7 @@ def normalize_t12(
         {
             "missing_month_count": Decimal(missing),
             "imputed_month_count": Decimal(
-                missing if missing_month_policy == "annualize_observed" else 0
+                missing if missing_month_rule.strategy == "annualize_observed" else 0
             ),
             "annualization_factor": factor,
             "one_time_total": sum(one_time.values(), ZERO),
@@ -94,8 +98,8 @@ def normalize_t12(
         calc_id=calc_id,
         fn="normalize_t12",
         inputs={
-            "chart": chart_input_id,
-            "missing_month_policy": missing_month_policy_input_id,
+            "chart": chart.input_id,
+            "missing_month_policy": missing_month_rule.input_id,
             **{f"entry:{index}": entry.input_id for index, entry in enumerate(entries, 1)},
         },
         outputs=outputs,
