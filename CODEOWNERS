@@ -1,0 +1,11 @@
+# Owner review required for protected paths. Replace @OWNER with the repo owner's GitHub handle.
+/program.md              @OWNER
+/CODEOWNERS              @OWNER
+/.github/                @OWNER
+/PROTECTED_HASHES.txt    @OWNER
+/scripts/protected_paths.txt @OWNER
+/evals/                  @OWNER
+/src/cre_brain/gates/    @OWNER
+/tests/protected/        @OWNER
+/config/gates.yaml       @OWNER
+/config/budget.yaml      @OWNER
