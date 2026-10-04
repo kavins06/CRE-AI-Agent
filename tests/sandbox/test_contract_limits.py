@@ -1,5 +1,6 @@
 """An owner contract must not certify unbounded or protected snapshot material."""
 
+import gzip
 import io
 import tarfile
 from pathlib import Path
@@ -66,6 +67,23 @@ def test_t031_ac4_snapshot_contract_rejects_noncanonical_destination_aliases(ali
 def test_t031_ac4_snapshot_contract_accepts_bounded_safe_archives(mode: str) -> None:
     payload = b"binary\x00state\xff"
     assert_snapshot_contents(_archive([("memory/own.txt", payload, {})], mode=mode), payload)
+
+
+@pytest.mark.parametrize("compressed", [False, True])
+def test_t031_ac4_snapshot_contract_rejects_concatenated_tar_archives(compressed: bool) -> None:
+    first = _archive([("memory/own.txt", b"expected", {})], mode="w")
+    second = _archive([("memory/auth.json", b"unrelated-credential-material", {})], mode="w")
+    data = gzip.compress(first + second) if compressed else first + second
+    with pytest.raises(AssertionError, match="trailer"):
+        assert_snapshot_contents(data, b"expected")
+
+
+def test_t031_ac4_snapshot_contract_requires_complete_zero_padding() -> None:
+    data = _archive([("memory/own.txt", b"expected", {})], mode="w")
+    for malformed in (data[:1536], data[:-1] + b"x"):
+        with pytest.raises(AssertionError, match="trailer"):
+            assert_snapshot_contents(malformed, b"expected")
+    assert_snapshot_contents(data[:2048], b"expected")
 
 
 @pytest.mark.asyncio
