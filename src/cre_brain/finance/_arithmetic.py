@@ -62,12 +62,27 @@ def growth(rate: Decimal, start: date, end: date) -> Decimal:
 def dated_value(
     flows: list[tuple[date, Fraction]], rate: Decimal, valuation_date: date, precision: int
 ) -> Decimal:
+    # Net rational whole-year components sharing one fractional-year factor.
+    base = 1 + Fraction(rate)
+    grouped: dict[int, Fraction] = {}
+    for day, amount in flows:
+        years, remainder = divmod((day - valuation_date).days, 365)
+        if abs(years) * max(base.numerator.bit_length(), base.denominator.bit_length()) > 65536:
+            raise ValueError("Dated discounting exceeds the rational complexity budget")
+        grouped[remainder] = grouped.get(remainder, Fraction(0)) + amount / base**years
+        decimal_value(grouped[remainder], precision)
     with localcontext() as context:
         context.prec = precision
         return sum(
             (
-                decimal_value(amount, precision) * growth(rate, day, valuation_date)
-                for day, amount in flows
+                decimal_value(amount, precision)
+                * (
+                    Decimal(1)
+                    if remainder == 0
+                    else (-(1 + rate).ln() * (Decimal(remainder) / 365)).exp()
+                )
+                for remainder, amount in grouped.items()
+                if amount
             ),
             Decimal(0),
         )

@@ -991,3 +991,12 @@ T018: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - `make check`: 730 passed, one existing approved Reducto-license skip, 11 integration deselected. Ruff lint/format, strict mypy, all pre-commit hooks, lock verification and `git diff --check` passed. No dependency, guard, protected-path or accepted-test changes.
 - Next: independent exact repaired-source review and hosted CI; T017/T018 flags remain false until acceptance. Excel follows.
+
+## 2026-10-04 — T017/T018 second review repairs
+- Independent exact-head review of `930149d` failed on fractional-year cancellation and whitespace-aliased provenance; its 234 passing independent assertions were not mistaken for acceptance. PR review separately reproduced price-output accuracy, indexed-root ambiguity and unstressed joint-downside endpoints.
+- Added 15 regression cases without altering accepted tests. Actual red evidence: 11 failed/one passed initially, then three sibling global-return-flag regressions failed/12 passed before their repair.
+- Decisions: net rational whole-year components sharing the same ACT/365 fractional-year factor before discounting; normalize dependency identifiers before alias/cycle/immutability checks. Indexed return roots honor namespace and global ambiguity/undefined/infinite-root flags.
+- Decisions: a joint downside must have adverse room in every range and represent actual nonzero movement; reported shocks describe the reported movement. Unrepresentable movement fails explicitly. Reported maximum price must stay in its bracket, not overshoot the rational solution, and satisfy requested monetary tolerance; unsupported price/bracket precision fails rather than relying only on return tolerance.
+- Serialized `make check`: 745 passed, one existing approved license skip, 11 integration deselected (96.72s). All pre-commit hooks, locked dependency check, Ruff lint/format, strict mypy and diff checks pass.
+- Same-session exact T017 verification: 27 area tests; 39 verifier tests; AC1/AC2/AC3 PASSED (exit 0). Exact T018 verification: 45 area tests; 45 verifier tests; AC1/AC2/AC3 PASSED (exit 0). Finance-area replay: 256 passed.
+- Next: fresh exact repaired-head independent review and hosted CI. Flags remain false and dev integration held. No protected paths, dependencies, existing assertions, model/analyst evals, SEC, private holdouts or runtimes changed.

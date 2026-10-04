@@ -6,7 +6,8 @@ Decimal square roots transform seeded integer PRNG draws. Row L1 normalization
 bounds shocks without clipping tails. Rejection into the adverse orthant yields
 joint downside; impossible/rare orthants fail after a bounded attempt budget.
 P10/base/P90 interpolate exactly before 28-digit output rounding and endpoint
-clamping. No normal tails or binary64 financial arithmetic are used.
+clamping. Reported shocks describe reported movement; unrepresentable movement
+fails explicitly. No normal tails or binary64 financial arithmetic are used.
 
 Fragility margin means absolute base-return distance to the policy target (return
 percentage points). Equality at target is GO; equality at fragility_margin is NOT
@@ -120,11 +121,17 @@ def _ranges(ranges: tuple[AssumptionRange, ...]) -> dict[str, AssumptionRange]:
 def _metric(result: CalcResult, key: str, input_id: str | None = None) -> Decimal:
     if not result.inputs or any(not v.strip() for v in result.inputs.values()):
         raise ValueError("Metric calculations require stored input provenance")
-    if input_id is not None and input_id not in result.inputs.values():
+    dependencies = {TypeAdapter(Identifier).validate_python(v) for v in result.inputs.values()}
+    if (
+        input_id is not None
+        and TypeAdapter(Identifier).validate_python(input_id) not in dependencies
+    ):
         raise ValueError("Metric calculation provenance does not reference scenario input")
-    prefix = key.rsplit(":", 1)[0] + ":" if ":" in key else ""
+    metric_name = key.rsplit(":", 1)[0] if key.rsplit(":", 1)[-1].isdigit() else key
+    prefix = metric_name.rsplit(":", 1)[0] + ":" if ":" in metric_name else ""
     if any(
-        result.outputs.get(prefix + flag, Decimal(0)) != 0
+        result.outputs.get(namespace + flag, Decimal(0)) != 0
+        for namespace in {"", prefix}
         for flag in ("ambiguous", "undefined", "infinitely_many_roots")
     ):
         raise ValueError("An ambiguous or undefined return cannot drive a recommendation")
@@ -139,6 +146,15 @@ def _metric(result: CalcResult, key: str, input_id: str | None = None) -> Decima
 
 
 def _immutable_result(known: dict[str, CalcResult], result: CalcResult, aggregate_id: str) -> None:
+    result = result.model_copy(
+        update={
+            "calc_id": TypeAdapter(Identifier).validate_python(result.calc_id),
+            "inputs": {
+                k: TypeAdapter(Identifier).validate_python(v) for k, v in result.inputs.items()
+            },
+        }
+    )
+    aggregate_id = TypeAdapter(Identifier).validate_python(aggregate_id)
     if result.calc_id == aggregate_id or aggregate_id in result.inputs.values():
         raise ValueError("An aggregate calculation ID cannot alias or feed an evaluator result")
     previous = known.get(result.calc_id)
@@ -148,6 +164,8 @@ def _immutable_result(known: dict[str, CalcResult], result: CalcResult, aggregat
 
 
 def _check_aggregate_inputs(inputs: dict[str, str], aggregate_id: str) -> None:
+    aggregate_id = TypeAdapter(Identifier).validate_python(aggregate_id)
+    inputs.update({k: TypeAdapter(Identifier).validate_python(v) for k, v in inputs.items()})
     if aggregate_id in inputs.values():
         raise ValueError("An aggregate calculation cannot reference itself in input provenance")
 
@@ -247,6 +265,9 @@ def joint_downside_scenarios(
     code_version: str,
 ) -> CalcResult:
     ranges = _ranges(source.ranges)
+    calc_id = TypeAdapter(Identifier).validate_python(calc_id)
+    if any(r.base == (r.p90 if r.downside == "increase" else r.p10) for r in source.ranges):
+        raise ValueError("Joint downside requires adverse movement in every range")
     # Decide aliases from the complete namespace before writing any values.
     ambiguous = set(ranges) & {"shock:" + name for name in ranges}
     precision = working_precision(
@@ -284,7 +305,14 @@ def joint_downside_scenarios(
                     Fraction(r.base) + Fraction(shock) * (Fraction(endpoint) - Fraction(r.base))
                 )
                 value = min(r.p90, max(r.p10, value))
-                shock_value = decimal_value(Fraction(shock))
+                if value == r.base:
+                    raise ValueError("Output precision cannot represent adverse movement")
+                movement = (Fraction(value) - Fraction(r.base)) / (
+                    Fraction(endpoint) - Fraction(r.base)
+                )
+                shock_value = decimal_value(movement)
+                if not 0 < shock_value <= 1:
+                    raise ValueError("Output precision cannot represent a bounded adverse shock")
                 outputs[_canonical_key("assumption", accepted, r.name)] = value
                 outputs[_canonical_key("shock", accepted, r.name)] = shock_value
                 if r.name not in ambiguous:
@@ -296,6 +324,13 @@ def joint_downside_scenarios(
         raise ValueError("Could not generate joint downside within the bounded attempt budget")
     outputs.update(
         scenario_count=Decimal(accepted), attempts=Decimal(attempts), seed=Decimal(source.seed)
+    )
+    _check_aggregate_inputs(
+        {
+            "joint": source.input_id,
+            **{f"range:{i}": r.input_id for i, r in enumerate(source.ranges)},
+        },
+        calc_id,
     )
     return CalcResult(
         calc_id=calc_id,
@@ -337,9 +372,10 @@ def assess_fragility(
     _immutable_result(known, base, calc_id)
     scenario_ids: set[str] = set()
     for i, scenario in enumerate(scenarios):
-        if scenario.input_id in scenario_ids:
+        scenario_id = TypeAdapter(Identifier).validate_python(scenario.input_id)
+        if scenario_id in scenario_ids:
             raise ValueError("Evaluated scenario input IDs must be unique")
-        scenario_ids.add(scenario.input_id)
+        scenario_ids.add(scenario_id)
         if set(scenario.assumptions) != set(ranges):
             raise ValueError("Scenario assumptions must exactly cover every policy range")
         working_precision(list(scenario.assumptions.values()))
@@ -390,6 +426,7 @@ def max_supportable_price(
     calc_id: str,
     code_version: str,
 ) -> CalcResult:
+    calc_id = TypeAdapter(Identifier).validate_python(calc_id)
     if source.lower_price >= source.upper_price:
         raise ValueError("Price solver requires an increasing bracket")
     if any(f.date <= source.close_date or f.amount < 0 for f in source.future_flows) or not any(
@@ -428,6 +465,21 @@ def max_supportable_price(
             price = decimal_value(exact if exact is not None else lower)
             if Fraction(price) * multiplier + fixed > pv:
                 price = price.next_minus()
+            if Fraction(price) < lower:
+                price = price.next_plus()
+            rational_solution = (pv - fixed) / multiplier
+            if not (
+                lower <= Fraction(price) <= upper
+                and Fraction(price) <= rational_solution
+                and rational_solution - Fraction(price) <= Fraction(source.price_tolerance)
+            ):
+                raise ValueError("Reported price output precision cannot certify price tolerance")
+            reported_lower, reported_upper = decimal_value(lower), decimal_value(upper)
+            if not reported_lower <= price <= reported_upper or any(
+                abs(Fraction(reported) - bound) > Fraction(source.price_tolerance)
+                for reported, bound in ((reported_lower, lower), (reported_upper, upper))
+            ):
+                raise ValueError("Reported price bracket precision cannot certify price tolerance")
             equity = Fraction(price) * multiplier + fixed
             returns = _return_outputs(
                 [(source.close_date, -equity), *future],
@@ -463,6 +515,13 @@ def max_supportable_price(
             upper = middle
     if final is None:
         raise ValueError("Price solver did not converge within the iteration/tolerance budget")
+    _check_aggregate_inputs(
+        {
+            "price": source.input_id,
+            **{str(i): f.input_id for i, f in enumerate(source.future_flows)},
+        },
+        calc_id,
+    )
     return CalcResult(
         calc_id=calc_id,
         fn="max_supportable_price",
