@@ -1,13 +1,17 @@
 """Tenant-scoped dependency DAG and durable, event-sourced invalidation."""
 
+from datetime import UTC, datetime
 from graphlib import CycleError, TopologicalSorter
 from heapq import heappop, heappush
+from uuid import uuid4
 
 from pydantic import TypeAdapter
 from sqlalchemy import Connection, Engine, select
 
+from cre_brain.domain import AgentEvent
 from cre_brain.domain.base import Identifier, TenantScope
-from cre_brain.state.schema import edges
+from cre_brain.state.events import _append_locked
+from cre_brain.state.schema import edges, events
 from cre_brain.state.store import lock_append, tenant_filter
 
 identifier = TypeAdapter(Identifier)
@@ -72,3 +76,59 @@ class DependencyGraph:
                     dst_id=destination,
                 )
             )
+
+    def mark_stale(
+        self, record_id: str, *, task_id: str, scope: TenantScope, cause_id: str | None = None
+    ) -> list[str]:
+        record_id = identifier.validate_python(record_id)
+        task_id = identifier.validate_python(task_id)
+        with self.engine.begin() as connection:
+            lock_append(connection, scope, ("graph",))
+            graph = _adjacency(connection, scope)
+            pending = list(graph.get(record_id, set()))
+            descendants: set[str] = set()
+            while pending:
+                node = pending.pop()
+                if node not in descendants:
+                    descendants.add(node)
+                    pending.extend(graph.get(node, set()))
+            ordered = [node for node in _topological_order(graph) if node in descendants]
+            if connection.dialect.name == "postgresql":
+                lock_append(connection, scope, ("events", task_id))
+            for node in ordered:
+                event = AgentEvent(
+                    event_id=uuid4().hex,
+                    task_id=task_id,
+                    seq=None,
+                    origin=None,
+                    ts=datetime.now(UTC),
+                    source="system",
+                    kind="stale",
+                    cause_id=cause_id,
+                    release_id=self.release_id,
+                    runner=self.runner,
+                    payload={"item_id": node, "changed_id": record_id},
+                )
+                _append_locked(connection, event, scope)
+            return ordered
+
+    def stale_items(self, task_id: str, *, scope: TenantScope) -> list[str]:
+        task_id = identifier.validate_python(task_id)
+        with self.engine.connect() as connection:
+            query = (
+                select(events.c.payload)
+                .where(
+                    tenant_filter(events, scope),
+                    events.c.task_id == task_id,
+                )
+                .order_by(events.c.seq)
+            )
+            stale: set[str] = set()
+            for payload in connection.execute(query).scalars():
+                event = AgentEvent.model_validate(payload)
+                if event.kind == "stale":
+                    stale.add(identifier.validate_python(event.payload["item_id"]))
+            graph = _adjacency(connection, scope)
+            for node in stale:
+                graph.setdefault(node, set())
+            return [node for node in _topological_order(graph) if node in stale]

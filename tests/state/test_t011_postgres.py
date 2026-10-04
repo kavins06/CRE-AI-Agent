@@ -87,3 +87,31 @@ def test_t011_ac1_postgresql_migration_and_state_semantics(postgres_engine) -> N
 
     downgrade_database(postgres_engine)
     assert not (set(metadata.tables) & set(inspect(postgres_engine).get_table_names()))
+
+
+def test_t012_ac1_graph_postgresql_atomic_sequence_and_concurrent_cycles(postgres_engine) -> None:
+    from cre_brain.state.graph import DependencyGraph, GraphCycle
+
+    upgrade_database(postgres_engine)
+    graph = DependencyGraph(postgres_engine, release_id="integration-release")
+
+    def add(pair):
+        try:
+            graph.add_edge(*pair, scope=SCOPE)
+            return "added"
+        except GraphCycle:
+            return "cycle"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert sorted(executor.map(add, [("a", "b"), ("b", "a")])) == ["added", "cycle"]
+    graph.add_edge("rent", "noi", scope=SCOPE)
+    graph.add_edge("noi", "uw", scope=SCOPE)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(
+            executor.map(lambda _: graph.mark_stale("rent", task_id="task", scope=SCOPE), range(32))
+        )
+    assert results == [["noi", "uw"]] * 32
+    assert graph.stale_items("task", scope=SCOPE) == ["noi", "uw"]
+    assert [event.seq for event in EventStore(postgres_engine).list("task", scope=SCOPE)] == list(
+        range(1, 65)
+    )
