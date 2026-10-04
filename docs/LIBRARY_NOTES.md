@@ -1,5 +1,10 @@
 # LIBRARY NOTES: pinned versions, verified snippets, gotchas
 
+## Core/dev security correction (2026-10-04)
+
+- pytest 9.0.3 fixes CVE-2025-71176; pytest-asyncio 1.3.0 supports pytest >=8.2,<10. Exact pins and Python compatibility verified against PyPI metadata; all M0 tests replayed without assertion/skip changes.
+- Native core/dev `uv audit --locked` excluding optional extras is clean. Full optional lock audit reports MCP/PDF/Starlette advisories; remediate before activating the affected extras/features. No audit exceptions are configured.
+
 > The product is an autonomous CRE acquisition analyst. This is the reference for the libraries it is built on.
 
 Versions were checked on PyPI on 2026-10-04.
