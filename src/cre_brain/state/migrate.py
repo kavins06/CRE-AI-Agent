@@ -8,8 +8,7 @@ from sqlalchemy import Engine
 
 
 def migration_config() -> Config:
-    root = Path(__file__).resolve().parents[3]
-    return Config(root / "migrations" / "alembic.ini")
+    return Config(Path(__file__).resolve().with_name("migrations") / "alembic.ini")
 
 
 def upgrade_database(engine: Engine) -> None:

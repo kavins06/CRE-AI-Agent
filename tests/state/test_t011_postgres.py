@@ -83,7 +83,10 @@ def test_t011_ac1_postgresql_migration_and_state_semantics(postgres_engine) -> N
     with ThreadPoolExecutor(max_workers=8) as executor:
         written = list(executor.map(insert, range(32)))
     assert sorted(event.seq for event in written) == list(range(1, 33))
-    assert events.append(insert(0), scope=SCOPE).seq == 1
+    first_origin = next(
+        event.origin[2] for event in written if event.seq == 1 and event.origin is not None
+    )
+    assert events.append(insert(first_origin), scope=SCOPE).seq == 1
 
     downgrade_database(postgres_engine)
     assert not (set(metadata.tables) & set(inspect(postgres_engine).get_table_names()))
