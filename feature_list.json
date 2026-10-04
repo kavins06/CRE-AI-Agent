@@ -63,7 +63,7 @@
         "T001"
       ],
       "verify": "uv run pytest tests/domain -q && uv run python scripts/check_task.py T010",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T011",
