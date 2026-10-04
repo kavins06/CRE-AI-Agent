@@ -215,3 +215,24 @@ T003: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
 T004: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Existing owner guards untouched. Next: M0 protected-change owner review; T010 begins M1. Blockers: none for offline verification. No SEC requests, private eval access, live models, workbook/analyst-quality/production claims.
+
+### 2026-10-04: T002 first-milestone baseline correction
+- Final all-passing-feature replay exited 0 at `1566da0`. A separate main-base test-count run exposed a legitimate edge case: documentation-only `origin/main` has no tests directory, so pytest errored instead of comparing against baseline zero.
+- Branch: `task/t002-main-baseline-fix`. Treat only an absent **base** tests directory as zero. Empty HEAD and real base/HEAD collection errors still fail closed. No existing assertions weakened; two new behavioral regressions cover pre-scaffold base, empty HEAD and syntax-invalid base. New test first reproduced the failure.
+- Verify: `make check && uv run pytest tests/test_t002_guards.py -q && uv run python scripts/check_task.py T002` → exit 0; full suite 100 passed. `scripts/test_count.py --base origin/main` → exit 0, `base=0 head=98` (HEAD before committing the two new tests; committed HEAD will collect 100).
+```text
+..................                                                       [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------ generated xml file: /tmp/cre-task-lor7gk92/results.xml ------------
+18 passed, 82 deselected, 2 warnings in 23.51s
+
+T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
+```
+- Feature state unchanged (T002 remains verified). Existing owner guards unchanged. Next: final M0 handoff/review. No task blockers; protected-change owner label/review remain main-promotion gates only.

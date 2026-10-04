@@ -41,11 +41,17 @@ def collect(root: Path) -> int:
     return counter.count
 
 
-def count_revision(repo: Path, revision: str, target: Path) -> int:
+def count_revision(
+    repo: Path, revision: str, target: Path, *, prescaffold_base: bool = False
+) -> int:
     archive = subprocess.check_output(["git", "archive", revision], cwd=repo)
     target.mkdir()
     with tarfile.open(fileobj=io.BytesIO(archive)) as source:
         source.extractall(target, filter="data")
+    if not (target / "tests").exists():
+        if prescaffold_base:
+            return 0
+        raise ValueError(f"{revision} contains no tests directory")
     (target / ".cache").mkdir(exist_ok=True)
     result = subprocess.run(
         [sys.executable, str(Path(__file__).resolve()), "--collect", str(target)],
@@ -72,7 +78,7 @@ def main() -> int:
             print(f"COLLECTED={collect(args.collect)}")
             return 0
         with tempfile.TemporaryDirectory(prefix="cre-count-") as temp:
-            base = count_revision(args.root, args.base, Path(temp) / "base")
+            base = count_revision(args.root, args.base, Path(temp) / "base", prescaffold_base=True)
             head = count_revision(args.root, args.head, Path(temp) / "head")
         print(f"Collected tests: base={base} head={head}")
         if head < base:

@@ -271,3 +271,45 @@ def test_t002_ac6_missing_tests_not_spoofed_by_existing_report(tmp_path: Path) -
 def test_t002_ac6_scripts_fail_closed_on_collection_errors(tmp_path: Path) -> None:
     root = task_fixture(tmp_path, "not valid Python!\n")
     assert checker(root).returncode != 0
+
+
+def test_t002_ac3_prescaffold_base_is_zero_but_empty_head_is_rejected(tmp_path: Path) -> None:
+    git(tmp_path, "init", "--initial-branch=dev")
+    (tmp_path / "README.md").write_text("documentation-only initial repository\n")
+    base = commit_fixture(tmp_path)
+    suite(tmp_path, "def test_added(): pass\n", policy=False)
+    commit_fixture(tmp_path)
+    command = (
+        sys.executable,
+        str(ROOT / "scripts/test_count.py"),
+        "--root",
+        str(tmp_path),
+        "--base",
+        base,
+    )
+    result = run(*command, cwd=tmp_path)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "base=0" in result.stdout and "head=1" in result.stdout
+    (tmp_path / "tests/test_example.py").unlink()
+    commit_fixture(tmp_path)
+    result = run(*command, cwd=tmp_path)
+    assert result.returncode != 0
+
+
+def test_t002_ac6_broken_base_collection_is_not_treated_as_zero(tmp_path: Path) -> None:
+    suite(tmp_path, "not valid Python!\n", policy=False)
+    git(tmp_path, "init", "--initial-branch=dev")
+    base = commit_fixture(tmp_path)
+    (tmp_path / "tests/test_example.py").write_text("def test_valid(): pass\n")
+    commit_fixture(tmp_path)
+    result = run(
+        sys.executable,
+        str(ROOT / "scripts/test_count.py"),
+        "--root",
+        str(tmp_path),
+        "--base",
+        base,
+        cwd=tmp_path,
+    )
+    assert result.returncode != 0
+    assert "collection failed" in (result.stdout + result.stderr).lower()
