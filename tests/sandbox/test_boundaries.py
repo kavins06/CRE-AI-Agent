@@ -85,9 +85,9 @@ def test_file_helper_rejects_symlink_parents(tmp_path: Path) -> None:
 
 
 def test_snapshot_artifact_requires_expected_bounded_workspace_contents() -> None:
-    def archive(name: str, data: bytes) -> bytes:
+    def archive(name: str, data: bytes, mode: str = "w") -> bytes:
         buffer = io.BytesIO()
-        with tarfile.open(fileobj=buffer, mode="w") as output:
+        with tarfile.open(fileobj=buffer, mode=mode) as output:
             member = tarfile.TarInfo(name)
             member.size = len(data)
             output.addfile(member, io.BytesIO(data))
@@ -101,6 +101,9 @@ def test_snapshot_artifact_requires_expected_bounded_workspace_contents() -> Non
         assert_snapshot_contents(archive("../../host", expected), expected)
     with pytest.raises(AssertionError):
         assert_snapshot_contents(archive("memory/own.txt", b"wrong-artifact"), expected)
+    probe = b"contract-credential-probe"
+    with pytest.raises(AssertionError):
+        assert_snapshot_contents(archive("memory/own.txt", probe, "w:gz"), probe)
 
 
 @pytest.mark.asyncio
