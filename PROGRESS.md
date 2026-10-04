@@ -919,7 +919,7 @@ T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
 - Replay: all 30 precision regressions pass; T015 focused 45 and exact checker 57 pass; T016 focused/exact checker 99 pass. Correction to the preceding log: the prior T015 checker had 51 tests, not 49. Full checks and independent review of this newest head are outstanding; both task flags remain false.
 
 ## 2026-10-04 — T015/T016 accepted at exact reviewed source
-- Independent read-only review passed exact source head `c6a8e2081ea6799e9ba360515a3af12678b994fb3`: R1–R5 fixed; 4,723 independent assertions, six exact fee-cancellation oracles, quote invariance, 256-digit budget edge, exact sign boundaries and hostile caller context all passed with zero failures.
+- Independent read-only review passed exact source head `c6a8e2081ea679e9ba360515a3af12678b994fb3`: R1–R5 fixed; 4,723 independent assertions, six exact fee-cancellation oracles, quote invariance, 256-digit budget edge, exact sign boundaries and hostile caller context all passed with zero failures.
 - Fresh same-session task acceptance replay exits zero:
 ```text
 57 passed, 616 deselected
