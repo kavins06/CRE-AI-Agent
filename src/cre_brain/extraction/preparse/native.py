@@ -198,7 +198,7 @@ def xlsx_tables(
     doc_id: str,
     seed: str,
     limits: Limits,
-) -> tuple[tuple[ParsedTable, ...], bool]:
+) -> tuple[tuple[ParsedTable, ...], bool, bool]:
     members, external = _zip_members(raw, limits)
     budget = Budget(limits)
     try:
@@ -225,6 +225,7 @@ def xlsx_tables(
             raise PreparseError("Unsupported spreadsheet namespace or no worksheets")
         if len(sheets) > limits.max_sheets:
             raise PreparseError("Sheet count exceeded")
+        hidden = any(sheet.get("state", "visible") != "visible" for sheet in sheets)
         # Native reader validates workbook structure. Do not iterate declared dimensions or
         # use its float/date coercions for source observations; read bounded XML lexemes.
         book = load_workbook(io.BytesIO(raw), read_only=True, data_only=False, keep_links=False)
@@ -241,7 +242,12 @@ def xlsx_tables(
             worksheet = _xml(members[part])
             if worksheet.tag != f"{MAIN}worksheet":
                 raise PreparseError("Only native worksheet cells are supported")
-            for node in worksheet.iter(f"{MAIN}c"):
+            sheet_data = worksheet.find(f"{MAIN}sheetData")
+            if sheet_data is None:
+                raise PreparseError("Worksheet has no sheet data")
+            for node in (
+                cell for row in sheet_data.findall(f"{MAIN}row") for cell in row.findall(f"{MAIN}c")
+            ):
                 address = node.attrib["r"]
                 row, column = coordinate_to_tuple(address)
                 if row > limits.max_rows or column > limits.max_columns:
@@ -281,7 +287,7 @@ def xlsx_tables(
             tables.append(
                 ParsedTable(table_id=digest((seed, name)), sheet=name, cells=tuple(cells))
             )
-        return tuple(tables), external
+        return tuple(tables), external, hidden
     except (KeyError, ValueError, IndexError, TypeError) as error:
         if isinstance(error, PreparseError):
             raise

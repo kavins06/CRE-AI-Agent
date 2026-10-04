@@ -179,6 +179,7 @@ class Preparser:
             content = _pdf_worker(raw, self.limits)
             engine = "docling-native"
             warnings.append("native_pdf_no_ocr_layout_or_table_inference")
+            warnings.append("native_pdf_no_visibility_verification")
         else:
             content = None
             if extension == ".csv":
@@ -186,9 +187,11 @@ class Preparser:
                 tables = (csv_table(raw, identifier, seed, self.limits, delimiter),)
             else:
                 engine = "native-xlsx"
-                tables, external = xlsx_tables(raw, identifier, seed, self.limits)
+                tables, external, hidden = xlsx_tables(raw, identifier, seed, self.limits)
                 if external:
                     warnings.append("external_links_not_followed")
+                if hidden:
+                    warnings.append("hidden_sheets_included")
             if not any(table.cells for table in tables):
                 status = "empty"
         if content is not None:

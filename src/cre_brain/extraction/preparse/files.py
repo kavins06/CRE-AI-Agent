@@ -113,6 +113,41 @@ def read_source(root: Path, identity: tuple[int, int], name: str, maximum: int) 
         raise PreparseError("Cannot read a confined owned regular source file") from error
 
 
+def _matches_existing(directory: int, filename: str, content: bytes) -> bool:
+    try:
+        descriptor = os.open(
+            filename,
+            os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC | os.O_NONBLOCK,
+            dir_fd=directory,
+        )
+    except FileNotFoundError:
+        return False
+    try:
+        before = os.fstat(descriptor)
+        _owned(before)
+        chunks: list[bytes] = []
+        remaining = len(content) + 1
+        while remaining:
+            chunk = os.read(descriptor, min(remaining, 64 * 1024))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        existing = b"".join(chunks)
+        after = os.fstat(descriptor)
+        if (
+            before.st_size != after.st_size
+            or before.st_mtime_ns != after.st_mtime_ns
+            or before.st_ctime_ns != after.st_ctime_ns
+        ):
+            raise PreparseError("Existing parsed output changed during read")
+        if existing != content or before.st_size != len(content):
+            raise PreparseError("Document ID already identifies a different parsed document")
+        return True
+    finally:
+        os.close(descriptor)
+
+
 def write_parsed(root: Path, identity: tuple[int, int], filename: str, content: bytes) -> Path:
     if len(relative_parts(filename)) != 1:
         raise PreparseError("Parsed output must have one safe filename")
@@ -125,10 +160,8 @@ def write_parsed(root: Path, identity: tuple[int, int], filename: str, content: 
             directory = os.open("parsed", DIRECTORY, dir_fd=parent)
             try:
                 _owned(os.fstat(directory), directory=True)
-                try:
-                    _owned(os.stat(filename, dir_fd=directory, follow_symlinks=False))
-                except FileNotFoundError:
-                    pass
+                if _matches_existing(directory, filename, content):
+                    return root / "parsed" / filename
                 temporary = f".preparse-{uuid.uuid4().hex}"
                 descriptor = os.open(
                     temporary,
@@ -141,7 +174,18 @@ def write_parsed(root: Path, identity: tuple[int, int], filename: str, content: 
                         target.write(content)
                         target.flush()
                         os.fsync(target.fileno())
-                    os.replace(temporary, filename, src_dir_fd=directory, dst_dir_fd=directory)
+                    try:
+                        os.link(
+                            temporary,
+                            filename,
+                            src_dir_fd=directory,
+                            dst_dir_fd=directory,
+                            follow_symlinks=False,
+                        )
+                    except FileExistsError:
+                        if not _matches_existing(directory, filename, content):
+                            raise PreparseError("Parsed output disappeared during write") from None
+                    os.unlink(temporary, dir_fd=directory)
                     os.fsync(directory)
                 finally:
                     try:

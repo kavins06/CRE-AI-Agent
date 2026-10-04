@@ -11,7 +11,13 @@ from typing import Protocol, runtime_checkable
 
 from pydantic import ConfigDict
 
-from cre_brain.extraction.preparse.models import Boundary, Limits, ParserUnavailable, PdfContent
+from cre_brain.extraction.preparse.models import (
+    Boundary,
+    Limits,
+    ParserUnavailable,
+    PdfContent,
+    PreparseError,
+)
 
 
 @runtime_checkable
@@ -35,5 +41,8 @@ class ReductoAdapter(Boundary):
     def convert(self, content: bytes, *, filename: str, limits: Limits) -> PdfContent:
         self.require_available()
         assert self.transport is not None
-        result = self.transport.convert(content, filename=filename, limits=limits)
-        return PdfContent.model_validate_json(result.model_dump_json())
+        try:
+            result = self.transport.convert(content, filename=filename, limits=limits)
+            return PdfContent.model_validate_json(result.model_dump_json())
+        except Exception:
+            raise PreparseError("Licensed PDF parser failed") from None

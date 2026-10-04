@@ -119,6 +119,20 @@ def test_t034_ac1_preparse_native_xlsx_exact_cells_and_multiple_sheets(parser: P
     assert doc == parser.parse("roll.xlsx", doc_id="roll")
 
 
+def test_t034_ac1_preparse_reports_hidden_worksheet_content(parser: Preparser):
+    raw = xlsx_bytes()
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        workbook = archive.read("xl/workbook.xml")
+    needle = b'name="T12" sheetId="2" state="visible"'
+    assert needle in workbook
+    workbook = workbook.replace(needle, b'name="T12" sheetId="2" state="veryHidden"')
+    raw = rewrite_zip(raw, "xl/workbook.xml", workbook)
+    (parser.raw_root / "hidden-sheet.xlsx").write_bytes(raw)
+    doc = parser.parse("hidden-sheet.xlsx", doc_id="hidden-sheet")
+    assert "hidden_sheets_included" in doc.warnings
+    assert [table.sheet for table in doc.tables] == ["Rent Roll", "T12"]
+
+
 def test_t034_ac1_preparse_csv_preserves_whitespace_quotes_zeros_newlines_and_empty_cells(
     parser: Preparser,
 ):
@@ -278,6 +292,19 @@ def test_t034_ac1_preparse_xml_entities_rejected_before_native_reader(parser: Pr
         parser.parse("entities.xlsx", doc_id="entities")
 
 
+def test_t034_ac1_preparse_ignores_cells_outside_sheet_data_rows(parser: Preparser):
+    worksheet = (
+        b'<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        b'<sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>visible</t></is>'
+        b'</c></row></sheetData><extLst><ext uri="untrusted"><c r="B2" t="inlineStr">'
+        b"<is><t>phantom</t></is></c></ext></extLst></worksheet>"
+    )
+    raw = rewrite_zip(xlsx_bytes(), "xl/worksheets/sheet1.xml", worksheet)
+    (parser.raw_root / "hidden-cell.xlsx").write_bytes(raw)
+    doc = parser.parse("hidden-cell.xlsx", doc_id="hidden")
+    assert {(cell.anchor.cell, cell.text) for cell in doc.tables[0].cells} == {("A1", "visible")}
+
+
 @pytest.mark.parametrize("data", [b"\xff", b'"unclosed\n'])
 def test_t034_ac1_preparse_csv_invalid_encoding_or_quoting_is_explicit(
     parser: Preparser, data: bytes
@@ -305,6 +332,7 @@ def test_t034_ac2_preparse_real_docling_pdf_text_page_bbox_top_left(parser: Prep
     assert doc.texts[1].anchor.bbox[1] == pytest.approx(391.384)
     assert not doc.tables
     assert "native_pdf_no_ocr_layout_or_table_inference" in doc.warnings
+    assert "native_pdf_no_visibility_verification" in doc.warnings
     assert doc == parser.parse("om.pdf", doc_id="om")
 
 
@@ -365,6 +393,21 @@ def test_t034_ac3_preparse_output_schema_roundtrip_and_determinism(parser: Prepa
     assert isinstance(doc.tables, tuple) and isinstance(doc.tables[0].cells, tuple)
 
 
+def test_t034_ac3_preparse_does_not_replace_different_source_for_same_doc_id(
+    parser: Preparser,
+):
+    source = parser.raw_root / "input.csv"
+    source.write_text("A\nfirst\n")
+    first = parser.parse("input.csv", doc_id="input")
+    path = parser.write(first)
+    original = path.read_bytes()
+    source.write_text("A\nsecond\n")
+    second = parser.parse("input.csv", doc_id="input")
+    with pytest.raises(PreparseError, match="different parsed document"):
+        parser.write(second)
+    assert path.read_bytes() == original
+
+
 def test_t034_ac3_preparse_scope_is_preserved_and_cross_tenant_write_rejected(parser: Preparser):
     (parser.raw_root / "input.csv").write_text("A\n")
     doc = parser.parse("input.csv", doc_id="input")
@@ -411,6 +454,18 @@ def test_t034_ac3_preparse_reducto_missing_license_and_missing_transport_explici
         parser.parse("input.csv", doc_id="input", reducto=ReductoAdapter(licensed=False))
     with pytest.raises(ParserUnavailable, match="transport"):
         parser.parse("input.csv", doc_id="input", reducto=ReductoAdapter(licensed=True))
+
+
+def test_t034_ac3_preparse_reducto_transport_errors_are_sanitized(parser: Preparser):
+    class LeakyTransport:
+        def convert(self, content, *, filename, limits):
+            raise RuntimeError("https://licensed-parser.invalid?key=SECRET")
+
+    (parser.raw_root / "om.pdf").write_bytes(pdf_bytes())
+    adapter = ReductoAdapter(licensed=True, transport=LeakyTransport())
+    with pytest.raises(PreparseError, match="Licensed PDF parser failed") as caught:
+        parser.parse("om.pdf", doc_id="om", reducto=adapter)
+    assert "SECRET" not in str(caught.value)
 
 
 def test_t034_ac3_preparse_empty_native_csv_is_not_invented_facts(parser: Preparser):

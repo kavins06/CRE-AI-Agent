@@ -164,7 +164,9 @@ class ParsedDocument(Boundary):
         tuple[
             Literal[
                 "external_links_not_followed",
+                "hidden_sheets_included",
                 "native_pdf_no_ocr_layout_or_table_inference",
+                "native_pdf_no_visibility_verification",
                 "pages_without_native_text",
             ],
             ...,
