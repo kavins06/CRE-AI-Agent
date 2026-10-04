@@ -327,3 +327,16 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 ### 2026-10-04: T013 account namespace follow-up
 - A synthetic adversarial probe demonstrated a mapped category named `unmapped:other` merging its amount with an actually unmapped `other` account. Chart boundaries now reject the reserved `unmapped:` line prefix, retaining the existing output contract and all prior assertions. The new regression failed before the validator and passes afterward.
 - Fresh exact T013 verify exited 0: `8 passed, 233 deselected, 2 warnings`; `T013: AC1 PASSED, AC2 PASSED, AC3 PASSED`. `make check` exited 0: lint/format/strict types clean, `239 passed, 2 deselected, 2 warnings in 52.58s`. No feature flag changed. Next: independent finance review and migration repair, then T014. Main promotion still requires the existing owner protected-change label/review; private evals and live services untouched.
+
+### 2026-10-04: T013 caller-independent arithmetic
+- Independent review confirmed that ambient Decimal precision changes actual money, not only formatting. Tests first reproduced changed rent-roll/T-12 results, caller-triggered Inexact/Rounded exceptions, and caller exponent-limit Overflow: `4 failed, 1 passed`. The shared private calculation wrapper now supplies every Context field explicitly, preserving standard 28-significant-digit half-even arithmetic while rejecting invalid operations, division by zero, overflow and accidental float operations. No cent quantization or new financial assumptions were introduced.
+- Every calculation gets an isolated context copy and restores its caller even on failure. Six new regressions cover low/high precision, alternate rounding, traps, exponent limits, caller flags/state preservation, and a mutated DefaultContext. Source: https://docs.python.org/3.12/library/decimal.html#decimal.localcontext and https://docs.python.org/3.12/library/decimal.html#decimal.Context (unspecified constructor fields otherwise inherit mutable defaults).
+- Exact T013 verification exited 0 in this session:
+  ```text
+  ..............                                                           [100%]
+  14 passed in 0.65s
+  ..............                                                           [100%]
+  14 passed, 233 deselected, 2 warnings in 1.15s
+  T013: AC1 PASSED, AC2 PASSED, AC3 PASSED
+  ```
+- Focused Ruff/format/strict types pass. Full `make check` exited 0: `245 passed, 2 deselected, 2 warnings in 53.64s`; source lint/format/strict types clean. Existing assertions and feature flags are unchanged. Migration repair is independently accepted and separately integrated at `e88ca8f`; this finance branch awaits fresh review and combined-dev replay before the next group release. No model calls, private eval access or live-service changes. Next: T014 pro forma/taxes/value-add using the same calculation policy.

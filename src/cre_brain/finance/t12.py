@@ -10,6 +10,7 @@ from pydantic import Field, field_validator
 from cre_brain.domain import CalcResult
 from cre_brain.domain.base import Identifier
 from cre_brain.domain.models import DomainModel
+from cre_brain.finance._context import _calculation
 
 MissingMonthPolicy = Literal["zero", "annualize_observed"]
 ZERO = Decimal()
@@ -51,6 +52,7 @@ def _month_number(value: date) -> int:
     return value.year * 12 + value.month - 1
 
 
+@_calculation
 def normalize_t12(
     entries: list[T12Entry],
     *,

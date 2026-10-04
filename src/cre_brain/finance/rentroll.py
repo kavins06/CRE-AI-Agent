@@ -8,6 +8,7 @@ from pydantic import Field, model_validator
 from cre_brain.domain import CalcResult
 from cre_brain.domain.base import Identifier
 from cre_brain.domain.models import DomainModel
+from cre_brain.finance._context import _calculation
 
 ZERO = Decimal()
 
@@ -32,6 +33,7 @@ class RentRollUnit(DomainModel):
         return self
 
 
+@_calculation
 def normalize_rent_roll(
     units: list[RentRollUnit], *, calc_id: str, code_version: str
 ) -> CalcResult:
