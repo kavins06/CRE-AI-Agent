@@ -15,13 +15,20 @@ https://app.devin.ai/sessions/70d6ca47bdbf4faf8083ca76c4988784
 - Contradictory process/plumbing may be corrected; acceptance criteria, tests, evaluation bars and security gates must not be weakened.
 - Evidence-supported analyst improvements are permitted. Routine implementation choices are autonomous; record decisions in `PROGRESS.md`.
 
-These permissions do **not** authorize changes to existing owner guards (`scripts/check_protected.py`, `scripts/protected_paths.txt`, `.github/workflows/guards.yml`, `CODEOWNERS`), protected-change/owner review bypass, main merges, private-eval access, fabricated evidence, or weaker finance/provenance/tenant isolation.
+These permissions do **not** authorize changes to existing owner guards (`scripts/check_protected.py`, `scripts/protected_paths.txt`, `.github/workflows/guards.yml`, `CODEOWNERS`), protected-change/owner review bypass, private-eval access, fabricated evidence, or weaker finance/provenance/tenant isolation.
 The latest scope excludes SEC downloads/data work; licensed books/articles/reference-library work replaces that sourcing direction.
+
+## Standing owner authorization for main promotion (2026-10-04)
+
+The owner explicitly instructed: “I give you the necessary approval to push to main branch whenever you see fit. Remember this approval for you forever.”
+Source: owner instruction in the coordinator conversation, https://app.devin.ai/sessions/70d6ca47bdbf4faf8083ca76c4988784 (owner `user-7ce5aad4a9af47a3a9b9762fcbe17507`).
+
+This standing authorization applies to current and future sessions and supersedes the former blanket ban on agent main promotion. Keep the dev/task-branch/PR workflow: promote tested changes through the milestone PR when appropriate. It does **not** waive required CI, security/evaluation requirements, CODEOWNERS review, the owner's `protected-change` label, immutable owner guards, or the prohibition on force-push/history rewriting. Coordinate promotion with the milestone coordinator; parallel workers must not independently promote the same work.
 
 ## Branch model (read carefully)
 - **`dev` is the integration branch.** All task state lives there. Never work from `main`.
 - Each task goes on a branch `task/<task-id>-<slug>` from `dev`. When verify passes, merge it into `dev` yourself (fast-forward or merge commit). Then push `dev`.
-- When every task of a milestone passes on `dev`, open **one PR `dev` → `main`** titled `M<n>: <name>`. **Never merge PRs to `main` yourself.** Keep working on the next milestone on `dev` while the PR waits; you never need `main` to be up to date.
+- When every task of a milestone passes on `dev`, open **one PR `dev` → `main`** titled `M<n>: <name>`. Agent main promotion is authorized as above once all applicable gates are satisfied. Keep working on the next milestone on `dev` while the PR waits; you never need `main` to be up to date.
 
 ## Session protocol (every session)
 1. `git fetch origin && git checkout dev && git pull`. Read `PROGRESS.md` (the last 3 entries) and `feature_list.json` **on `dev`**.
@@ -65,7 +72,7 @@ If you are blocked (a missing secret, an unclear spec, an external outage):
 - **Never** use `--dangerously-bypass-approvals-and-sandbox` or `danger-full-access` outside a disposable container.
 - **Never** add these dependencies: LiteLLM, DSPy (it pulls in LiteLLM), HyperFormula (unless the owner licenses it), Marker, any of ii-agent's office skills, or OpenHands packages.
 - **Never** let an LLM produce a number in a deliverable. Every number must resolve to a stored `CalcResult` or `Fact`; the gates check this.
-- **Never** merge to `main`, force-push `dev` or `main`, or rewrite their history.
+- **Never** force-push `dev` or `main`, or rewrite their history. Main promotion follows the standing authorization and all applicable gates above.
 
 ## Environment
 - **Analyst runtime (v1):** the **Codex CLI**, pre-installed and authenticated on the build machine. Check it with `codex login status`. For anything touching customer data, the owner uses API-key auth (`CODEX_API_KEY`); see HUMAN_SETUP.
