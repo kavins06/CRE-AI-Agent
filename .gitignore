@@ -28,3 +28,5 @@ releases/
 results.tsv
 reports/generated/
 .DS_Store
+public-knowledge/
+knowledge-cache/
