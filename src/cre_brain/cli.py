@@ -76,11 +76,13 @@ def create_app(*, plugins: Iterable[ModuleType] | None = None) -> typer.Typer:
 
     root_callback = app.registered_callback
     if plugins is None:
+        from cre_brain.evals.commands import register_cli as register_evals
         from cre_brain.knowledge.commands import register_cli as register_knowledge
         from cre_brain.release.commands import register_cli
 
         register_cli(app)
         register_knowledge(app)
+        register_evals(app)
     for module in discover_plugins() if plugins is None else plugins:
         if not module.__name__.startswith("cre_brain."):
             raise ValueError("CLI plugins must be installed under cre_brain.")
