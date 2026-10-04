@@ -758,3 +758,31 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Full `make check`: Ruff lint/format, strict mypy (68 source files) and 529 tests pass; one approved Reducto-license skip and 11 integration deselections. All pre-commit hooks pass. No runtime/approval blocker; next implement T016, then independent review. T015 remains false; no PR, dev/main merge or acceptance is claimed.
+
+## 2026-10-04 — T016 author candidate (acceptance pending)
+- Tests first: the new returns AC suite failed collection with `ModuleNotFoundError: No module named 'cre_brain.finance.returns'` (40 deselected, one error). Added Decimal IRR/XIRR, MIRR fallback, Excel-timed NPV, equity multiple and cash-on-cash. No existing tests/assertions, dependency pins or public domain schemas changed.
+- Decision: IRR roots are isolated over the exact open domain `(-0.99, 10)`, not sampled from a grid. With `q=1/(1+r)`, periodic and ACT/365-dated NPV are generalized polynomials. Recursively isolating derivative roots partitions the full domain into monotone intervals, so tangent and close roots are retained. Repeated dates are aggregated, unordered dates are sorted, all-zero NPV is explicitly infinitely ambiguous and same-date nonzero NPV is undefined.
+- A unique root is reported as IRR/XIRR. Multiple roots are all listed and status is ambiguous, with dated or periodic MIRR as fallback; no roots are undefined. Root counts above the bounded 128-point nonconventional search or roots unresolved at 28 output digits fail closed. Every reported root is independently residual-checked below relative `1e-24`; a generated one-to-four-root property suite exercises the search.
+- Decision: pyxirr 0.10.8 is called as a binary64 cross-check (`irr`/`xirr` and `npv(..., start_from_zero=False)`) after normalizing cash flows. It never defines root count or authoritative output. Decimal arithmetic uses 80+ internal digits for root isolation and isolated 28-digit half-even public results. Binary64 underflow/overflow is flagged unsupported; no pyxirr float becomes authoritative money or a reported root.
+- The suite covers two/three roots, tangent and roots separated by `1e-12`, cash-flow scales `1e-200` through `1e200`, exact/near open boundaries, zero and negative rates, irregular and repeated dates, invalid date/count/float/NaN inputs, dated MIRR, Excel examples, caller Decimal context, serialization, contribution-aware equity multiple and negative cash-on-cash.
+- Exact verify exited 0: `uv run pytest tests/finance -q -k returns && uv run python scripts/check_task.py T016`. Tail:
+```text
+...................................                                      [100%]
+35 passed, 40 deselected in 0.99s
+
+...................................                                      [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_binary_stream as get_binary_stream
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_text_stream as get_text_stream
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+35 passed, 541 deselected, 2 warnings in 1.92s
+
+T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Full `make check`: Ruff lint/format, strict mypy (69 source files) and 564 tests pass; one approved Reducto-license skip and 11 integration deselections. All pre-commit hooks pass. No runtime/approval blocker. T015/T016 remain false pending independent review; no PR, dev/main merge or acceptance is claimed.
