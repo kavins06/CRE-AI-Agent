@@ -1,0 +1,112 @@
+{
+  "metadata": {
+    "table_id": "missing_data_policy",
+    "version": "1.0.0",
+    "policy_notice": "Classification only. Business defaults are illustrative configurable firm policy, not market or legal truth. Jurisdiction outcomes require caller-supplied verified policy/evidence; no jurisdiction facts are bundled.",
+    "numeric_encoding": "Money: exact cents; ratios: exact millionths; integers bounded at 2**53-1. No numeric arithmetic or float conversion."
+  },
+  "nodes": [
+    {
+      "id": "input",
+      "type": "inputNode",
+      "name": "input",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "rules",
+      "type": "decisionTableNode",
+      "name": "rules",
+      "position": {
+        "x": 200,
+        "y": 0
+      },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          {
+            "id": "predicate",
+            "name": "ExactPolicyPredicate",
+            "field": "",
+            "type": "expression"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "classification",
+            "name": "classification",
+            "field": "classification",
+            "type": "expression"
+          },
+          {
+            "id": "reason_code",
+            "name": "reason_code",
+            "field": "reason_code",
+            "type": "expression"
+          },
+          {
+            "id": "required_checks",
+            "name": "required_checks",
+            "field": "required_checks",
+            "type": "expression"
+          }
+        ],
+        "rules": [
+          {
+            "_id": "critical_data_missing",
+            "predicate": "critical_missing",
+            "classification": "\"blocked\"",
+            "reason_code": "\"critical_data_missing\"",
+            "required_checks": "[\"obtain_critical_evidence\"]"
+          },
+          {
+            "_id": "defaults_allowed",
+            "predicate": "missing and allow_defaults",
+            "classification": "\"proceed_with_assumptions\"",
+            "reason_code": "\"defaults_allowed\"",
+            "required_checks": "[\"label_and_verify_assumptions\"]"
+          },
+          {
+            "_id": "defaults_disallowed",
+            "predicate": "missing",
+            "classification": "\"clarification_required\"",
+            "reason_code": "\"defaults_disallowed\"",
+            "required_checks": "[\"ask_missing_data_question\"]"
+          },
+          {
+            "_id": "complete",
+            "predicate": "",
+            "classification": "\"complete\"",
+            "reason_code": "\"complete\"",
+            "required_checks": "[]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "outputNode",
+      "name": "output",
+      "position": {
+        "x": 400,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-rules",
+      "type": "edge",
+      "sourceId": "input",
+      "targetId": "rules"
+    },
+    {
+      "id": "rules-output",
+      "type": "edge",
+      "sourceId": "rules",
+      "targetId": "output"
+    }
+  ]
+}
