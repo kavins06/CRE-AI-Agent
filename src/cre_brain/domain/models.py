@@ -76,17 +76,17 @@ class ClaimType(StrEnum):
 
 
 class DeliverableKind(StrEnum):
-    SCREEN = auto()
-    UW_MODEL = auto()
-    IC_MEMO = auto()
-    DD_TRACKER = auto()
-    LOI = auto()
-    BROKER_QUESTIONS = auto()
-    LEASE_ABSTRACT = auto()
-    DEAL_COMPARISON = auto()
-    RENT_COMP_ANALYSIS = auto()
-    DEBT_QUOTE_SUMMARY = auto()
-    ESCALATION = auto()
+    SCREEN = "SCREEN"
+    UW_MODEL = "UW_MODEL"
+    IC_MEMO = "IC_MEMO"
+    DD_TRACKER = "DD_TRACKER"
+    LOI = "LOI"
+    BROKER_QUESTIONS = "BROKER_QUESTIONS"
+    LEASE_ABSTRACT = "LEASE_ABSTRACT"
+    DEAL_COMPARISON = "DEAL_COMPARISON"
+    RENT_COMP_ANALYSIS = "RENT_COMP_ANALYSIS"
+    DEBT_QUOTE_SUMMARY = "DEBT_QUOTE_SUMMARY"
+    ESCALATION = "ESCALATION"
 
 
 class DateRange(DomainModel):

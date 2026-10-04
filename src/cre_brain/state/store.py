@@ -10,7 +10,7 @@ from sqlalchemy import Connection, Engine, Table, and_, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.sql.elements import ColumnElement
 
-from cre_brain.domain import Assumption, CalcResult, Deliverable, Fact, Question
+from cre_brain.domain import Assumption, CalcResult, Deliverable, DeliverableKind, Fact, Question
 from cre_brain.domain.base import Identifier, TenantScope
 from cre_brain.state.schema import metadata
 
@@ -22,6 +22,7 @@ COLLECTIONS: dict[type[BaseModel], tuple[str, str]] = {
     Deliverable: ("deliverables", "d_id"),
 }
 identifier = TypeAdapter(Identifier)
+LEGACY_DELIVERABLE_KINDS = {kind.value.lower(): kind.value for kind in DeliverableKind}
 
 
 class StateConflict(ValueError):
@@ -97,6 +98,11 @@ class SqlVersionedStore[RecordT: BaseModel]:
         query = query.order_by(self.table.c.version.desc()).limit(1)
         with self.engine.connect() as connection:
             payload = connection.execute(query).scalar_one_or_none()
+        if self.model is Deliverable and isinstance(payload, dict):
+            kind = payload.get("kind")
+            if isinstance(kind, str) and kind in LEGACY_DELIVERABLE_KINDS:
+                # Adapt historical rows on read without rewriting append-only history.
+                payload = {**payload, "kind": LEGACY_DELIVERABLE_KINDS[kind]}
         return None if payload is None else self.model.model_validate(payload)
 
     def current(self, record_id: str, *, scope: TenantScope) -> RecordT | None:
