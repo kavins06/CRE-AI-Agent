@@ -1000,3 +1000,18 @@ T018: AC1 PASSED, AC2 PASSED, AC3 PASSED
 - Serialized `make check`: 745 passed, one existing approved license skip, 11 integration deselected (96.72s). All pre-commit hooks, locked dependency check, Ruff lint/format, strict mypy and diff checks pass.
 - Same-session exact T017 verification: 27 area tests; 39 verifier tests; AC1/AC2/AC3 PASSED (exit 0). Exact T018 verification: 45 area tests; 45 verifier tests; AC1/AC2/AC3 PASSED (exit 0). Finance-area replay: 256 passed.
 - Next: fresh exact repaired-head independent review and hosted CI. Flags remain false and dev integration held. No protected paths, dependencies, existing assertions, model/analyst evals, SEC, private holdouts or runtimes changed.
+
+## 2026-10-04 — T017/T018 acceptance
+- Reviewed source head: `e6233f0c1ebc090e5fda16fe5a7d430935da4aba`. Full independent read-only source review exercised 2,312 assertions/rejections with zero source findings but withheld PASS solely for missing prior report context. A fresh focused reviewer received the complete embedded reports, independently replayed their exact reproductions and five repair/sibling claims (431 assertions and 79 expected rejections), and returned PASS with zero required findings. These are developer verification, not private-eval or analyst-quality evidence.
+- Exact same-session task-verifier tails:
+```text
+27 passed, 229 deselected in 1.22s
+39 passed, 718 deselected, 2 warnings in 2.17s
+T017: AC1 PASSED, AC2 PASSED, AC3 PASSED
+45 passed, 211 deselected in 3.83s
+45 passed, 712 deselected, 2 warnings in 4.65s
+T018: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Source-head hosted CI passes: check, dependency-audit, test-count, sandbox-physical and sandbox-merge. `verify-features` is intentionally dev-skipped; no skip is used as task-acceptance evidence. All three PR review findings were reproduced red-first, repaired and answered in their individual threads.
+- Set only T017/T018 flags after successful verification/review. `make check` remains 745 passed, one existing approved license skip, 11 integration deselected; all hooks, lint, types and lock checks pass.
+- Next: acceptance metadata checks and dev integration of PR #9, then T019/T020 Excel template/recalculation parity. Broader analyst and M1 remain incomplete; main promotion retains owner-controlled milestone gates.

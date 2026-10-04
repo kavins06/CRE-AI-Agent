@@ -140,7 +140,7 @@
         "T016"
       ],
       "verify": "uv run pytest tests/finance -q -k 'waterfall or exit or holdsell' && uv run python scripts/check_task.py T017",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T018",
@@ -151,7 +151,7 @@
         "T017"
       ],
       "verify": "uv run pytest tests/finance -q -k scenarios && uv run python scripts/check_task.py T018",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T019",
