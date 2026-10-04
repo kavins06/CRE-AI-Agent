@@ -404,3 +404,35 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - Added jurisdiction-rule tax schedules with explicit assessment ratio, millage, full-reassessment choice, phase-in and annual growth cap. A property-based test proves that a full reassessment after a value increase cannot reduce the current tax; the calculation records whether that conservative floor was applied. Assessment facts and rules have separate provenance IDs.
 - Added cohort-based unit-turn schedules with throughput, downtime, cost/unit, current rent, premium and ramp. Monthly offline-unit loss, premium-equivalent units and renovation costs flow into pro forma NOI and cash flow through the source calculation ID; no LLM-generated number or unstored source value enters the projection.
 - Red evidence: the new suite initially failed collection because all three finance modules were absent. Exact verification exited 0: `6 passed, 14 deselected`; `T014: AC1 PASSED, AC2 PASSED, AC3 PASSED`. Full `make check` exited 0: Ruff/format clean, strict mypy clean in 53 source files, `265 passed, 4 deselected, 2 warnings in 56.69s`. Only T014's feature flag changed; existing assertions and protected files remain unchanged. No live services, private evaluations, model calls, external data or SEC resources were used. Next: independent review and integration, then T015 debt/returns/waterfall. Blockers: none.
+### 2026-10-04: T031 local Docker sandbox and physical isolation
+- Added the typed `SandboxProvider`/`Box`/`ExecResult` contract and trusted `LocalDockerProvider`. Analyst containers run non-root with read-only rootfs, dropped capabilities, no-new-privileges, memory/CPU/PID limits, tenant-labelled private volumes and no Docker socket. Only deals, memory, outbox and scratch are writable; sleep/resume retain named volumes. Foreign resource collisions are rejected without deletion.
+- Reference Ubuntu images install pinned Codex/uv, Python, CRE runtime, LibreOffice/UNO/unoserver, Chromium/Playwright and fonts. Extractors receive only a bounded parsed JSON object, read-only, plus disposable scratch; no raw documents, analyst memory, skills or MCP configuration. Runtime credentials enter individual exec environments, never image layers/container config. Transfers use no-follow path traversal, bounded regular files and atomic replacement; snapshots reject symlinks/hardlinks, credential filenames and known credential values.
+- Egress uses a dedicated sidecar network namespace with deny-by-default iptables. UID 1000 may reach only the loopback CONNECT proxy; UID 1001 may use public DNS and HTTPS. The proxy requires exact domains, rejects all non-public/multicast/reserved answers and connects to the validated numeric address. Setup capabilities are irrevocably dropped before handling requests. No privileged analyst or host-network container is used.
+- Decisions: default resources implement SPEC's 2 CPU / 4 GB single-session minimum; owners provision at least 20 GB persistent disk and storage quotas, and configure 4 CPU / 8 GB for two sessions. Trusted host orchestration is the extraction sidecar API, not a daemon socket in the analyst. Known-secret snapshot refusal is not arbitrary encoded-secret detection. These local fixtures prove OS/plumbing behavior, not live analyst quality.
+- Red/runtime evidence: the mount-source delimiter regression failed before its boundary validator (`DID NOT RAISE`); physical validation caught root initialization traversal permissions, a read-only resolver write, missing Python alias, COPY permissions under restrictive host umask, and Docker's empty-volume copy-up resetting ownership. Fixed with startup-only initialization capabilities, a read-only sidecar DNS bind, explicit interpreter/file permissions and volume-nocopy on writable volumes. Chromium now actually launches and renders an isolated title. Peer-network assertions require an observed listening server before attempting access.
+- All reference images built in a disposable Docker 28.3.3 daemon with separate data/socket and mount/network namespaces under ignored session-local `.cache`; no shared daemon/service was changed. Docker was initially absent, so this substitutes a real isolated daemon, never a host-process sandbox or mocked OS tests. Synthetic credential sentinels only; no model calls, customer data or private evaluation access.
+- Initial exact verification passed with explicitly built `cre-box:t031`/`cre-extract:t031`. Final verification below also exercised fresh-runner bootstrap: only `DOCKER_HOST=unix:///tmp/cre-t031-420/socket` and `CRE_SANDBOX_DOCKER=$PWD/.cache/docker-runtime/docker/docker` were supplied. The physical integration fixture builds default reference images once per pytest process using a credential-free client environment, so existing main/nightly feature verification needs no guard/CI changes. Explicit owner image overrides are never rebuilt. Final commands were serialized to avoid pytest basetemp collisions. Output tail (existing Typer/Click deprecation warnings omitted):
+  ```text
+  uv run pytest tests/sandbox -q
+  ............................                                             [100%]
+  28 passed in 141.98s (0:02:21)
+
+  uv run python scripts/check_task.py T031
+  .........                                                                [100%]
+  9 passed, 282 deselected, 2 warnings in 47.18s
+  T031: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
+
+  make check
+  All checks passed!
+  85 files already formatted
+  Success: no issues found in 54 source files
+  280 passed, 11 deselected, 2 warnings in 58.56s
+
+  uv run pre-commit run --all-files
+  ruff lint................................................................Passed
+  ruff format..............................................................Passed
+  strict source types......................................................Passed
+  ```
+- Review: checked correctness, simplicity, protocol/image boundaries, bounded operations and tenant/secret/egress safety; ownership preflight and mount-source delimiter regressions added. No existing assertion/guard or other task flag changed; only T031 becomes true after fresh verification. Reusable `python -m tests.sandbox.contract --factory module:factory --image IMAGE` executes policy-disabled shell isolation against an owner's real provider.
+- Final host-transfer review reproduced a symlink-ancestor escape in a failing regression. Host upload, download, and extraction reads now reuse the bounded, file-descriptor-based no-follow helper from the filesystem root, rejecting symlink ancestors and avoiding check-then-unbounded-read races. The regression also verifies downloads cannot create nested directories through a symlink ancestor.
+- Next: integrate the tested task branch into dev for coordinator review/replay, then T032 tool-server/session wiring. Disposable daemon/images retained for coordinator replay; no main promotion from this worker. Blockers: none.
