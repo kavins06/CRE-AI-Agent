@@ -11,6 +11,7 @@ fi
 
 # Bootstrap never upgrades the lock, starts services, copies secrets or downloads Python.
 UV_PYTHON_DOWNLOADS=never uv sync --locked --python 3.12
+mkdir -p "$ROOT/.cache"
 
 if command -v git >/dev/null 2>&1 &&
     [ "$(git rev-parse --show-toplevel 2>/dev/null || true)" = "$ROOT" ]; then

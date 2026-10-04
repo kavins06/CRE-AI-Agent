@@ -20,7 +20,7 @@ auth.json
 .codex/
 deals/
 firms/
-memory/
+/memory/
 inbox/
 outbox/
 transcripts/

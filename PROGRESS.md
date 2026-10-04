@@ -116,3 +116,22 @@
 - Existing guard files/CODEOWNERS/protected-path lists/private evals are untouched. New `gates/__init__.py` is the SPEC-mandated placeholder in a protected subtree; the eventual milestone PR still needs protected-change labeling and owner review. No task/evaluation bar relaxed.
 - Next: T002 CI checks/task checker/skip markers (not started in this session).
 - Blockers: none for T001. Docker unavailable on this isolated machine, so only the Compose contract was checked, not live Postgres. Two upstream Typer/Click deprecation warnings remain non-fatal. No live model, analyst run, real workbook recalculation, isolation evidence, SEC sourcing, or licensed-library ingestion is claimed.
+
+### 2026-10-04 06:10 UTC: T001 fresh-checkout correction
+- Branch: `task/t001-fresh-checkout-fix`. Stop-the-line repair before T002.
+- Reproduced pre-existing baseline: 1 missing-memory import failure plus 6 missing `.cache` tmp_path setup errors. The broad `memory/` ignore excluded the source package from Git; runtime ignore is now `/memory/`. Added the missing package marker and bootstrap cache-parent creation.
+- New regression archives the Git index into an empty Git checkout with a spaced path, runs bootstrap and all 33 original scaffold tests there. It never copies ignored dependencies or local source. Red run proved missing tracked memory; original assertions are unchanged.
+- Verify: `./init.sh && make check && uv run cre --help && uv run pytest tests/test_t001_scaffold.py -q` → exit 0. Full suite: 47 passed. Scaffold tail:
+```text
+.................................                                        [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+33 passed, 2 warnings in 2.22s
+```
+- Owner guards untouched; no feature state changes. Next: T002. Blockers: none.
