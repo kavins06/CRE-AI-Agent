@@ -89,6 +89,28 @@ def test_t015_ac2_debt_high_fee_quote_has_bounded_finite_cost_and_last_rank():
     assert result.outputs["quote:expensive:rank"] == 2
 
 
+@pytest.mark.parametrize("exponent", (70, 110))
+@pytest.mark.parametrize("guard", (None, "1e-100", "1e-170"))
+def test_t015_ac2_debt_fee_cancellation_matches_exact_oracle_with_unrelated_quotes(exponent, guard):
+    x = D(f"1.23456789e-{exponent}")
+    with localcontext() as context:
+        context.prec = 400
+        principal, fixed = D(1) - x, D(1) - 2 * x
+    target = quote("target", fee=fixed).model_copy(update={"fee_rate": x})
+    quotes = [target]
+    if guard:
+        quotes.append(quote("guard", fee=guard))
+    exact_proceeds = Fraction(principal) - Fraction(principal) * Fraction(x) - Fraction(fixed)
+    exact_cost = Fraction(principal) / exact_proceeds - 1
+    with localcontext() as context:
+        context.prec = 28
+        expected_proceeds = D(exact_proceeds.numerator) / D(exact_proceeds.denominator)
+        expected_cost = D(exact_cost.numerator) / D(exact_cost.denominator)
+    result = compare_debt_quotes(loan(principal), quotes, **META)
+    assert result.outputs["quote:target:net_proceeds"] == expected_proceeds
+    assert result.outputs["quote:target:effective_annual_cost"] == expected_cost
+
+
 @pytest.mark.parametrize("magnitude", ["1e80", "1e100", "1e200"])
 def test_t016_ac2_returns_exact_cancellation_preserves_small_npv(magnitude):
     values = [D(magnitude).copy_negate(), D(1), D(magnitude)]

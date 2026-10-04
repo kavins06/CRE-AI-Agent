@@ -10,6 +10,7 @@ Dates are contractual monthly anniversaries, clamped to the month's last day.
 from calendar import monthrange
 from datetime import date
 from decimal import Decimal, getcontext, localcontext
+from fractions import Fraction
 from typing import Annotated, Self
 
 from pydantic import BeforeValidator, Field, model_validator
@@ -279,10 +280,14 @@ def compare_debt_quotes(
                 quote, comparison.payoff_month if comparison is not None else None
             )
             schedule = _schedule(loan, quote)
-            fees = loan.principal * quote.fee_rate + quote.fixed_fee
-            proceeds = loan.principal - fees
-            if proceeds <= 0:
+            exact_fees = Fraction(loan.principal) * Fraction(quote.fee_rate) + Fraction(
+                quote.fixed_fee
+            )
+            exact_proceeds = Fraction(loan.principal) - exact_fees
+            if exact_proceeds <= 0:
                 raise ValueError("Quote fees must leave positive net proceeds")
+            fees = Decimal(exact_fees.numerator) / Decimal(exact_fees.denominator)
+            proceeds = Decimal(exact_proceeds.numerator) / Decimal(exact_proceeds.denominator)
             balance = schedule[f"month:{month}:balance_before_balloon"]
             prepay = balance * quote.prepayment_rate if month < quote.term_months else ZERO
             payments = [schedule[f"month:{m}:scheduled_payment"] for m in range(1, month + 1)]
