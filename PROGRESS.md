@@ -845,3 +845,44 @@ uv run --locked pytest tests -m "not integration" -q
 - The sole skip remains the approved Reducto-license seam; integration is excluded by the documented fast suite. All pre-commit hooks (Ruff lint/format, strict source types) and `uv lock --check` pass. Typer/Click deprecation warnings are unchanged.
 - Additional independent 160-digit closed-form payment oracle and contractual final-balance checks pass for 120 combinations spanning principal 1200/1e9, 1–600 months and annual rates 0, 1e-80, 1e-27, 1e-26, 1e-25, 1e-15, .01, .06, .12 and 1. Replaying the ten new T016 regression cases in-memory against incoming `8fff2d4` reconfirms 9 failures and one pass without modifying tracked source.
 - Feature flags stay false; no existing tests/assertions, schemas, pins or protected guards changed. Ready for task-branch push and independent review; no PR, dev/main merge, main promotion, live models, private eval, SEC or UI testing. No blocker.
+
+## 2026-10-04 — T016 required-review R3 certified-cardinality repair (acceptance pending)
+- Isolated session-local clone; fetched incoming branch without rewriting it. Required accepted base remains exactly origin/dev `5afde310256b5f988d17cef78d02644ddc0fe5fc`. Ran locked `./init.sh` and baseline `make check` on that base: 518 passed, one approved Reducto-license skip, 11 integration deselected; Ruff lint/format and strict mypy (67 files) pass.
+- Red first, before source edits: 27 failed, 3 passed in the new AC1/AC3 certification suite. Reproduced the review's two-root collapse at gaps 1e-35, 1e-40 and 1e-100, scaled and dated variants, absence of output-collision rejection, collapsed cubic tangency plus a close root, and false exact-zero reporting for irregular tangencies.
+- Decision: aggregate on exact integer periods/days, shift the first nonzero time, then reduce the lattice by its integer GCD. For reduced degree at most 128, convert original Decimal coefficients losslessly to standard-library Fraction and use exact Sturm sign variations to count distinct roots in each bracket. Repeated roots are counted once; a tiny stationary residual never certifies tangency. Exact rational open-domain endpoint factors are removed with all multiplicities; irrational endpoint brackets are padded outward and unresolved boundary conversions reject. Brackets refine by width, not residual, with an exact q=1 split preserving zero roots. Only the final rational-to-Decimal root/rate conversion is rounded; root collisions still reject at 28 output digits.
+- Decision: retain bounded generalized-polynomial derivative isolation for larger reduced lattices, but fail closed on uncertified stationary/boundary signs or an exactly rounded bisection value. Do not return an artificial tangent root or silently omit adjacent brackets. Rational remainder intermediates are bounded to 16384 bits; separation depth is bounded by working precision. Unsupported complexity/precision produces actionable ValueError, not fake uniqueness. These bounds and the 80–256-digit conversion / 28-digit public / binary64-diagnostic boundaries are documented in the module.
+- New tests cover representable near-zero pairs and unrepresentable nonzero pairs, exact repeated roots with a nearby distinct root, both sides of a nearly tangent stationary point, reduced irregular date tangency, safely rejected uncertified large-lattice tangency, actual 1/182/365/730-day conversion, exact endpoint multiplicities, caller-context preservation and CalcResult JSON. Expanded returns selection: 86 passed (41 new tests plus all 45 existing returns cases). No existing assertion, public schema, lock/pin, finance provenance contract or acceptance flag changed. T015 source is unchanged from the separately committed incoming repair.
+- Final exact T015 verify exits 0:
+```text
+...........................                                              [100%]
+27 passed, 115 deselected in 0.63s
+
+...........................                                              [100%]
+27 passed, 616 deselected, 2 warnings in 1.53s
+
+T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Final exact T016 verify exits 0; verify tail:
+```text
+........................................................................ [ 83%]
+..............                                                           [100%]
+86 passed, 56 deselected in 5.79s
+
+........................................................................ [ 83%]
+..............                                                           [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_binary_stream as get_binary_stream
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_text_stream as get_text_stream
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+86 passed, 557 deselected, 2 warnings in 6.82s
+
+T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Full sequential validation exits 0: `make check` reports 631 passed, one approved Reducto-license skip, 11 integration deselected (89.67s); Ruff lint/format (109 files), strict mypy (69 source files), all pre-commit hooks and `uv lock --check` pass. No overlapping pytest commands, new runtime, host service/policy changes, UI, models, SEC or private evaluations.
+- Next: additive T016 source/test repair commit and push for fresh independent review. T015/T016 flags remain false. No PR, dev/main merge, promotion or acceptance; no approval/runtime blocker.

@@ -1,14 +1,17 @@
 """Decimal returns with explicit IRR ambiguity in the open (-0.99, 10) domain.
 
-In discount factor q=1/(1+r), dated NPV is a generalized polynomial.
-Removing its lowest power and recursively isolating derivative roots gives
-monotone brackets, including stationary/tangent roots; a sampling grid cannot.
+On the reduced integer period/day lattice, NPV is a rational polynomial.
+Up to degree 128, exact Fraction Sturm counts certify distinct roots (including
+tangencies) before bracket refinement; residual size never decides cardinality.
+Larger lattices use generalized-polynomial derivative brackets and reject
+uncertain stationary/boundary signs rather than declaring approximate zeros.
 Dated calculations use ACT/365 fixed, aggregate repeated dates and sort them.
 
 pyxirr 0.10.8 IRR/XIRR and Excel-timed NPV are cross-checks, not the authority
 for root count. Only normalized cash flows/rates cross its binary64 boundary.
-Authoritative monetary arithmetic is 28-digit Decimal; root isolation uses
-80–256 digits and returns rates rounded to 28 digits with residual diagnostics.
+Authoritative monetary arithmetic is 28-digit Decimal; bracket refinement and
+rate conversion use 80–256 digits, with rates rounded to 28 output digits.
+Exact root counts use rational coefficients bounded to 16384-bit intermediates.
 Working precision covers the full nonzero input exponent span, sum growth
 and 40 guard digits, so repeated-date aggregation is exact in any input order.
 No pyxirr float is converted into authoritative money or a reported root.
@@ -17,7 +20,8 @@ Unresolvable precision/complexity fails closed rather than inventing an IRR.
 
 from datetime import date
 from decimal import Decimal, localcontext
-from math import isfinite
+from fractions import Fraction
+from math import gcd, isfinite
 from typing import Annotated, Self
 
 import pyxirr
@@ -38,6 +42,122 @@ ONE = Decimal(1)
 LOW_RATE = Decimal("-.99")
 HIGH_RATE = Decimal(10)
 Terms = list[tuple[Decimal, Decimal]]
+Polynomial = list[Fraction]
+
+
+def _trim(polynomial: Polynomial) -> Polynomial:
+    while polynomial and not polynomial[-1]:
+        polynomial.pop()
+    return polynomial
+
+
+def _rational_value(polynomial: Polynomial, point: Fraction) -> Fraction:
+    value = Fraction(0)
+    for coefficient in reversed(polynomial):
+        value = value * point + coefficient
+    return value
+
+
+def _remainder(dividend: Polynomial, divisor: Polynomial) -> Polynomial:
+    result = dividend.copy()
+    while len(result) >= len(divisor):
+        factor = result[-1] / divisor[-1]
+        shift = len(result) - len(divisor)
+        for index, coefficient in enumerate(divisor):
+            result[index + shift] -= factor * coefficient
+        if any(
+            max(coefficient.numerator.bit_length(), coefficient.denominator.bit_length()) > 16384
+            for coefficient in result
+        ):
+            raise ValueError("IRR exact certification exceeds the rational complexity budget")
+        _trim(result)
+    return result
+
+
+def _sturm(polynomial: Polynomial) -> list[Polynomial]:
+    derivative = [coefficient * index for index, coefficient in enumerate(polynomial)][1:]
+    sequence = [polynomial, _trim(derivative)]
+    while sequence[-1]:
+        remainder = _remainder(sequence[-2], sequence[-1])
+        if not remainder:
+            break
+        scale = abs(remainder[-1])
+        remainder = [-coefficient / scale for coefficient in remainder]
+        if any(
+            max(coefficient.numerator.bit_length(), coefficient.denominator.bit_length()) > 16384
+            for coefficient in remainder
+        ):
+            raise ValueError("IRR exact certification exceeds the rational complexity budget")
+        sequence.append(remainder)
+    return sequence
+
+
+def _variations(sequence: list[Polynomial], point: Fraction) -> int:
+    values = [_rational_value(polynomial, point) for polynomial in sequence]
+    signs = [value > 0 for value in values if value]
+    return sum(a != b for a, b in zip(signs, signs[1:], strict=False))
+
+
+def _remove_boundary(polynomial: Polynomial, point: Fraction) -> Polynomial:
+    while len(polynomial) > 1 and not _rational_value(polynomial, point):
+        quotient = [Fraction(0)] * (len(polynomial) - 1)
+        quotient[-1] = polynomial[-1]
+        for index in range(len(quotient) - 2, -1, -1):
+            quotient[index] = polynomial[index + 1] + point * quotient[index + 1]
+        polynomial = quotient
+    return polynomial
+
+
+def _certified_rates(
+    lattice: list[tuple[int, Decimal]], step: Decimal, epsilon: Decimal
+) -> list[Decimal]:
+    polynomial = [Fraction(0)] * (lattice[-1][0] + 1)
+    for power, amount in lattice:
+        polynomial[power] = Fraction(amount)
+    if step == step.to_integral_value():
+        low, high = Fraction(1, 11) ** int(step), Fraction(100) ** int(step)
+        polynomial = _remove_boundary(_remove_boundary(polynomial, low), high)
+    else:
+        low_value = _power(ONE / 11, step)
+        high_value = _power(Decimal(100), step)
+        # Enclose irrational domain endpoints; a root in this padding fails the
+        # public open-boundary check rather than being silently omitted.
+        low = Fraction(low_value * (ONE - epsilon))
+        high = Fraction(high_value * (ONE + epsilon))
+    if len(polynomial) < 2:
+        return []
+    sequence = _sturm(polynomial)
+    low_variations, high_variations = _variations(sequence, low), _variations(sequence, high)
+    brackets = [(low, high, low_variations, high_variations, 0)]
+    roots: list[Fraction] = []
+    tolerance = Fraction(epsilon)
+    depth_limit = 4 * max(0, -epsilon.adjusted()) + 400
+    while brackets:
+        left, right, left_variations, right_variations, depth = brackets.pop()
+        count = left_variations - right_variations
+        if not count:
+            continue
+        # Sturm variations count (left, right], including repeated roots once.
+        if count == 1 and not _rational_value(polynomial, right):
+            roots.append(right)
+            continue
+        if count == 1 and right - left <= tolerance * min(abs(left), abs(right)):
+            roots.append((left + right) / 2)
+            continue
+        if depth >= depth_limit:
+            raise ValueError("IRR exact root separation cannot be certified at working precision")
+        middle = Fraction(1) if left < 1 < right else (left + right) / 2
+        middle_variations = _variations(sequence, middle)
+        brackets.extend(
+            [
+                (left, middle, left_variations, middle_variations, depth + 1),
+                (middle, right, middle_variations, right_variations, depth + 1),
+            ]
+        )
+    return [
+        _power(Decimal(root.denominator) / Decimal(root.numerator), ONE / step) - ONE
+        for root in roots
+    ]
 
 
 class ReturnsInput(DomainModel):
@@ -86,19 +206,20 @@ def _evaluate(terms: Terms, q: Decimal) -> tuple[Decimal, Decimal]:
 
 def _sign(value: Decimal, scale: Decimal, epsilon: Decimal) -> int:
     if abs(value) <= scale * epsilon:
-        return 0
+        raise ValueError("IRR stationary or boundary sign cannot be certified at working precision")
     return 1 if value > 0 else -1
 
 
 def _bisect(terms: Terms, left: Decimal, right: Decimal, epsilon: Decimal) -> Decimal:
-    left_sign = _sign(*_evaluate(terms, left), epsilon)
+    left_sign = 1 if _evaluate(terms, left)[0] > 0 else -1
     for _ in range(4 * max(0, -epsilon.adjusted()) + 400):
         middle = (left + right) / 2
-        if middle == left or middle == right:
+        if middle == left or middle == right or right - left <= epsilon * min(left, right):
             return middle
-        middle_sign = _sign(*_evaluate(terms, middle), epsilon)
-        if middle_sign == 0:
-            return middle
+        middle_value = _evaluate(terms, middle)[0]
+        if middle_value == 0:
+            raise ValueError("IRR bracket sign cannot be certified at working precision")
+        middle_sign = 1 if middle_value > 0 else -1
         if middle_sign == left_sign:
             left = middle
         else:
@@ -128,7 +249,7 @@ def _isolate(terms: Terms, low: Decimal, high: Decimal, epsilon: Decimal) -> lis
     )
     points = [low, *critical, high]
     values = [_sign(*_evaluate(terms, point), epsilon) for point in points]
-    roots = [point for point, sign in zip(points[1:-1], values[1:-1], strict=True) if sign == 0]
+    roots = []
     for left, right, left_sign, right_sign in zip(
         points, points[1:], values, values[1:], strict=False
     ):
@@ -151,22 +272,37 @@ def _root_rates(source: ReturnsInput) -> tuple[list[Decimal], bool, Decimal]:
         raise ValueError("IRR cash-flow exponent span requires more than 256 precision digits")
     with localcontext() as context:
         context.prec = precision
-        by_time: dict[Decimal, Decimal] = {}
-        for time, amount in zip(_times(source), source.cash_flows, strict=True):
+        periods = (
+            [(day - min(source.dates)).days for day in source.dates]
+            if source.dates is not None
+            else list(range(len(source.cash_flows)))
+        )
+        by_time: dict[int, Decimal] = {}
+        for time, amount in zip(periods, source.cash_flows, strict=True):
             by_time[time] = by_time.get(time, ZERO) + amount
-        terms = sorted((time, amount) for time, amount in by_time.items() if amount)
-        if not terms:
+        exact_terms = sorted((time, amount) for time, amount in by_time.items() if amount)
+        if not exact_terms:
             return [], True, ZERO
+        denominator = 365 if source.dates is not None else 1
+        terms = [(Decimal(time) / denominator, amount) for time, amount in exact_terms]
         signs = [coefficient > 0 for _, coefficient in terms]
         changes = sum(a != b for a, b in zip(signs, signs[1:], strict=False))
+        if not changes:
+            return [], False, ZERO
         if changes > 1 and len(terms) > 128:
             raise ValueError(
                 "Nonconventional IRR supports at most 128 distinct nonzero dates/periods"
             )
         low, high = ONE / (ONE + HIGH_RATE), ONE / (ONE + LOW_RATE)
         epsilon = Decimal(10) ** (-precision + 12)
-        discount_roots = _isolate(terms, low, high, epsilon)
-        rates = sorted(ONE / q - ONE for q in discount_roots)
+        shift = exact_terms[0][0]
+        spacing = gcd(*(time - shift for time, _ in exact_terms))
+        if spacing and (exact_terms[-1][0] - shift) // spacing <= 128:
+            lattice = [((time - shift) // spacing, amount) for time, amount in exact_terms]
+            rates = sorted(_certified_rates(lattice, Decimal(spacing) / denominator, epsilon))
+        else:
+            discount_roots = _isolate(terms, low, high, epsilon)
+            rates = sorted(ONE / q - ONE for q in discount_roots)
     rounded = [+rate for rate in rates]
     if len(set(rounded)) != len(rounded):
         raise ValueError("Distinct IRR roots cannot be resolved at 28 output digits")
