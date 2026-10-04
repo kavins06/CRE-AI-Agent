@@ -3,6 +3,8 @@
 **Status:** evolving implementation and research plan, revised October 3, 2026.
 **Owner:** the user, a CRE analyst and the system's domain teacher.
 **Research:** [primary sources, books, evidence limits, and proposed experiments](docs/RESEARCH_BASIS.md). References such as R1 and B1 below refer to that document.
+**Implementation status:** this repository currently contains the plan and research documentation. The acquisition runtime, automated improvement loop, and model-training pipeline are not implemented yet.
+**Platform decision:** ii-agent is a candidate under evaluation; see the [platform assessment and adoption criteria](docs/PLATFORM_DECISION.md).
 
 ## 1. Goal and working assumptions
 
@@ -154,9 +156,11 @@ A model judge can assist with evaluation and triage. It cannot create independen
 
 Adversarial cases should include swapped unit identifiers with unchanged totals; wrong periods; omitted amendments; stale spreadsheet caches; circular or undefined return calculations; optimistic assumptions hidden in a seller model; unsupported citations; prompt injection; simultaneous market shocks; and newly received evidence that changes an earlier conclusion.
 
-## 7. The automated improvement loop
+## 7. The automated improvement loop: Karpathy-style autoresearch
 
-Use GEPA-style candidate optimization, optional ACE-style memory updates, and an autoresearch-style experiment log (R4–R5, R14). Compare them against simpler baselines before committing to every component.
+Automated improvement is a core planned capability, regardless of which agent runtime we choose. Adapt Andrej Karpathy's autoresearch pattern: the agent proposes a change, executes a bounded experiment, measures the result, keeps or rejects the candidate, and repeats. This loop is specified here but has not been built or run in this repository.
+
+Karpathy-style autoresearch supplies the experiment lifecycle and recordkeeping (R14). GEPA is a candidate method for proposing and selecting prompt changes (R4). ACE is an optional method for evolving contextual memory (R5). These have different roles; installing ii-agent or loading a skill does not implement the learning loop. Compare the methods against simpler baselines before combining them.
 
 ```text
 identify a material failure or knowledge gap
@@ -170,6 +174,17 @@ submit a selected candidate to the independent release gate
 publish a versioned release if its current authority permits it
 monitor prospective behavior; roll back on defined regressions
 ```
+
+### What must be built for an unattended learning run
+
+- A versioned learning charter, such as `program.md`, defining the task family, editable artifacts, objectives, protected surfaces, total budget, and stopping conditions. This is a planned artifact, not an existing configuration file.
+- A scheduler that selects consequential skill gaps and launches experiments within an explicit time/cost/trial budget. Stop on exhausted budget, repeated infrastructure failures, invalid evaluation, or the defined lack-of-progress condition.
+- An isolated candidate workspace and runner. Preserve the deployed baseline while testing prompts, skills, retrieval settings, tools, or an authorized training configuration.
+- An experiment record containing the hypothesis, parent version, exact change, model/settings, data split identifiers, evaluator version, metrics, cost, and keep/reject reason. Preserve unsuccessful trials as well as successful ones.
+- A selection process and a separate release gate, following section 8. Keeping a candidate for further experiments does not automatically authorize its deployment.
+- A versioned release registry, prospective monitoring, and tested rollback. Gradually authorize automatic promotion for specified update classes.
+
+**Completion demonstration:** starting from a recorded weakness, the loop must autonomously run multiple candidates, reject a deliberately worse candidate, retain a supported improvement, and reproduce its result. Separate release evaluation must confirm the improvement before promotion under the current authority policy. Generalization, regression checks, and rollback must work; a log showing that the agent edited files is insufficient.
 
 ### What may change
 
@@ -268,20 +283,26 @@ Test downside scenarios jointly where economic drivers interact; one-variable se
 
 | Need | Starting choice | Reconsider when |
 |---|---|---|
-| Agent interfaces | Python and Pydantic AI, native provider adapters | Required model/tool capabilities or measured reliability favor another adapter |
-| Durable execution | DBOS with Postgres once resumable work is needed | A documented operational capability gap justifies another engine; elapsed weeks alone do not require Temporal |
+| Agent runtime and workbench | Evaluate ii-agent against the Python/Pydantic AI baseline; decision pending | Select on the platform trial below, maintenance burden, extension quality, and component licensing |
+| Durable execution | Validate the chosen runtime's persistence and recovery; DBOS/Postgres remains a candidate if stronger workflow guarantees are needed | Add an engine only for a demonstrated gap; persisted chat history alone is insufficient evidence of deal-workflow recovery |
 | Evidence storage | Versioned object storage plus structured metadata; add hybrid retrieval when corpus needs it | Measured retrieval failures justify a different index or representation |
 | Extraction | Native XLSX/CSV parsing, Docling as a candidate PDF parser, evaluated vision fallback | Real-document tests identify a better pipeline |
 | Finance and Excel | Tested Python functions/PyXIRR, openpyxl, LibreOffice recalculation, supported Excel validation | Required financial conventions or workbook compatibility demand alternatives |
 | Policy | Versioned typed rules; ZEN where a visual editor helps the owner | Editing and audit requirements justify the added engine |
 | Evaluation | One reproducible runner, such as Inspect AI, plus deterministic task checks | A demonstrated evaluation requirement is not met |
-| Learning | Curriculum scheduler, experiment registry, GEPA candidate; incremental memory tested separately | Controlled comparisons favor another optimizer or memory method |
+| Learning | Karpathy-style experiment lifecycle, curriculum scheduler, independent evaluator, experiment/release registry; GEPA candidate and incremental memory tested separately | Controlled comparisons favor another optimizer or memory method; ii-agent adoption does not remove this work |
 | Classification | Typed model interface and simple baseline; benchmark Jev as a candidate | Target-distribution accuracy, calibration, price, and availability justify adoption |
 | Isolation and observability | Restricted experiment execution; structured traces, optional OpenTelemetry/Langfuse | Workload and confidentiality requirements determine deployment |
 
 Pin concrete versions and model identifiers during implementation. Measure each model's capability and cost on our tasks rather than treating a brand or generation as permanently best. Different model families may help challenge conclusions, but are not automatically independent evaluators.
 
 Define deployment choices from actual workload and data policy. Self-hosting telemetry alone does not determine how model providers handle supplied data. Apply access, retention, and permitted-use rules to documents, traces, training examples, and model calls alike.
+
+### ii-agent adoption decision
+
+ii-agent could supply the teaching interface, research tools, model adapters, task execution, and session persistence. Keep financial calculations, evidence/deal schemas, policy, evaluation datasets, and learning releases behind our own portable interfaces. If selected, use ii-agent as the primary runtime; add Pydantic AI or another runtime only for a specific demonstrated need.
+
+Before adopting it, run a representative packet through our tools, research a missing question with preserved evidence, produce inspectable outputs, capture an expert correction, evaluate a candidate improvement on a separate case, and verify interruption/revision handling. Also resolve or replace bundled components with restrictive licenses. The [platform decision record](docs/PLATFORM_DECISION.md) distinguishes inspected source capabilities from untested runtime behavior. This is an implementation choice within the overall method, not a change to the autonomous-learning objective.
 
 ## 12. Milestones to the complete system
 

@@ -159,6 +159,8 @@ The README describes an agent editing training code, running a fixed-duration ex
 
 **Borrow:** bounded experiments and a transparent experiment log. Our initial editable objects are prompts, skills, retrieval settings, and candidate tools; optional model-training experiments come later. Do not copy the language-model loss as an investment-quality metric.
 
+**Project status:** this mechanism is explicitly planned in METHOD.md section 7, including an unattended experiment lifecycle and completion demonstration. It has not been implemented. The [ii-agent platform assessment](PLATFORM_DECISION.md) evaluates a possible runtime for the same learning method; it does not change the underlying research claim or supply a completed learning loop.
+
 ## Books and how to use them
 
 ### B1. Sutton and Barto — learning, feedback, planning, model error
