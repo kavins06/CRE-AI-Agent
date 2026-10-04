@@ -1,11 +1,15 @@
-# Owner review required for protected paths. Replace @OWNER with the repo owner's GitHub handle.
-/program.md              @OWNER
-/CODEOWNERS              @OWNER
-/.github/                @OWNER
-/PROTECTED_HASHES.txt    @OWNER
-/scripts/protected_paths.txt @OWNER
-/evals/                  @OWNER
-/src/cre_brain/gates/    @OWNER
-/tests/protected/        @OWNER
-/config/gates.yaml       @OWNER
-/config/budget.yaml      @OWNER
+# Owner review is required for protected paths (see scripts/protected_paths.txt).
+# Owner: confirm this handle is yours (docs/HUMAN_SETUP.md §1). GitHub ignores lines with invalid owners.
+/CODEOWNERS                    @kavins06
+/.github/                      @kavins06
+/scripts/                      @kavins06
+/tests/conftest.py             @kavins06
+/tests/protected/              @kavins06
+/program.md                    @kavins06
+/learning/keep_rule.py         @kavins06
+/config/gates.yaml             @kavins06
+/config/budget.yaml            @kavins06
+/evals/                        @kavins06
+/src/cre_brain/gates/          @kavins06
+/src/cre_brain/runner/policy.py @kavins06
+/src/cre_brain/memory/sanitize.py @kavins06

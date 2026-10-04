@@ -52,13 +52,13 @@ These artifacts are improved automatically against a protected evaluation suite.
 
 ```mermaid
 flowchart LR
-  UI[Owner's UI / connectors] -->|tasks, answers, files| CP[Control plane<br/>API + DBOS workflows + state DB]
+  UI[Owner's UI / connectors] -->|tasks, answers, files| CP[Control plane<br/>API + jobs + state DB]
   CP -->|events, questions, deliverables| UI
   CP --> BOX
   subgraph BOX[User computer - one per user]
     BA[cre-boxd box agent<br/>outbound link, stuck detector]
     AG[Lead analyst session<br/>Codex CLI v1]
-    SUB[Quarantined extraction sessions<br/>read-only, no tools, schema output]
+    SUB[Extraction containers<br/>one per document, no MCP tools,<br/>only the parsed file, schema output]
     TOOLS[CRE tool server - MCP + CLI<br/>finance, Excel, rules, state, research<br/>policy + gates enforced here]
     HOOKS[OS limits<br/>non-root, paths, egress proxy]
     WS[(firms/ memory/ deals/ inbox/ outbox/)]
@@ -82,7 +82,7 @@ flowchart LR
   - Codex sessions *play the analyst*.
   - Scoring is a separate, blind step (Section 7).
 
-**Before commercial launch:** add the Claude Agent SDK and/or the OpenAI Agents/Codex SDK as runners. Re-run every eval on each runner and keep the best per deliverable.
+**Before commercial launch (M8):** add the Claude Agent SDK and/or the OpenAI Agents/Codex SDK as runners. Re-run every eval on each runner and keep the best per deliverable.
 
 **Portability:** everything that makes the agent good at CRE is runner-independent:
 - skills, tools, finance code, rules, **gates (enforced inside the tool server, not the runner)**, memory and evals
@@ -111,11 +111,15 @@ flowchart LR
 - For development and CI we ship a local Docker implementation of the same `SandboxProvider` interface.
 
 ### 3.3 How a task runs
-1. **Intake.** A request and any files arrive through the control-plane API. A durable DBOS workflow starts, so the task resumes if anything crashes.
+1. **Intake.** A request and any files arrive through `cre run` (M2) or the control-plane API (M6). Raw files go to `/srv/raw`, outside the analyst's view. A jobs table with idempotent segments lets a crashed task resume without duplicate work.
 2. **Plan.** The lead agent writes `todo.md` and picks the deliverables the request needs from the catalog.
 3. **Screen first.** Fast classification and headline extraction run, then the buy-box check. A screen result streams to the user within minutes.
-4. **Parallel extraction.** Quarantined extraction sessions read the seller documents. They are read-only, have no tools and no network, and produce schema-only JSON output. and return typed facts with page and cell provenance. The lead agent never reads raw seller text, which defends against prompt injection.
-5. **Work.** The lead agent calls the CRE tools: deterministic finance, the Excel build and recalc, rules, state and research. **The LLM never does arithmetic.**
+4. **Parallel extraction.**
+   - Deterministic code pre-parses each document.
+   - Each document is then read in its own **throwaway container** that holds only that parsed file, has no MCP tools and has restricted network, and must produce schema-only output.
+   - Results become typed facts with page and cell provenance.
+   - The lead analyst never sees raw seller text, which defends against prompt injection. Isolation comes from the container, because Codex always has a shell.
+5. **Work.** The lead analyst calls the CRE tools: deterministic finance, the Excel build and recalc, rules, state and research. **Every number in a deliverable must trace to a stored calculation or fact.** A gate enforces this, so arithmetic done by the model in the shell cannot pass.
 6. **Ask and continue.** When information is missing or ambiguous, the agent calls `ask_user`, records a default assumption, and keeps going. When the answer arrives, the dependency graph marks affected outputs stale and they are recomputed.
 7. **Gates.** A deliverable can only be finalized when its gates pass (Section 4). The tool server enforces this in code, for every runner. OS limits and a stuck detector back it up.
 8. **Deliver.** Outputs go to `deals/<id>/deliverables/`, with events streamed to the UI. When the agent cannot finish, the escalation is itself a deliverable (`BLOCKED` or `CONDITIONAL`, with the open questions and the defaults used).
@@ -129,7 +133,18 @@ Users ask for any combination of:
 - LOI draft
 - broker question and request list
 - lease abstracts
-- deal comparison
+- rent comp analysis (public proxies until licensed comps are connected)
+- debt quote summary
+- deal comparison (multi-deal tasks)
+
+**The finance core also covers:**
+- property-tax reassessment on sale
+- value-add renovation and unit-turn schedules
+- JV waterfall and promote
+- refinance and hold-vs-sell scenarios
+- rent-regulation checks
+
+**Every deliverable is versioned.** When a user edits a deliverable (for example the Excel model) and uploads it back, the edit is ingested and turned into corrections.
 
 The agent decides which ones a request needs.
 
@@ -164,7 +179,7 @@ Model names are set by the owner in config and never hard-coded.
 ### 3.8 Speed
 "As fast as possible" in practice means:
 - the screen streams first
-- extraction fans out across subagents
+- extraction fans out across parallel extraction containers
 - document parses are cached
 - independent deliverables run in parallel
 - fast models handle bulk work
@@ -179,11 +194,11 @@ Every deliverable has a latency budget, and latency is tracked as an eval metric
 | Checksums | Extraction | Rent roll ↔ GPR, with typed tolerances for loss-to-lease, model units and concessions; T-12 months sum to the annual total; unit counts tie |
 | Parity | Underwriting model | Python ↔ Excel, cell by cell after recalculation (LibreOffice; real Excel through Graph when licensed); no `#REF!` or `#DIV/0!` |
 | Ranges | Assumptions | Each assumption sits inside the ZEN range for its market tier and vintage; stale sources are flagged; public proxies are labelled |
-| Fragility | Recommendations | Joint downside scenarios; if go/no-go flips inside plausible ranges, the recommendation is `CONDITIONAL` and the agent asks |
+| Fragility | Recommendations | Joint downside scenarios inside P10–P90 ranges; `CONDITIONAL` only if go/no-go flips **and** the margin is below the configured threshold; otherwise it is reported as a sensitivity |
 | IRR sanity | Returns | Multiple or undefined IRRs are reported explicitly, never hidden |
-| Provenance + entailment | Memo, LOI | Every number maps to a fact or calc ID, and the cited source supports the claim |
+| Number provenance | Every deliverable | Every number maps to a stored fact or calculation (blocking). The LLM entailment check is advisory until calibrated |
 | Policy bands | LOI | Price and terms fall inside the firm's policy tables |
-| Verifier | Memo, LOI | A different model reviews against a rubric and coverage list, with at most 2 revise loops |
+| Verifier | Memo, LOI | A separate Codex session with an independent prompt reviews against a rubric: **advisory in v1**, blocking only after ≥150 owner labels per item |
 
 ## 5. State, memory and knowledge
 - **Canonical state.** A versioned store holding:
@@ -234,14 +249,17 @@ The builder (Devin) never acts as the analyst when evals run.
 **Honest limit:** public and synthetic data make the machine work. Expertise comes from real deals and corrections, which are added through `inbox/` and the correction API.
 
 ## 8. Build plan
-Each milestone is delivered as one PR. Task detail is in [docs/tasks/](docs/tasks/) and [feature_list.json](feature_list.json).
+- **How Devin works:** Devin works on the `dev` branch. Each milestone becomes one `dev` → `main` PR, reviewed by the owner. Task detail is in [docs/tasks/](docs/tasks/) and [feature_list.json](feature_list.json).
+- **Order:** a working analyst comes first; then the platform and scale work.
 
 | Milestone | Delivers |
 |---|---|
-| M0 | Scaffold, CI guards, config, release manifest |
-| M1 | Domain schemas, state + invalidation, finance library, Excel mirror + recalc + parity, rules |
-| M2 | Public data clients, CMBS gold pairs, synthetic generator + defects, adversarial, task and question suites, eval harness, judges |
-| M3 | Codex CLI runner spike, user computer + box agent, CRE tool server (MCP + CLI) with policy, stuck detection, extraction, decision model, gates, deliverables, lead-analyst orchestration, control plane (auth, control verbs, events), end-to-end + stress tests |
-| M4 | Firm onboarding, memory layers, sanitization |
-| M5 | Autoresearch runner, GEPA, keep rule, ACE queue, DAgger corrections, releases + nightly runs |
-| M6 | Connectors + toggles, inbox, commercial SDK runners (Claude Agent SDK, OpenAI) compared on evals, baseline report + runbook |
+| M0 | Scaffold, CI checks, task checker, approved skip markers, config, release manifest (owner-authored guards already in place) |
+| M1 | Domain schemas, versioned state + invalidation, finance core (rent roll, T-12, pro forma, taxes, value-add, debt and quotes, returns, waterfall, scenarios), Excel mirror + recalc + parity, rules |
+| M2 | **First working analyst:** Codex spike, box and extraction containers, tool server + policy, CodexRunner, pre-parse, quarantined extraction, generator v1, deterministic gates, SCREEN, UW_MODEL, `cre run`, blind eval harness + first baseline |
+| M3 | Real anchors: public data, CMBS EX-102 + Annex fixtures, 3-14 statements, generator v2, defects, adversarial, suites, private scoring service, risk backtest |
+| M4 | Full analyst: ask-and-continue, labels and judges, IC memo, DD and leases, LOI and broker questions, comps and debt, multi-deal, versioning and edits, decision model, browse |
+| M5 | **Learning loop:** fixtures, GEPA proposer (Codex LM, no LiteLLM), statistically validated keep rule, experiment runner, corrections, nightly runs and releases |
+| M6 | Platform: authenticated API, control verbs, events + redaction, box agent, recovery, inbox, OpenAPI client, stress tests |
+| M7 | Firms and memory: template onboarding, buy-box and style, memory layers, sanitization, ACE |
+| M8 | Connectors, Jev, commercial SDK runners, baseline report and runbook |

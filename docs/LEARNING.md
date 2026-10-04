@@ -2,108 +2,95 @@
 
 > The product is an autonomous CRE acquisition analyst, "the Devin of real estate". This document specifies its self-improvement loop.
 
-The loop follows Andrej Karpathy's autoresearch pattern: propose a change, run a bounded experiment, measure it, then keep or revert. It is adapted in four ways so it does not fool itself.
+The loop follows Andrej Karpathy's autoresearch pattern: propose a change, run a bounded experiment, measure it, then keep or revert. It is adapted in five ways so that it doesn't fool itself.
 
 ## 1. What may change and what may not
 
-| Surface | Learning loop may edit? | Notes |
-|---|---|---|
-| `brain/skills/**`, `brain/prompts/**`, `brain/playbook/global.md` | **Yes** | These are the "weights" |
-| Firm playbooks | Only via firm-scoped runs | Never promoted to global without sanitization |
-| `src/cre_brain/**` tool code | Candidate branches only | Must pass the full test suite and a human-reviewed PR |
-| `evals/**`, `src/cre_brain/gates/**`, `tests/protected/**`, `config/gates.yaml`, `program.md` | **Never** | Protected by hash check, CODEOWNERS and CI |
+| Surface | Learning loop may edit? |
+|---|---|
+| `brain/skills/**`, `brain/prompts/**` (incl. overlays), `brain/playbook/global.md` | **Yes**. These are the "weights" |
+| Firm playbooks | Only in firm-scoped runs; never promoted to global without sanitization (M7) |
+| `src/cre_brain/**` tool code | Candidate branches only, through a normal PR with full tests |
+| Everything in `scripts/protected_paths.txt` (evals, gates, policy, `keep_rule.py`, `program.md`, `gates.yaml`, `budget.yaml`) | **Never** |
 
-The optimizer process runs with read-only access to the evaluator, and it never sees the holdout data or rubric text.
+## 2. Runner for training (v1)
+- Every candidate is evaluated by running **Codex CLI analyst sessions** (`CodexRunner`) in **repo-less containers** on the frozen dev fixtures. No separate model API keys are needed.
+- The scorer runs afterwards as a separate process.
+- **Auth:** the owner's Codex login, used by **one serialized job stream** (`codex_login_max_concurrency: 1`), on public and synthetic data only. Parallel or customer-data runs require API-key auth (SPEC §9).
+- When SDK runners are added (M8), the accepted brain is re-validated on them, and per-runner overlays are tuned there.
 
-**Runner for training (v1):**
-- Every candidate is evaluated by running **Codex CLI analyst sessions** (`CodexRunner`) on the frozen fixtures.
-- GEPA reflection also runs as a Codex session.
-- No separate model API keys are needed.
-- When an SDK runner is added before launch, the accepted brain is re-validated on it, and any per-runner prompt overlay is tuned there.
-
-## 2. The loop (`learning/runner.py`, configured by [program.md](../program.md))
-
+## 3. The loop (`learning/runner.py`, configured by [program.md](../program.md))
 ```
-pick target deliverable kind K (worst metric vs. its bar, rotated)
-load frozen fixtures for K  (deal states checkpointed just before K is produced)
-baseline = evaluate(current brain, K, dev split, k=3)
-repeat until budget exhausted:
-    candidate = GEPA.propose(artifact for K, failure categories from last eval)
-    git commit on autoresearch/<tag>
-    score = evaluate(candidate, K, dev split, k=3)        # paired with baseline, same seeds
-    if keep_rule(score, baseline): confirm on selection holdout
-         if confirmed: keep (branch advances), baseline = score
-         else: revert
-    else: revert
+pick target deliverable kind K (largest gap to its bar, rotated)
+load frozen dev fixtures for K (8–10 deal states checkpointed just before K)
+baseline = evaluate(current brain, K, dev, k=3)                 # cached per release
+repeat until nightly caps reached:
+    candidate = GEPA proposer -> ONE edit to ONE artifact for K (from failure categories)
+    commit on autoresearch/<tag>
+    score = evaluate(candidate, K, dev, k=3)                    # paired with baseline, same fixtures
+    if keep_rule.dev_pass(score, baseline):
+        verdict = scoring_service.confirm(candidate_release, K) # selection holdout, private; returns pass/fail + aggregates
+        keep if verdict.pass else revert
+    else revert
     append row to results.tsv
-open PR "autoresearch/<tag>: <K> +x.x" with results.tsv summary  (never auto-merge)
+open PR autoresearch/<tag> -> dev (never auto-merge)
 ```
+**Per-experiment cost:** about 30 dev sessions (10 fixtures × k=3) plus the holdout confirmation. Each experiment is allowed **up to 3 h of wall-clock time**. With the default caps (`nightly_sessions: 200`, `nightly_wallclock_h: 10`), a night runs about **3–5 experiments**. That is deliberate: a few well-measured experiments beat many noisy ones.
 
-**Why one deliverable at a time on frozen fixtures:** running the full pipeline for every experiment costs too much and is too noisy. Fixtures make each experiment cheap (cents to a few dollars) and attributable.
+## 4. GEPA as a proposer (`learning/gepa_proposer.py`)
+- **No DSPy.** It requires LiteLLM, which is banned. Use the `gepa` package directly.
+- Give GEPA a **custom language-model callable that wraps `codex exec -p reflector`**, so no LiteLLM default is ever used [verify the GEPA LM-callable interface in T071].
+- **Use GEPA only to propose one candidate edit per experiment.** Its internal Pareto acceptance is not used; `keep_rule` decides. Configure the smallest proposal budget, for example a single reflective mutation per call [verify the config name].
+- The proposer sees only **failure categories** (for example `checksum_tie_failed: rent_roll_vs_gpr`), never rubric text or holdout content.
 
-## 3. Keep rule (`learning/keep_rule.py`)
+## 5. Keep rule (`learning/keep_rule.py`, protected)
+`dev_pass` is true only if **all** of these hold:
+1. **Paired improvement.** On the same dev fixtures with k=3, the bootstrap CI of `mean(candidate − baseline)` has its lower bound above 0, at confidence level `1 − α/m`. Here α = 0.05 and m = the number of candidates tried that night (Bonferroni).
+2. **Counter-metrics.** None worsens beyond its tolerance in `program.md`: false flags, question rate, tokens, latency, escalation rate.
+3. **Simplicity.** On a tie, the shorter artifact wins.
 
-A candidate is kept only if **all** of the following hold:
-1. **Paired improvement.** On the same dev items and seeds with k=3 repeats, the bootstrap 95% CI of `mean(candidate - baseline)` has a lower bound above 0.
-2. **Multiple comparisons.** The CI level is Bonferroni-adjusted for the number of candidates tried that night.
-3. **Confirmation.** On the selection holdout (not the sealed test), the improvement is ≥ 0, and no critical item regresses.
-4. **Counter-metrics.** None of the following worsens beyond its tolerance in `program.md`:
-   - false-flag rate
-   - question rate
-   - cost per task
-   - latency
-   - escalation rate
-5. **Simplicity.** When scores tie, the shorter artifact wins.
+Then the holdout confirmation must show improvement ≥ 0 with no regression on any critical item.
 
-The rule's unit tests must show it **rejects pure noise**: two identical brains with random seed variation must never be kept, across 200 simulated nights.
+**Required statistical tests (T072), in simulation:**
+- **Null false-keep rate.** Two identical brains with seed noise, n = 10 fixtures, k = 3, per-item score SD 0.15. Over 2,000 simulated experiments, the false-keep rate must be **≤ 1%** (binomial 95% upper bound ≤ 1.5%).
+- **Power.** A true effect of +0.10 under the same noise must be kept in **≥ 80%** of experiments.
+- If both cannot be met at n = 10, the test must report the minimum n that meets them, and `program.md` uses that n.
 
-## 4. GEPA adapter (`learning/gepa_adapters.py`)
-- Uses `gepa.optimize_anything`, with one adapter per deliverable kind. The seed candidate is the current artifact text.
-- The evaluator returns a score plus **failure categories only**, for example `checksum_tie_failed: rent_roll_vs_gpr` or `provenance_missing: 3 numbers`. It never returns rubric text or holdout content.
-- The reflection model is the `reflection` role from config.
-- The budget is `max_metric_calls` from `program.md`.
+## 6. ACE playbook queue (M7)
+- Live runs only **propose** bullets, written to `learning/queue/`.
+- Candidates come only from deterministic signals: gate failures that were later fixed, parity diffs, checksum breaks, owner corrections.
+- **Bullet metadata:** scope (deliverable kind, asset class), source run IDs, helpful/harmful counters.
+- **Limits:** a cap of 100 per scope, a contradiction check, and incremental deltas only (never a full rewrite).
+- **Promotion path:** sanitization (M7) → keep rule on fixtures → merged into `brain/playbook/global.md` via PR.
 
-## 5. ACE playbook (`memory/ace_queue.py`)
-- **Live runs only propose bullets.** They write to `learning/queue/`. They never edit `brain/playbook/global.md` directly.
-- Candidates come only from deterministic signals: gate failures that were later fixed, parity diffs, checksum breaks, user corrections. The agent's own opinion of its work is not a source.
-- Each bullet records:
-  - its scope (deliverable kind, asset class)
-  - the run IDs it came from
-  - helpful and harmful counters
-- At most 100 bullets per scope. A contradiction check runs, and bullets are incremental deltas only (never full rewrites).
-- **Promotion:** sanitization gate → keep rule on fixtures → merged into `brain/playbook/global.md`.
+## 7. Corrections (DAgger)
+Owner or user corrections come from two places:
+- `POST /corrections`
+- uploaded user edits to deliverables (SPEC §4 versioning)
 
-## 6. DAgger corrections (`control/corrections.py`)
-- When a user corrects the agent (a number, an assumption, a judgment, a memo edit), a `DecisionRecord` is stored with these fields:
-  - `state_ref`: the deal state at that point
-  - `agent_action`
-  - `correction`
-  - `correction_type`: fact / convention / preference / judgment-range
-  - `scope`
-- Each record becomes:
-  1. a **private eval case** for that user or firm
-  2. a **firm or user memory** item
-  3. a **candidate global lesson**, only if `correction_type` is fact or convention, sanitization passes, and the keep rule passes
+Each correction becomes a `DecisionRecord`:
+- state ref
+- agent action
+- correction
+- type (fact / convention / preference / judgment-range)
+- scope
 
-## 7. Releases (`release/`)
-- A **Brain Release** is a manifest hash over `brain/`, firm-playbook versions, `config/*.yaml`, `src/cre_brain/gates`, and the model IDs.
-- Every task records the release it ran on, so it can be replayed.
-- `cre release rollback <id>` restores the prior release.
-- Every accepted change is re-run weekly in an end-to-end non-inferiority check: no deliverable metric may drop by more than 2 points.
+That record then becomes:
+1. a **private eval case** in the private repo
+2. a firm or user memory item
+3. a candidate global lesson, for fact and convention types only, after sanitization and the keep rule
 
-## 8. Nightly operation (`learning/nightly.py`)
-1. Stop immediately with `SKIPPED_NO_RUNNER` if `config.live_enabled("lead")` is false (for example, the Codex CLI is missing or not authenticated).
-2. Read the budget from `config/budget.yaml`:
-   - `nightly_sessions`, default 150 Codex sessions
-   - `nightly_wallclock_h`, default 8
-   - `nightly_usd`, applies only to API-billed runners
+## 8. Releases and nightly operation
+- **Brain Release:** a manifest hash over `brain/`, firm playbook versions, `config/*.yaml`, the gates code hash, runner and model IDs, and the Codex CLI version. Every task records its release.
+- `cre release rollback <id>` reverts to an earlier release.
+- `cre learn nightly`:
+  1. skips with `SKIPPED_NO_RUNNER` if Codex isn't usable
+  2. rotates kinds by gap
+  3. respects `nightly_sessions` and `nightly_wallclock_h`
+  4. writes a PR plus a PROGRESS entry
+- A weekly end-to-end non-inferiority run checks that no deliverable metric drops by more than 2 points.
 
-   Stop cleanly when any cap is reached.
-3. Rotate target deliverable kinds by largest gap to their bar.
-4. Write the experiment PR and a summary to `PROGRESS.md`.
-
-## 9. Guardrails against the loop fooling itself
-- Graders, gates and holdouts are outside the editable surface and are hash-checked in CI.
-- The sealed test runs only in CI, once per release, and each run is logged.
-- Synthetic vs. real transfer is tracked: for each accepted change, record its delta on synthetic sets and on real-anchor sets (CMBS gold pairs, and owner deals once available). If the transfer ratio for a deliverable kind falls below 0.6, stop optimizing that kind on synthetic data.
-- The top-scoring outputs of each night are sampled into `learning/review/` for human spot checks. Reward hacking shows up there first.
+## 9. Guardrails
+- Graders, gates, the keep rule and the holdouts sit outside the editable surface and are protected by path. Holdouts are physically separate (EVALS §1).
+- **Synthetic-vs-real transfer:** for each accepted change, compare its delta on synthetic data with its delta on real anchors (C/D, and I later). If the transfer ratio for a kind falls below 0.6, stop optimizing that kind on synthetic data.
+- The night's top-scoring outputs are sampled into `learning/review/` for the owner to spot-check.

@@ -1,56 +1,57 @@
 # program.md: autoresearch charter for the CRE analyst brain
 
-> The product is an autonomous CRE acquisition analyst. This file is the charter for its self-improvement loop, modelled on Karpathy's autoresearch `program.md`. **Only a human edits this file.** It is protected by CODEOWNERS.
+> The product is an autonomous CRE acquisition analyst. This file is the charter for its self-improvement loop, modelled on Karpathy's autoresearch `program.md`. **Only the owner edits this file** (it is a protected path).
 
 ## Setup
-1. Agree a run tag, for example `oct04-ic_memo`. Create the branch `autoresearch/<tag>` from `main`.
-2. Read `docs/LEARNING.md`, `brain/`, and the fixture manifest for the target deliverable kind.
-3. Check that the frozen fixtures exist: `uv run cre fixtures check --kind <K>`.
-4. Create `results.tsv` with only the header row. It is not committed.
-5. Confirm the Codex CLI is installed and authenticated (`codex login status`). If it isn't, write `SKIPPED_NO_RUNNER` to `PROGRESS.md` and stop.
+1. Agree a run tag, for example `oct04-uw_model`. Create the branch `autoresearch/<tag>` from `dev`.
+2. Read `docs/LEARNING.md`, `brain/`, and the fixture manifest for the target kind K.
+3. Check that fixtures exist: `uv run cre fixtures check --kind <K>`.
+4. Create `results.tsv` containing only the header row. It is never committed.
+5. Check `codex login status`. If it fails, write `SKIPPED_NO_RUNNER` to `PROGRESS.md` and stop.
 
 ## What you may edit
-- `brain/skills/**`, `brain/prompts/**`, `brain/playbook/global.md`. Edit **one artifact per experiment**.
+- `brain/skills/**`, `brain/prompts/**`, `brain/playbook/global.md`. **One artifact per experiment.**
 
-## What you must not edit
-- `evals/**`, `src/cre_brain/gates/**`, `tests/protected/**`, `config/gates.yaml`, `config/budget.yaml`, this file.
-- Do not add dependencies.
-- Do not read anything under `evals/holdout/`.
+## What you must not do
+- Edit any path in `scripts/protected_paths.txt`.
+- Add dependencies.
+- Read eval truth, `evals/` scorer internals during an analyst session, or anything in the private eval repo.
+- Act as the analyst. Analyst work runs only through `CodexRunner` in repo-less containers.
 
 ## Goal
-Maximize the primary score for deliverable kind K on the dev split, without violating any counter-metric tolerance.
+Maximize the primary score for K on the dev fixtures without violating any counter-metric tolerance.
 
-| Kind | Primary score | Counter-metrics (max allowed worsening) |
+| Kind | Primary score | Counter-metric tolerances (max worsening) |
 |---|---|---|
-| SCREEN | decision agreement + critical-field accuracy | latency +10%, cost +10%, question rate +0.05 |
-| UW_MODEL | assumption in-band rate + parity pass + value error | cost +10%, false flags +0.1/deal |
-| IC_MEMO | rubric pass rate (calibrated judge) + provenance 100% | length +15%, cost +10% |
-| DD_TRACKER | defect recall (critical-weighted) | false flags +0.1/deal |
+| SCREEN | buy-box input accuracy + critical-field accuracy | latency +10%, tokens +10%, question rate +0.05 |
+| UW_MODEL | NOI/value error vs. truth + assumptions in-band + parity pass | tokens +10%, false flags +0.1/deal |
+| IC_MEMO | number provenance + required sections (+ judge, once calibrated) | length +15%, tokens +10% |
+| DD_TRACKER | critical-weighted defect recall | false flags +0.1/deal |
 | LOI | policy compliance + completeness | none |
-| any | n/a | escalation rate +0.03 |
+| any | n/a | escalation rate +0.03, stuck events +0 |
 
-## Budget per experiment
-- `max_metric_calls` = 40 per candidate (k=3 over the dev fixtures for K).
-- Kill any experiment that runs longer than 20 minutes wall-clock and log it as `crash`.
-- Nightly caps: `config/budget.yaml` `nightly_sessions` and `nightly_wallclock_h` (and `nightly_usd` for API-billed runners). Stop cleanly when any cap is reached.
-- Analyst sessions run via `CodexRunner`. Scoring is a separate blind process. Never read truth files.
+## Budget
+- **Per experiment:** dev fixtures n = 10 (or the minimum n reported by the keep-rule power test), k = 3, about 30 analyst sessions. Kill the experiment at **3 h** wall-clock and log it as `crash`.
+- **Nightly:** `config/budget.yaml` caps `nightly_sessions` (default 200) and `nightly_wallclock_h` (default 10). Stop cleanly at whichever comes first.
+- With a shared Codex login, run one serialized job stream (`codex_login_max_concurrency: 1`).
 
 ## Output format
-Append one row per experiment to `results.tsv` (tab-separated):
+`results.tsv`, tab-separated, one row per experiment:
 ```
 commit	kind	score	ci_low	sessions	status	description
 ```
-`status` is one of `keep`, `discard`, `crash`. `ci_low` is the Bonferroni-adjusted lower bound of the paired improvement.
+`status` is `keep`, `discard` or `crash`. `ci_low` is the Bonferroni-adjusted lower bound of the paired improvement.
 
 ## Keep or discard
-Apply `learning/keep_rule.py` exactly (see LEARNING §3).
-- **Keep:** the branch advances.
-- **Otherwise:** run `git reset --hard` back to the last kept commit.
-- **Simplicity criterion:** a tiny gain bought with a much longer artifact is not worth it; an equal score with a shorter artifact is a keep.
+1. Run `learning/keep_rule.py` `dev_pass`.
+2. If it passes, run the holdout confirmation through the scoring service.
+3. **Keep:** the branch advances.
+4. **Otherwise:** `git reset --hard` to the last kept commit.
+
+**Simplicity:** on a tie, the shorter artifact wins.
 
 ## Loop
-Never stop to ask a human. Continue until the budget is exhausted. Then:
-1. Open one PR titled `autoresearch/<tag>: <K> <old>→<new>`, with the `results.tsv` summary and five sampled outputs.
-2. Append a summary entry to `PROGRESS.md`.
-
-Never merge your own PR.
+Never stop to ask a human. Run until a cap is reached. Then:
+1. Open one PR, `autoresearch/<tag>` → `dev`, with the results summary and five sampled outputs from `learning/review/`.
+2. Append a summary to `PROGRESS.md`.
+3. Never merge your own PR.

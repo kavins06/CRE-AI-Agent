@@ -4,33 +4,38 @@
 
 Versions were checked on PyPI on 2026-10-04.
 - **Pin exact versions** in `pyproject.toml`. Upgrade only in a dedicated task.
-- Items marked **[verify]** must be confirmed against the installed package in task T030 (the Agent SDK spike) or the task that first uses them. Record what you find in PROGRESS.md and correct this file in the same PR.
+- Items marked **[verify]** must be confirmed against the installed package by the task that first uses them (Codex: T030). Record what you find in PROGRESS.md and correct this file in the same PR.
 
 ## Codex CLI: the v1 analyst runner
-- Docs: https://developers.openai.com/codex/noninteractive and https://developers.openai.com/codex/cli/reference
-- It is installed and authenticated on the build machine and in user boxes by the owner's setup. **Never handle or store its credentials in code.**
-- Check availability with `codex login status` (exit 0 means usable) [verify the command].
-- Headless runs: `codex exec --json "<prompt>"` streams JSONL events, one per state change, on stdout. Capture them, normalize them into `AgentEvent`, and keep the raw event as `runner_raw`.
-- Useful flags [verify each in T030]:
+- Docs:
+  - https://developers.openai.com/codex/noninteractive
+  - https://developers.openai.com/codex/cli/reference
+  - auth: https://developers.openai.com/codex/auth and https://developers.openai.com/codex/auth/ci-cd-auth
+- **Installation and auth:** the owner's setup installs and authenticates it. **Never handle its credentials in code.** API-key auth (`CODEX_API_KEY`) is the documented method for automation. A ChatGPT-login `auth.json` should serve **one machine and one serialized job stream** at a time.
+- **Headless runs:** `codex exec --json "<prompt>"` writes JSONL events to stdout. Normalize them into `AgentEvent` and keep the raw form as `runner_raw`. `turn.completed` events carry token usage [verify field names].
+- **Flags.** These come from reading openai/codex `main`; confirm each on the installed version in T030:
   - `--cd <dir>`
-  - `--sandbox read-only|workspace-write`
-  - `--profile <name>`
+  - `-p/--profile <name>`
   - `-m <model>`
-  - `--output-schema <file.json>` (structured final output)
-  - `codex exec resume <session_id>` / `--last`
-- MCP servers are configured in `~/.codex/config.toml` (or a project `.codex/config.toml`):
+  - `--sandbox read-only|workspace-write|danger-full-access`
+  - `--output-schema <file>`
+  - `-c key=value` config overrides
+  - `codex exec resume <SESSION_ID>` / `--last`
+- **Sandbox in containers:** the Linux sandbox uses bubblewrap, which often cannot create namespaces inside Docker. Common practice is to make **the container the sandbox** and run Codex with `danger-full-access` *inside* it. Never do that on a host.
+- **Profiles cannot remove MCP servers.** `ConfigProfile` has no `mcp_servers` field. For tool-less extraction, use a **separate `CODEX_HOME` with no MCP config**, or `-c mcp_servers.cre.enabled=false` [verify].
+- **Non-interactive MCP approval:** set `[mcp_servers.cre] default_tools_approval_mode = "approve"` [verify the exact value], or the narrowest working option (see openai/codex#24135). Never use `--dangerously-bypass-approvals-and-sandbox` outside a disposable container.
+- **The MCP tool-call timeout defaults to about 300 s** [verify]. Never block inside a tool; return `pending` instead (SPEC §10.3).
+- **Instructions:** it reads `AGENTS.md` in the working directory, and skills from `.agents/skills/` [verify].
+- **Config:**
   ```toml
   [mcp_servers.cre]
   command = "uv"
   args = ["run", "cre", "mcp", "serve"]
-  [profiles.analyst]      # sandbox/approval/model per profile [verify keys]
-  [profiles.extractor]    # read-only, no MCP servers, network off
+  [profiles.analyst]     # model, sandbox, approval
+  [profiles.extractor]   # used with a separate CODEX_HOME that has no mcp_servers
   ```
-- **Known gotcha:** non-interactive MCP tool calls may need an explicit approval setting. See openai/codex issue #24135, "no way to allow MCP tool calls non-interactively without --dangerously-bypass-approvals-and-sandbox". T030 must find the narrowest working setting. **Never use `--dangerously-bypass-approvals-and-sandbox` outside the isolated box**, and never on the control plane.
-- It reads `AGENTS.md` in the working directory and Agent Skills from `.agents/skills/` [verify the skills path].
-- `CODEX_API_KEY` exists for API-key auth in `codex exec`. It is not needed when the owner's setup authenticates the CLI.
 
-## claude-agent-sdk (Python), `pip install claude-agent-sdk`: LATER (pre-commercial runner)
+## claude-agent-sdk (Python): LATER (M8 commercial runner)
 - Docs: https://code.claude.com/docs/en/agent-sdk/python and https://code.claude.com/docs/en/agent-sdk/hosting
 - **Requirements:**
   - Python ≥3.10
@@ -87,8 +92,10 @@ async with ClaudeSDKClient(options=options) as client:
 - Never put raw seller documents into the lead agent's context.
 - Tool results should be concise JSON.
 
-## GEPA, `gepa` 0.1.4 (2026-07-15); dspy 3.4.0
-- The PyPI release may lag `main`. Use the API of the pinned version [verify `optimize_anything` config class names].
+## GEPA, `gepa` 0.1.4 (2026-07-15). **No DSPy** (dspy 3.4.0 requires LiteLLM, which is banned)
+- The PyPI release may lag `main`. Use the API of the pinned version.
+- Its default `reflection_lm` routes through LiteLLM. **Always pass a custom LM callable that wraps `codex exec -p reflector`** [verify the callable interface].
+- Use GEPA as a **one-candidate proposer**. Note that `max_metric_calls` budgets the *whole* optimization, not one candidate.
 
 ```python
 from gepa.optimize_anything import optimize_anything, GEPAConfig, EngineConfig
@@ -113,7 +120,7 @@ from inspect_ai.scorer import scorer, Score, Target, accuracy, stderr, CORRECT, 
 def field_accuracy(): ...
 @task
 def screen_suite(): return Task(dataset=[Sample(input=..., target=...)], solver=..., scorer=field_accuracy())
-logs = eval(screen_suite(), model="anthropic/claude-sonnet-5-5")
+logs = eval(screen_suite(), model="none")   # our solver calls Runner; no inspect model provider needed [verify]
 ```
 - The default log format is `.eval`. Read logs with `inspect_ai.log.read_eval_log`.
 - For agent runs, write a custom solver that calls our `Runner` and returns the deliverables.
@@ -144,7 +151,7 @@ out = engine.evaluate("buy_box.default.json", {"units": 120, "dscr": 1.31, "mark
 - Returns `None` when there is no solution (with `silent=True`). Handle that explicitly.
 
 ## LibreOffice headless recalculation
-`soffice --convert-to xlsx` does **not** reliably recalculate. Use a Basic macro installed in a dedicated profile:
+`soffice --convert-to xlsx` does **not** reliably recalculate. **Preferred:** Python UNO through `unoserver` (load the document, call `calculateAll()`, store as xlsx with formulas). **Fallback:** a Basic macro in a dedicated profile:
 ```basic
 Sub RecalculateAndSave()
   ThisComponent.calculateAll() : ThisComponent.store() : ThisComponent.close(True)
@@ -160,7 +167,7 @@ timeout 60 soffice --headless --norestore -env:UserInstallation=file:///tmp/lo_p
 - Never save a workbook loaded with `data_only=True`.
 - [verify the exact macro install path inside the box image]
 
-## DBOS 3.2.0
+## DBOS 3.2.0: OPTIONAL (not used in v1; v1 uses a Postgres jobs table with idempotent segments)
 ```python
 from dbos import DBOS
 DBOS(config={"name": "cre", "system_database_url": os.environ["DBOS_DATABASE_URL"]})  # sqlite:/// in dev
@@ -170,6 +177,7 @@ def run_segment(...): ...
 def task_workflow(task_id: str): ...
 DBOS.launch()
 ```
+- **There are no custom step keys.** Idempotency is per workflow ID (`SetWorkflowID`). Steps are at-least-once, so never wrap a long, non-idempotent Codex segment in one step.
 - A completed step is never re-run.
 - Workflows must be deterministic.
 - An uncaught exception puts the workflow in ERROR and it is not recovered, so use step retries for transient faults.

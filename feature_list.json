@@ -1,13 +1,15 @@
 {
-  "_rules": "Agents may only flip `passes` for the task they completed, after its verify command exits 0. CI re-runs every passing verify.",
+  "_rules": "Read this file on the `dev` branch. Agents may flip `passes` only for the task they completed, after its verify exits 0 in that session. CI re-runs passing verifies on PRs to main.",
   "milestones": {
-    "M0": "Scaffold and guards",
-    "M1": "Domain core",
-    "M2": "Data and evals",
-    "M3": "Agent",
-    "M4": "Firms and memory",
-    "M5": "Learning loop",
-    "M6": "Connectors and portability"
+    "M0": "Guards and scaffold",
+    "M1": "Domain and finance core",
+    "M2": "First working analyst (thin slice: SCREEN + UW_MODEL via cre run)",
+    "M3": "Evals on real anchors",
+    "M4": "Full analyst deliverables",
+    "M5": "Learning loop (overnight self-improvement)",
+    "M6": "Platform (API, box agent, recovery, stress)",
+    "M7": "Firms and memory",
+    "M8": "Connectors, Jev, SDK runners, baseline"
   },
   "features": [
     {
@@ -16,29 +18,29 @@
       "title": "Repository scaffold",
       "task_file": "docs/tasks/T001-scaffold.md",
       "depends_on": [],
-      "verify": "./init.sh && make check && uv run cre --help",
+      "verify": "./init.sh && make check && uv run cre --help && uv run pytest tests/test_t001_scaffold.py -q",
       "passes": false
     },
     {
       "id": "T002",
       "milestone": "M0",
-      "title": "CI workflow and anti-gaming guards",
-      "task_file": "docs/tasks/T002-ci-guards.md",
+      "title": "CI checks, task checker, skip markers",
+      "task_file": "docs/tasks/T002-ci-and-task-checks.md",
       "depends_on": [
         "T001"
       ],
-      "verify": "uv run pytest tests/test_guards.py -q && uv run python scripts/check_protected.py",
+      "verify": "make check && uv run pytest tests/test_t002_guards.py -q && uv run python scripts/check_task.py T002",
       "passes": false
     },
     {
       "id": "T003",
       "milestone": "M0",
-      "title": "Config system and model-role registry",
+      "title": "Config system and runner/role registry",
       "task_file": "docs/tasks/T003-config.md",
       "depends_on": [
         "T001"
       ],
-      "verify": "uv run pytest tests/config -q",
+      "verify": "uv run pytest tests/config -q && uv run python scripts/check_task.py T003",
       "passes": false
     },
     {
@@ -49,483 +51,779 @@
       "depends_on": [
         "T003"
       ],
-      "verify": "uv run pytest tests/release -q",
+      "verify": "uv run pytest tests/release -q && uv run python scripts/check_task.py T004",
       "passes": false
     },
     {
       "id": "T010",
       "milestone": "M1",
-      "title": "Domain schemas",
+      "title": "Domain schemas incl. AgentEvent",
       "task_file": "docs/tasks/T010-domain-schemas.md",
       "depends_on": [
         "T001"
       ],
-      "verify": "uv run pytest tests/domain -q",
+      "verify": "uv run pytest tests/domain -q && uv run python scripts/check_task.py T010",
       "passes": false
     },
     {
       "id": "T011",
       "milestone": "M1",
-      "title": "State store and dependency invalidation",
+      "title": "State store (versioned, Postgres/SQLite)",
       "task_file": "docs/tasks/T011-state-store.md",
       "depends_on": [
         "T010"
       ],
-      "verify": "uv run pytest tests/state -q",
+      "verify": "uv run pytest tests/state -q -m 'not integration' && uv run python scripts/check_task.py T011",
       "passes": false
     },
     {
       "id": "T012",
       "milestone": "M1",
-      "title": "Finance library I: operating cash flow",
-      "task_file": "docs/tasks/T012-finance-operating.md",
+      "title": "Dependency graph and stale propagation",
+      "task_file": "docs/tasks/T012-invalidation.md",
       "depends_on": [
-        "T010"
+        "T011"
       ],
-      "verify": "uv run pytest tests/finance -q -k 'rentroll or t12 or proforma'",
+      "verify": "uv run pytest tests/state -q -k graph && uv run python scripts/check_task.py T012",
       "passes": false
     },
     {
       "id": "T013",
       "milestone": "M1",
-      "title": "Finance library II: debt, returns, scenarios",
-      "task_file": "docs/tasks/T013-finance-capital.md",
+      "title": "Finance: rent roll and T-12",
+      "task_file": "docs/tasks/T013-fin-rentroll-t12.md",
       "depends_on": [
-        "T012"
+        "T010"
       ],
-      "verify": "uv run pytest tests/finance -q",
+      "verify": "uv run pytest tests/finance -q -k 'rentroll or t12' && uv run python scripts/check_task.py T013",
       "passes": false
     },
     {
       "id": "T014",
       "milestone": "M1",
-      "title": "Excel reference template and writer",
-      "task_file": "docs/tasks/T014-excel-template.md",
+      "title": "Finance: pro forma, tax reassessment, value-add",
+      "task_file": "docs/tasks/T014-fin-proforma-tax-valueadd.md",
       "depends_on": [
         "T013"
       ],
-      "verify": "uv run pytest tests/excel -q -k template",
+      "verify": "uv run pytest tests/finance -q -k 'proforma or taxes or valueadd' && uv run python scripts/check_task.py T014",
       "passes": false
     },
     {
       "id": "T015",
       "milestone": "M1",
-      "title": "Recalculation and Python\u2013Excel parity",
-      "task_file": "docs/tasks/T015-excel-recalc-parity.md",
+      "title": "Finance: debt sizing, quotes, refinance",
+      "task_file": "docs/tasks/T015-fin-debt.md",
       "depends_on": [
         "T014"
       ],
-      "verify": "uv run pytest tests/excel -q",
+      "verify": "uv run pytest tests/finance -q -k debt && uv run python scripts/check_task.py T015",
       "passes": false
     },
     {
       "id": "T016",
       "milestone": "M1",
-      "title": "Rules engine and default tables",
-      "task_file": "docs/tasks/T016-rules.md",
+      "title": "Finance: returns with multi-IRR handling",
+      "task_file": "docs/tasks/T016-fin-returns.md",
       "depends_on": [
-        "T010"
+        "T015"
       ],
-      "verify": "uv run pytest tests/rules -q",
+      "verify": "uv run pytest tests/finance -q -k returns && uv run python scripts/check_task.py T016",
+      "passes": false
+    },
+    {
+      "id": "T017",
+      "milestone": "M1",
+      "title": "Finance: JV waterfall, exit, hold vs. sell",
+      "task_file": "docs/tasks/T017-fin-waterfall-exit.md",
+      "depends_on": [
+        "T016"
+      ],
+      "verify": "uv run pytest tests/finance -q -k 'waterfall or exit or holdsell' && uv run python scripts/check_task.py T017",
+      "passes": false
+    },
+    {
+      "id": "T018",
+      "milestone": "M1",
+      "title": "Finance: scenarios, fragility, max price",
+      "task_file": "docs/tasks/T018-fin-scenarios.md",
+      "depends_on": [
+        "T017"
+      ],
+      "verify": "uv run pytest tests/finance -q -k scenarios && uv run python scripts/check_task.py T018",
+      "passes": false
+    },
+    {
+      "id": "T019",
+      "milestone": "M1",
+      "title": "Excel reference template and writer",
+      "task_file": "docs/tasks/T019-excel-template.md",
+      "depends_on": [
+        "T018"
+      ],
+      "verify": "uv run pytest tests/excel -q -k template && uv run python scripts/check_task.py T019",
       "passes": false
     },
     {
       "id": "T020",
-      "milestone": "M2",
-      "title": "Public data clients with cache and fixtures",
-      "task_file": "docs/tasks/T020-public-data.md",
+      "milestone": "M1",
+      "title": "Recalculation and parity",
+      "task_file": "docs/tasks/T020-excel-recalc-parity.md",
       "depends_on": [
-        "T003"
+        "T019"
       ],
-      "verify": "uv run pytest tests/data -q",
+      "verify": "uv run pytest tests/excel -q && uv run python scripts/check_task.py T020",
       "passes": false
     },
     {
       "id": "T021",
-      "milestone": "M2",
-      "title": "CMBS gold-pair builder",
-      "task_file": "docs/tasks/T021-cmbs-gold.md",
+      "milestone": "M1",
+      "title": "Rules engine and default tables",
+      "task_file": "docs/tasks/T021-rules.md",
       "depends_on": [
-        "T020"
+        "T010"
       ],
-      "verify": "uv run pytest tests/evals -q -k cmbs",
-      "passes": false
-    },
-    {
-      "id": "T022",
-      "milestone": "M2",
-      "title": "Synthetic deal generator",
-      "task_file": "docs/tasks/T022-synthetic-generator.md",
-      "depends_on": [
-        "T013",
-        "T020"
-      ],
-      "verify": "uv run pytest tests/evals -q -k generator",
-      "passes": false
-    },
-    {
-      "id": "T023",
-      "milestone": "M2",
-      "title": "Defect injector",
-      "task_file": "docs/tasks/T023-defects.md",
-      "depends_on": [
-        "T022"
-      ],
-      "verify": "uv run pytest tests/evals -q -k defects",
-      "passes": false
-    },
-    {
-      "id": "T024",
-      "milestone": "M2",
-      "title": "Adversarial and contradiction set",
-      "task_file": "docs/tasks/T024-adversarial.md",
-      "depends_on": [
-        "T022"
-      ],
-      "verify": "uv run pytest tests/evals -q -k adversarial",
-      "passes": false
-    },
-    {
-      "id": "T025",
-      "milestone": "M2",
-      "title": "Task-request and question-handling suites",
-      "task_file": "docs/tasks/T025-task-question-suites.md",
-      "depends_on": [
-        "T022"
-      ],
-      "verify": "uv run pytest tests/evals -q -k suites",
-      "passes": false
-    },
-    {
-      "id": "T026",
-      "milestone": "M2",
-      "title": "Eval harness, scorers and splits",
-      "task_file": "docs/tasks/T026-eval-harness.md",
-      "depends_on": [
-        "T021",
-        "T023",
-        "T024",
-        "T025"
-      ],
-      "verify": "uv run pytest tests/evals -q && make eval SUITE=smoke",
-      "passes": false
-    },
-    {
-      "id": "T027",
-      "milestone": "M2",
-      "title": "Judge module with calibration",
-      "task_file": "docs/tasks/T027-judges.md",
-      "depends_on": [
-        "T026"
-      ],
-      "verify": "uv run pytest tests/evals -q -k judge",
+      "verify": "uv run pytest tests/rules -q && uv run python scripts/check_task.py T021",
       "passes": false
     },
     {
       "id": "T030",
-      "milestone": "M3",
-      "title": "Codex CLI runner spike + FakeRunner",
-      "task_file": "docs/tasks/T030-codex-runner-spike.md",
+      "milestone": "M2",
+      "title": "Codex CLI capability spike",
+      "task_file": "docs/tasks/T030-codex-spike.md",
       "depends_on": [
         "T003",
         "T010"
       ],
-      "verify": "uv run pytest tests/runner -q",
+      "verify": "uv run pytest tests/runner -q -k probe && uv run python scripts/check_task.py T030",
       "passes": false
     },
     {
       "id": "T031",
-      "milestone": "M3",
-      "title": "User computer: SandboxProvider + local Docker box",
-      "task_file": "docs/tasks/T031-sandbox.md",
+      "milestone": "M2",
+      "title": "Local box, extraction container, OS enforcement",
+      "task_file": "docs/tasks/T031-box-and-containers.md",
       "depends_on": [
         "T001"
       ],
-      "verify": "uv run pytest tests/sandbox -q",
+      "verify": "uv run pytest tests/sandbox -q && uv run python scripts/check_task.py T031",
       "passes": false
     },
     {
       "id": "T032",
-      "milestone": "M3",
-      "title": "CRE tool server",
-      "task_file": "docs/tasks/T032-cre-tools.md",
+      "milestone": "M2",
+      "title": "CRE tool server (MCP + CLI) and policy",
+      "task_file": "docs/tasks/T032-tool-server.md",
       "depends_on": [
-        "T011",
-        "T013",
-        "T015",
-        "T016",
+        "T012",
+        "T018",
+        "T020",
+        "T021",
         "T030"
       ],
-      "verify": "uv run pytest tests/runner -q -k tools",
+      "verify": "uv run pytest tests/runner -q -k tools && uv run pytest tests/protected -q -k policy && uv run python scripts/check_task.py T032",
       "passes": false
     },
     {
       "id": "T033",
-      "milestone": "M3",
-      "title": "Stuck detection and event redaction",
-      "task_file": "docs/tasks/T033-stuck-redaction.md",
+      "milestone": "M2",
+      "title": "CodexRunner, cre record, FakeRunner",
+      "task_file": "docs/tasks/T033-codex-runner.md",
       "depends_on": [
+        "T030",
+        "T031",
         "T032"
       ],
-      "verify": "uv run pytest tests/runner -q -k 'stuck or redact' && uv run pytest tests/protected -q",
+      "verify": "uv run pytest tests/runner -q -k 'codex or fake' && uv run python scripts/check_task.py T033",
       "passes": false
     },
     {
       "id": "T034",
-      "milestone": "M3",
-      "title": "Quarantined extraction pipeline",
-      "task_file": "docs/tasks/T034-extraction.md",
+      "milestone": "M2",
+      "title": "Deterministic document pre-parsing",
+      "task_file": "docs/tasks/T034-preparse.md",
       "depends_on": [
-        "T033",
-        "T011"
+        "T010"
       ],
-      "verify": "uv run pytest tests/extraction -q",
+      "verify": "uv run pytest tests/extraction -q -k preparse && uv run python scripts/check_task.py T034",
       "passes": false
     },
     {
       "id": "T035",
-      "milestone": "M3",
-      "title": "DecisionModel: Jev + fallback",
-      "task_file": "docs/tasks/T035-decision-model.md",
+      "milestone": "M2",
+      "title": "Quarantined extraction to facts",
+      "task_file": "docs/tasks/T035-extraction.md",
       "depends_on": [
-        "T003"
+        "T033",
+        "T034",
+        "T012"
       ],
-      "verify": "uv run pytest tests/decisions -q",
+      "verify": "uv run pytest tests/extraction -q && uv run python scripts/check_task.py T035",
       "passes": false
     },
     {
       "id": "T036",
-      "milestone": "M3",
-      "title": "Gate suite",
-      "task_file": "docs/tasks/T036-gates.md",
+      "milestone": "M2",
+      "title": "Synthetic generator v1 (rent roll, T-12, OM)",
+      "task_file": "docs/tasks/T036-generator-v1.md",
       "depends_on": [
-        "T015",
-        "T016",
-        "T011"
+        "T018",
+        "T034"
       ],
-      "verify": "uv run pytest tests/gates tests/protected -q",
+      "verify": "uv run pytest tests/evals -q -k generator && uv run python scripts/check_task.py T036",
       "passes": false
     },
     {
       "id": "T037",
-      "milestone": "M3",
-      "title": "Deliverables I: screen, broker questions, lease abstracts",
-      "task_file": "docs/tasks/T037-deliverables-1.md",
+      "milestone": "M2",
+      "title": "Deterministic gates",
+      "task_file": "docs/tasks/T037-gates-deterministic.md",
       "depends_on": [
-        "T034",
-        "T035",
-        "T036"
+        "T020",
+        "T021",
+        "T012",
+        "T018"
       ],
-      "verify": "uv run pytest tests/deliverables -q -k 'screen or broker or lease'",
+      "verify": "uv run pytest tests/gates tests/protected -q && uv run python scripts/check_task.py T037",
       "passes": false
     },
     {
       "id": "T038",
-      "milestone": "M3",
-      "title": "Deliverables II: UW model, IC memo, DD tracker, LOI, comparison",
-      "task_file": "docs/tasks/T038-deliverables-2.md",
+      "milestone": "M2",
+      "title": "SCREEN deliverable",
+      "task_file": "docs/tasks/T038-deliverable-screen.md",
       "depends_on": [
+        "T035",
         "T037"
       ],
-      "verify": "uv run pytest tests/deliverables -q",
+      "verify": "uv run pytest tests/deliverables -q -k screen && uv run python scripts/check_task.py T038",
       "passes": false
     },
     {
       "id": "T039",
-      "milestone": "M3",
-      "title": "Lead agent orchestration",
-      "task_file": "docs/tasks/T039-lead-agent.md",
+      "milestone": "M2",
+      "title": "UW_MODEL deliverable",
+      "task_file": "docs/tasks/T039-deliverable-uw.md",
       "depends_on": [
-        "T037",
         "T038"
       ],
-      "verify": "uv run pytest tests/runner -q -k lead && make eval SUITE=questions_smoke",
-      "passes": false
-    },
-    {
-      "id": "T042",
-      "milestone": "M3",
-      "title": "Box agent (cre-boxd) and control-plane link",
-      "task_file": "docs/tasks/T042-box-agent.md",
-      "depends_on": [
-        "T031",
-        "T030",
-        "T033"
-      ],
-      "verify": "uv run pytest tests/sandbox -q -k boxd",
+      "verify": "uv run pytest tests/deliverables -q -k uw && uv run python scripts/check_task.py T039",
       "passes": false
     },
     {
       "id": "T040",
-      "milestone": "M3",
-      "title": "Control plane: API, DBOS workflow, events",
-      "task_file": "docs/tasks/T040-control-plane.md",
+      "milestone": "M2",
+      "title": "`cre run` orchestration (jobs, segments, stuck, escalation)",
+      "task_file": "docs/tasks/T040-cre-run.md",
       "depends_on": [
         "T039",
-        "T042"
+        "T011"
       ],
-      "verify": "uv run pytest tests/control -q",
+      "verify": "uv run pytest tests/runner -q -k 'run or stuck or jobs' && uv run python scripts/check_task.py T040",
       "passes": false
     },
     {
       "id": "T041",
-      "milestone": "M3",
-      "title": "End-to-end smoke and stress test",
-      "task_file": "docs/tasks/T041-e2e-smoke.md",
+      "milestone": "M2",
+      "title": "Eval harness v1 with blind scoring + first baseline",
+      "task_file": "docs/tasks/T041-eval-harness-v1.md",
       "depends_on": [
         "T040",
-        "T026"
+        "T036"
       ],
-      "verify": "uv run pytest tests/e2e -q",
+      "verify": "uv run pytest tests/evals -q && uv run python scripts/check_task.py T041",
       "passes": false
     },
     {
       "id": "T050",
-      "milestone": "M4",
-      "title": "Firm onboarding",
-      "task_file": "docs/tasks/T050-firm-onboarding.md",
+      "milestone": "M3",
+      "title": "Public data clients",
+      "task_file": "docs/tasks/T050-public-data.md",
       "depends_on": [
-        "T038"
+        "T003"
       ],
-      "verify": "uv run pytest tests/onboarding -q",
+      "verify": "uv run pytest tests/data -q && uv run python scripts/check_task.py T050",
       "passes": false
     },
     {
       "id": "T051",
-      "milestone": "M4",
-      "title": "Three-layer memory and retrieval",
-      "task_file": "docs/tasks/T051-memory.md",
+      "milestone": "M3",
+      "title": "CMBS EX-102 multifamily loans",
+      "task_file": "docs/tasks/T051-cmbs-ex102.md",
       "depends_on": [
         "T050"
       ],
-      "verify": "uv run pytest tests/memory -q",
+      "verify": "uv run pytest tests/evals -q -k ex102 && uv run python scripts/check_task.py T051",
       "passes": false
     },
     {
       "id": "T052",
-      "milestone": "M4",
-      "title": "Sanitization gate",
-      "task_file": "docs/tasks/T052-sanitization.md",
+      "milestone": "M3",
+      "title": "Annex A-1/A-3 fixtures and matching",
+      "task_file": "docs/tasks/T052-cmbs-annex.md",
       "depends_on": [
         "T051"
       ],
-      "verify": "uv run pytest tests/protected -q -k sanitize",
+      "verify": "uv run pytest tests/evals -q -k annex && uv run python scripts/check_task.py T052",
+      "passes": false
+    },
+    {
+      "id": "T053",
+      "milestone": "M3",
+      "title": "8-K Rule 3-14 statement fixtures",
+      "task_file": "docs/tasks/T053-rule-3-14.md",
+      "depends_on": [
+        "T050"
+      ],
+      "verify": "uv run pytest tests/evals -q -k statements && uv run python scripts/check_task.py T053",
+      "passes": false
+    },
+    {
+      "id": "T054",
+      "milestone": "M3",
+      "title": "Generator v2: leases and third-party reports",
+      "task_file": "docs/tasks/T054-generator-v2.md",
+      "depends_on": [
+        "T036"
+      ],
+      "verify": "uv run pytest tests/evals -q -k generator_v2 && uv run python scripts/check_task.py T054",
+      "passes": false
+    },
+    {
+      "id": "T055",
+      "milestone": "M3",
+      "title": "Defect injector",
+      "task_file": "docs/tasks/T055-defects.md",
+      "depends_on": [
+        "T054"
+      ],
+      "verify": "uv run pytest tests/evals -q -k defects && uv run python scripts/check_task.py T055",
+      "passes": false
+    },
+    {
+      "id": "T056",
+      "milestone": "M3",
+      "title": "Adversarial set",
+      "task_file": "docs/tasks/T056-adversarial.md",
+      "depends_on": [
+        "T054"
+      ],
+      "verify": "uv run pytest tests/evals -q -k adversarial && uv run python scripts/check_task.py T056",
+      "passes": false
+    },
+    {
+      "id": "T057",
+      "milestone": "M3",
+      "title": "Task-request and question suites",
+      "task_file": "docs/tasks/T057-suites.md",
+      "depends_on": [
+        "T054"
+      ],
+      "verify": "uv run pytest tests/evals -q -k suites && uv run python scripts/check_task.py T057",
+      "passes": false
+    },
+    {
+      "id": "T058",
+      "milestone": "M3",
+      "title": "Private holdout scoring service",
+      "task_file": "docs/tasks/T058-scoring-service.md",
+      "depends_on": [
+        "T041"
+      ],
+      "verify": "uv run pytest tests/evals -q -k service && uv run python scripts/check_task.py T058",
+      "passes": false
+    },
+    {
+      "id": "T059",
+      "milestone": "M3",
+      "title": "Risk score AUROC backtest",
+      "task_file": "docs/tasks/T059-risk-backtest.md",
+      "depends_on": [
+        "T051",
+        "T039"
+      ],
+      "verify": "uv run pytest tests/evals -q -k backtest && uv run python scripts/check_task.py T059",
       "passes": false
     },
     {
       "id": "T060",
-      "milestone": "M5",
-      "title": "Autoresearch runner",
-      "task_file": "docs/tasks/T060-autoresearch-runner.md",
+      "milestone": "M4",
+      "title": "Ask-and-continue, messages, revisions",
+      "task_file": "docs/tasks/T060-ask-continue.md",
       "depends_on": [
-        "T026",
-        "T041"
+        "T040",
+        "T012"
       ],
-      "verify": "uv run pytest tests/learning -q -k runner",
+      "verify": "uv run pytest tests/runner -q -k ask && uv run python scripts/check_task.py T060",
       "passes": false
     },
     {
       "id": "T061",
-      "milestone": "M5",
-      "title": "GEPA adapters",
-      "task_file": "docs/tasks/T061-gepa.md",
+      "milestone": "M4",
+      "title": "Owner labelling queue and advisory judges",
+      "task_file": "docs/tasks/T061-labels-judges.md",
       "depends_on": [
-        "T060"
+        "T041"
       ],
-      "verify": "uv run pytest tests/learning -q -k gepa",
+      "verify": "uv run pytest tests/evals -q -k judge && uv run python scripts/check_task.py T061",
       "passes": false
     },
     {
       "id": "T062",
-      "milestone": "M5",
-      "title": "Keep rule statistics",
-      "task_file": "docs/tasks/T062-keep-rule.md",
+      "milestone": "M4",
+      "title": "IC_MEMO deliverable",
+      "task_file": "docs/tasks/T062-deliverable-icmemo.md",
       "depends_on": [
-        "T060"
+        "T039",
+        "T037"
       ],
-      "verify": "uv run pytest tests/protected -q -k keep_rule",
+      "verify": "uv run pytest tests/deliverables -q -k icmemo && uv run python scripts/check_task.py T062",
       "passes": false
     },
     {
       "id": "T063",
-      "milestone": "M5",
-      "title": "ACE playbook queue and promotion",
-      "task_file": "docs/tasks/T063-ace-queue.md",
+      "milestone": "M4",
+      "title": "DD tracker, issues log, lease abstracts",
+      "task_file": "docs/tasks/T063-deliverable-dd-leases.md",
       "depends_on": [
-        "T052",
-        "T062"
+        "T035",
+        "T054",
+        "T037"
       ],
-      "verify": "uv run pytest tests/learning -q -k ace",
+      "verify": "uv run pytest tests/deliverables -q -k 'dd or lease' && uv run python scripts/check_task.py T063",
       "passes": false
     },
     {
       "id": "T064",
-      "milestone": "M5",
-      "title": "DAgger correction capture",
-      "task_file": "docs/tasks/T064-corrections.md",
+      "milestone": "M4",
+      "title": "LOI and broker questions",
+      "task_file": "docs/tasks/T064-deliverable-loi-broker.md",
       "depends_on": [
-        "T051",
-        "T026"
+        "T039",
+        "T037"
       ],
-      "verify": "uv run pytest tests/control -q -k corrections",
+      "verify": "uv run pytest tests/deliverables -q -k 'loi or broker' && uv run python scripts/check_task.py T064",
       "passes": false
     },
     {
       "id": "T065",
-      "milestone": "M5",
-      "title": "Releases, rollback and nightly run",
-      "task_file": "docs/tasks/T065-nightly.md",
+      "milestone": "M4",
+      "title": "Rent comp analysis and debt quote summary",
+      "task_file": "docs/tasks/T065-deliverable-comps-debt.md",
       "depends_on": [
-        "T004",
-        "T062",
-        "T063"
+        "T039",
+        "T015"
       ],
-      "verify": "uv run pytest tests/learning -q -k nightly",
+      "verify": "uv run pytest tests/deliverables -q -k 'comps or debtquote' && uv run python scripts/check_task.py T065",
+      "passes": false
+    },
+    {
+      "id": "T066",
+      "milestone": "M4",
+      "title": "Deal comparison and multi-deal tasks",
+      "task_file": "docs/tasks/T066-multi-deal.md",
+      "depends_on": [
+        "T039"
+      ],
+      "verify": "uv run pytest tests/deliverables -q -k comparison && uv run python scripts/check_task.py T066",
+      "passes": false
+    },
+    {
+      "id": "T067",
+      "milestone": "M4",
+      "title": "Deliverable versioning and user-edit ingestion",
+      "task_file": "docs/tasks/T067-versioning-edits.md",
+      "depends_on": [
+        "T039",
+        "T011"
+      ],
+      "verify": "uv run pytest tests/deliverables -q -k versioning && uv run python scripts/check_task.py T067",
+      "passes": false
+    },
+    {
+      "id": "T068",
+      "milestone": "M4",
+      "title": "DecisionModel: rules + Codex classifier",
+      "task_file": "docs/tasks/T068-decision-model.md",
+      "depends_on": [
+        "T033"
+      ],
+      "verify": "uv run pytest tests/decisions -q && uv run python scripts/check_task.py T068",
+      "passes": false
+    },
+    {
+      "id": "T069",
+      "milestone": "M4",
+      "title": "Browse tool (toggle-gated)",
+      "task_file": "docs/tasks/T069-browse.md",
+      "depends_on": [
+        "T032",
+        "T031"
+      ],
+      "verify": "uv run pytest tests/runner -q -k browse && uv run python scripts/check_task.py T069",
       "passes": false
     },
     {
       "id": "T070",
-      "milestone": "M6",
-      "title": "Connector interfaces, toggles and stubs",
-      "task_file": "docs/tasks/T070-connectors.md",
+      "milestone": "M5",
+      "title": "Frozen per-deliverable fixtures",
+      "task_file": "docs/tasks/T070-fixtures.md",
       "depends_on": [
-        "T033"
+        "T041"
       ],
-      "verify": "uv run pytest tests/connectors -q",
+      "verify": "uv run pytest tests/learning -q -k fixtures && uv run python scripts/check_task.py T070",
       "passes": false
     },
     {
       "id": "T071",
-      "milestone": "M6",
-      "title": "Inbox ingestion",
-      "task_file": "docs/tasks/T071-inbox.md",
+      "milestone": "M5",
+      "title": "GEPA proposer with Codex LM",
+      "task_file": "docs/tasks/T071-gepa-proposer.md",
       "depends_on": [
-        "T040"
+        "T070"
       ],
-      "verify": "uv run pytest tests/control -q -k inbox",
+      "verify": "uv run pytest tests/learning -q -k gepa && uv run python scripts/check_task.py T071",
       "passes": false
     },
     {
       "id": "T072",
-      "milestone": "M6",
-      "title": "Commercial SDK runners: Claude Agent SDK and OpenAI",
-      "task_file": "docs/tasks/T072-sdk-runners.md",
+      "milestone": "M5",
+      "title": "Keep rule with statistical validation",
+      "task_file": "docs/tasks/T072-keep-rule.md",
       "depends_on": [
-        "T041"
+        "T070"
       ],
-      "verify": "uv run pytest tests/runner -q -k 'claude or openai'",
+      "verify": "uv run pytest tests/protected -q -k keep_rule && uv run python scripts/check_task.py T072",
       "passes": false
     },
     {
       "id": "T073",
-      "milestone": "M6",
-      "title": "Baseline report and runbook",
-      "task_file": "docs/tasks/T073-baseline-runbook.md",
+      "milestone": "M5",
+      "title": "Autoresearch experiment runner",
+      "task_file": "docs/tasks/T073-experiment-runner.md",
       "depends_on": [
-        "T065",
+        "T071",
+        "T072",
+        "T058"
+      ],
+      "verify": "uv run pytest tests/learning -q -k runner && uv run python scripts/check_task.py T073",
+      "passes": false
+    },
+    {
+      "id": "T074",
+      "milestone": "M5",
+      "title": "Corrections (DAgger records)",
+      "task_file": "docs/tasks/T074-corrections.md",
+      "depends_on": [
+        "T067"
+      ],
+      "verify": "uv run pytest tests/control -q -k corrections && uv run python scripts/check_task.py T074",
+      "passes": false
+    },
+    {
+      "id": "T075",
+      "milestone": "M5",
+      "title": "Nightly run, releases, rollback",
+      "task_file": "docs/tasks/T075-nightly.md",
+      "depends_on": [
+        "T073",
+        "T004"
+      ],
+      "verify": "uv run pytest tests/learning -q -k nightly && uv run python scripts/check_task.py T075",
+      "passes": false
+    },
+    {
+      "id": "T080",
+      "milestone": "M6",
+      "title": "Control-plane API core with auth",
+      "task_file": "docs/tasks/T080-api-core.md",
+      "depends_on": [
+        "T040"
+      ],
+      "verify": "uv run pytest tests/control -q -k api && uv run python scripts/check_task.py T080",
+      "passes": false
+    },
+    {
+      "id": "T081",
+      "milestone": "M6",
+      "title": "Control verbs, messages, confirmations",
+      "task_file": "docs/tasks/T081-control-verbs.md",
+      "depends_on": [
+        "T080",
+        "T060"
+      ],
+      "verify": "uv run pytest tests/control -q -k verbs && uv run python scripts/check_task.py T081",
+      "passes": false
+    },
+    {
+      "id": "T082",
+      "milestone": "M6",
+      "title": "Event paging, SSE, redaction",
+      "task_file": "docs/tasks/T082-events-redaction.md",
+      "depends_on": [
+        "T080"
+      ],
+      "verify": "uv run pytest tests/control -q -k events && uv run pytest tests/protected -q -k redact && uv run python scripts/check_task.py T082",
+      "passes": false
+    },
+    {
+      "id": "T083",
+      "milestone": "M6",
+      "title": "Box agent cre-boxd",
+      "task_file": "docs/tasks/T083-boxd.md",
+      "depends_on": [
+        "T031",
+        "T033",
+        "T080"
+      ],
+      "verify": "uv run pytest tests/sandbox -q -k boxd && uv run python scripts/check_task.py T083",
+      "passes": false
+    },
+    {
+      "id": "T084",
+      "milestone": "M6",
+      "title": "Box disk-loss recovery",
+      "task_file": "docs/tasks/T084-recovery.md",
+      "depends_on": [
+        "T083"
+      ],
+      "verify": "uv run pytest tests/sandbox -q -k recovery && uv run python scripts/check_task.py T084",
+      "passes": false
+    },
+    {
+      "id": "T085",
+      "milestone": "M6",
+      "title": "Inbox ingestion",
+      "task_file": "docs/tasks/T085-inbox.md",
+      "depends_on": [
+        "T083"
+      ],
+      "verify": "uv run pytest tests/sandbox -q -k inbox && uv run python scripts/check_task.py T085",
+      "passes": false
+    },
+    {
+      "id": "T086",
+      "milestone": "M6",
+      "title": "OpenAPI and TypeScript client",
+      "task_file": "docs/tasks/T086-openapi-client.md",
+      "depends_on": [
+        "T082"
+      ],
+      "verify": "uv run pytest tests/control -q -k openapi && uv run python scripts/check_task.py T086",
+      "passes": false
+    },
+    {
+      "id": "T087",
+      "milestone": "M6",
+      "title": "Stress tests",
+      "task_file": "docs/tasks/T087-stress.md",
+      "depends_on": [
+        "T084",
+        "T082"
+      ],
+      "verify": "uv run pytest tests/stress -q && uv run python scripts/check_task.py T087",
+      "passes": false
+    },
+    {
+      "id": "T090",
+      "milestone": "M7",
+      "title": "Firm template onboarding",
+      "task_file": "docs/tasks/T090-onboard-template.md",
+      "depends_on": [
+        "T039"
+      ],
+      "verify": "uv run pytest tests/onboarding -q -k template && uv run python scripts/check_task.py T090",
+      "passes": false
+    },
+    {
+      "id": "T091",
+      "milestone": "M7",
+      "title": "Firm buy-box and memo style",
+      "task_file": "docs/tasks/T091-onboard-policy-style.md",
+      "depends_on": [
+        "T090",
+        "T021"
+      ],
+      "verify": "uv run pytest tests/onboarding -q -k 'policy or style' && uv run python scripts/check_task.py T091",
+      "passes": false
+    },
+    {
+      "id": "T092",
+      "milestone": "M7",
+      "title": "Three-layer memory and retrieval",
+      "task_file": "docs/tasks/T092-memory.md",
+      "depends_on": [
+        "T091"
+      ],
+      "verify": "uv run pytest tests/memory -q && uv run python scripts/check_task.py T092",
+      "passes": false
+    },
+    {
+      "id": "T093",
+      "milestone": "M7",
+      "title": "Sanitization gate",
+      "task_file": "docs/tasks/T093-sanitization.md",
+      "depends_on": [
+        "T092"
+      ],
+      "verify": "uv run pytest tests/protected -q -k sanitize && uv run python scripts/check_task.py T093",
+      "passes": false
+    },
+    {
+      "id": "T094",
+      "milestone": "M7",
+      "title": "ACE playbook queue and promotion",
+      "task_file": "docs/tasks/T094-ace.md",
+      "depends_on": [
+        "T093",
+        "T073"
+      ],
+      "verify": "uv run pytest tests/learning -q -k ace && uv run python scripts/check_task.py T094",
+      "passes": false
+    },
+    {
+      "id": "T100",
+      "milestone": "M8",
+      "title": "Connector interfaces and stubs",
+      "task_file": "docs/tasks/T100-connectors.md",
+      "depends_on": [
+        "T032"
+      ],
+      "verify": "uv run pytest tests/connectors -q && uv run python scripts/check_task.py T100",
+      "passes": false
+    },
+    {
+      "id": "T101",
+      "milestone": "M8",
+      "title": "Jev decision model",
+      "task_file": "docs/tasks/T101-jev.md",
+      "depends_on": [
+        "T068"
+      ],
+      "verify": "uv run pytest tests/decisions -q -k jev && uv run python scripts/check_task.py T101",
+      "passes": false
+    },
+    {
+      "id": "T102",
+      "milestone": "M8",
+      "title": "Commercial SDK runners",
+      "task_file": "docs/tasks/T102-sdk-runners.md",
+      "depends_on": [
         "T041"
       ],
-      "verify": "test -f docs/BASELINE.md && test -f docs/RUNBOOK.md && make check",
+      "verify": "uv run pytest tests/runner -q -k 'claude or openai' && uv run python scripts/check_task.py T102",
+      "passes": false
+    },
+    {
+      "id": "T103",
+      "milestone": "M8",
+      "title": "Baseline report and runbook",
+      "task_file": "docs/tasks/T103-baseline.md",
+      "depends_on": [
+        "T075",
+        "T087"
+      ],
+      "verify": "uv run pytest tests/test_t103_docs.py -q && uv run python scripts/check_task.py T103",
       "passes": false
     }
   ]

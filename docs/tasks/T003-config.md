@@ -1,29 +1,31 @@
-# T003: Config system and model-role registry
+# T003: Config system and runner/role registry
 
-> Product: an autonomous CRE acquisition analyst ("the Devin of real estate"). Follow the session protocol in `AGENTS.md`.
+> Product: an autonomous CRE acquisition analyst ("the Devin of real estate"). Follow the session protocol and branch model in `AGENTS.md` (work on `dev`).
 
 | | |
 |---|---|
-| Milestone | M0: Scaffold and guards (branch `milestone/M0`) |
+| Milestone | M0: Guards and scaffold |
 | Depends on | T001 |
 | Read first | SPEC §9 |
-| Allowed to modify | `config/**`, `src/cre_brain/config/**`, `tests/config/**`, `PROGRESS.md`, `feature_list.json` (this task's `passes` only) |
-| Must NOT modify | Sealed paths (see AGENTS.md), other tasks' entries, existing tests' assertions |
+| Allowed to modify | `config/models.yaml`, `config/toggles.default.yaml`, `src/cre_brain/config/**`, `tests/config/**`, `config/budget.yaml`, `config/gates.yaml`, `PROGRESS.md`, `feature_list.json` (this task's `passes` only) |
+| Must NOT modify | Anything else in `scripts/protected_paths.txt`; other tasks' entries; existing tests' assertions |
+| Protected paths touched | Yes. The milestone PR needs the owner's `protected-change` label |
 
 ## Goal
-Typed config loading with model roles, budgets, gate tolerances and toggles.
+Typed config with runner roles, budgets, gate tolerances, toggles. budget.yaml and gates.yaml are protected: create them here; later edits need the owner label.
 
 ## Acceptance criteria
-- [ ] AC1: `config/models.yaml` (runner: codex, roles with profiles), `budget.yaml` (incl. nightly_sessions, nightly_wallclock_h, max_parallel_extractions, max_parallel_sessions, box_reconnect_s), `gates.yaml`, `toggles.default.yaml` exist with SPEC §9 defaults; toggles are `off|ask|on`, default `off`
-- [ ] AC2: `cre_brain.config.load()` returns validated Pydantic settings; env vars override the files
-- [ ] AC3: `config.live_enabled(role)` returns true only if the role's runner is usable (Codex CLI installed and `codex login status` succeeds, or the SDK key is present for later runners); callers log `SKIPPED_NO_RUNNER`
-- [ ] AC4: No model ID appears anywhere in `src/` outside the config package (enforced by a test that greps for it)
+Each ACn needs at least one passing, non-skipped test named `test_t003_ac<n>_*`.
+- [ ] AC1 (`test_t003_ac1_*`): `models.yaml` (runner: codex; roles lead/extraction/verifier/classifier/reflection with profiles; model `<owner sets>`), `budget.yaml` (segment_max_min, nightly_sessions=200, nightly_wallclock_h=10, max_parallel_extractions=4, max_parallel_sessions=2, codex_login_max_concurrency=1, box_reconnect_s), `gates.yaml` (tolerances, Excel function whitelist, fragility_margin), `toggles.default.yaml` (off|ask|on, default off)
+- [ ] AC2 (`test_t003_ac2_*`): `cre_brain.config.load()` returns validated settings; env overrides files
+- [ ] AC3 (`test_t003_ac3_*`): `config.live_enabled(role)` checks `codex login status` (subprocess, mocked in tests) or SDK key; returns False cleanly
+- [ ] AC4 (`test_t003_ac4_*`): A test fails if any model name string appears in `src/` outside the config package
 - [ ] `make check` passes.
 
-## Verify (must exit 0, paste the tail into PROGRESS.md)
+## Verify (must exit 0; paste the tail into PROGRESS.md)
 ```bash
-uv run pytest tests/config -q
+uv run pytest tests/config -q && uv run python scripts/check_task.py T003
 ```
 
 ## Done when
-All ACs are met, verify exits 0, `passes` for T003 is set to true, the task branch is merged into `milestone/M0`, and a PROGRESS.md entry is written. If blocked, write a BLOCKED entry with evidence and move on.
+All ACs are met, verify exits 0, `passes` for T003 is true, the task branch is merged into `dev` and pushed, and a PROGRESS.md entry is written. If you are blocked, write a BLOCKED entry with evidence and move on.

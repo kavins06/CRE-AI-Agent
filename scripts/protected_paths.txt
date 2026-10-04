@@ -1,0 +1,27 @@
+# Canonical protected-path list (owner-authored). One glob per line (fnmatch, relative to repo root).
+# A PR to main that changes any matching path fails the `protected-paths` check unless the owner
+# applies the label `protected-change`. CODEOWNERS also requires owner review on these paths.
+# The list is always read from the PR's BASE branch, so a PR cannot weaken it for itself.
+
+# Guard machinery
+CODEOWNERS
+.github/*
+scripts/protected_paths.txt
+scripts/check_protected.py
+scripts/check_task.py
+scripts/test_count.py
+scripts/verify_features.py
+tests/conftest.py
+
+# Learning charter and evaluator
+program.md
+learning/keep_rule.py
+config/gates.yaml
+config/budget.yaml
+
+# Evaluation and gates
+evals/*
+src/cre_brain/gates/*
+src/cre_brain/runner/policy.py
+src/cre_brain/memory/sanitize.py
+tests/protected/*

@@ -12,8 +12,10 @@
 
 ## Guards
 - [ ] `make check` green
-- [ ] No sealed/protected paths changed (or labelled `protected-change` with justification)
+- [ ] Protected paths changed? List them here with the reason. The owner applies `protected-change` after review.
 - [ ] No tests removed, skipped, or weakened
+- [ ] Each AC has a passing `test_<task>_ac<n>_*` test (`scripts/check_task.py`)
+- [ ] No hand-written transcripts; no quality claims from FakeRunner
 - [ ] No hard-coded model IDs, keys, emails
 - [ ] PROGRESS.md updated
 

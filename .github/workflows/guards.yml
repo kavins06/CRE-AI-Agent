@@ -1,0 +1,23 @@
+# Owner-authored guard workflow. Required status check on `main`: protected-paths.
+name: guards
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+jobs:
+  protected-paths:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Check protected paths against base branch list
+        # Run the BASE branch's copy of the checker so a PR cannot alter it for itself.
+        run: |
+          git show origin/${{ github.base_ref }}:scripts/check_protected.py > /tmp/check_protected.py
+          python /tmp/check_protected.py \
+            --base origin/${{ github.base_ref }} \
+            --labels "${{ join(github.event.pull_request.labels.*.name, ',') }}"

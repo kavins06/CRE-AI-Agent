@@ -2,18 +2,22 @@
 
 > **What you are building:** an autonomous commercial real estate acquisition analyst, "the Devin of real estate". You (Devin) are the coding agent that builds it. The product contains no coding-agent functionality.
 
-**Read first, in this order:** this file → [METHOD.md](METHOD.md) → [docs/SPEC.md](docs/SPEC.md) → your task file in [docs/tasks/](docs/tasks/). Library usage: [docs/LIBRARY_NOTES.md](docs/LIBRARY_NOTES.md). Do not invent architecture: the decisions are already made. If something is truly unspecified, choose the simplest option consistent with SPEC and record it in `PROGRESS.md` under "Decisions".
+**Read first, in this order:** this file → [METHOD.md](METHOD.md) → [docs/SPEC.md](docs/SPEC.md) → your task file in [docs/tasks/](docs/tasks/). Library usage: [docs/LIBRARY_NOTES.md](docs/LIBRARY_NOTES.md). Do not invent architecture; the decisions are made. If something is truly unspecified, choose the simplest option consistent with SPEC and record it in `PROGRESS.md` under "Decisions".
+
+## Branch model (read carefully)
+- **`dev` is the integration branch.** All task state lives there. Never work from `main`.
+- Each task goes on a branch `task/<task-id>-<slug>` from `dev`. When verify passes, merge it into `dev` yourself (fast-forward or merge commit). Then push `dev`.
+- When every task of a milestone passes on `dev`, open **one PR `dev` → `main`** titled `M<n>: <name>`. **Never merge PRs to `main` yourself.** Keep working on the next milestone on `dev` while the PR waits; you never need `main` to be up to date.
 
 ## Session protocol (every session)
-1. `pwd`, then `git fetch origin`. Read `PROGRESS.md` (the last 3 entries) and `feature_list.json`.
-2. Run `./init.sh`, then `make check`. If `main` is red, fixing it is your task for this session.
-3. Pick **the first task in `feature_list.json` with `passes: false` whose `depends_on` tasks all pass**. Work on one task per session.
-4. Branch: `m<milestone>/<task-id>-<slug>`, created from the current milestone branch `milestone/M<n>`. If the milestone branch doesn't exist, create it from `main`.
-5. Implement the task. Meet **every** acceptance criterion. Write the tests first where practical.
-6. Run the task's `verify` command. It must exit 0. Paste its last 30 lines into `PROGRESS.md`.
-7. Change **only** that task's `passes` to `true` in `feature_list.json`. Merge your task branch into `milestone/M<n>`.
-8. When every task in the milestone passes, open **one PR**: `milestone/M<n>` → `main`, titled `M<n>: <milestone name>`, using the PR template. Never merge it yourself.
-9. Append a `PROGRESS.md` entry: date, task, what changed, verify tail, next step, blockers.
+1. `git fetch origin && git checkout dev && git pull`. Read `PROGRESS.md` (the last 3 entries) and `feature_list.json` **on `dev`**.
+2. Run `./init.sh`, then `make check`. If `dev` is red, fixing it is your task for this session.
+3. Pick **the first task in `feature_list.json` with `passes: false` whose `depends_on` all pass**. Work on one task per session.
+4. Create the branch `task/<id>-<slug>` from `dev`. Write the tests first. **Every acceptance criterion `ACn` needs at least one test named `test_<id>_ac<n>_*`** (for example `test_t012_ac3_occupancy_bounds`).
+5. Run the task's `verify` command. It must exit 0. From T002 onward, its last step is always `uv run python scripts/check_task.py <id>`, which checks that every AC has a passing, non-skipped test.
+6. Set only that task's `passes` to `true`. Merge the branch into `dev` and push.
+7. Append a `PROGRESS.md` entry: date, task, what changed, the verify tail (30 lines), next step, blockers.
+8. If the milestone is now complete, open the `dev` → `main` PR using the PR template.
 
 If you are blocked (a missing secret, an unclear spec, an external outage):
 - write a `BLOCKED` entry with evidence and what you need under "Needs owner"
@@ -23,55 +27,55 @@ If you are blocked (a missing secret, an unclear spec, an external outage):
 ## Commands
 | Purpose | Command |
 |---|---|
-| Setup (idempotent) | `./init.sh` (uv sync, pre-commit, local DB) |
-| Lint + types + tests + guards | `make check` |
+| Setup (idempotent) | `./init.sh` |
+| Lint + types + unit tests + task checks (fast; does **not** run verify_features) | `make check` |
 | Unit tests for an area | `uv run pytest tests/<area> -q` |
-| Run an eval suite | `make eval SUITE=<name>` |
-| CLI | `uv run cre --help` |
-| Protected-file hashes | `uv run python scripts/check_protected.py` |
-| Verify all passing features | `uv run python scripts/verify_features.py` |
+| Task completeness check | `uv run python scripts/check_task.py <task-id>` |
+| Run an eval suite (live, with the Codex CLI) | `make eval SUITE=<name>` |
+| Run the analyst on a deal locally | `uv run cre run --deal <path> --request "<text>"` |
+| CLI help | `uv run cre --help` |
+
+## Protected paths
+- The canonical list is **`scripts/protected_paths.txt`**, written by the owner.
+- A PR to `main` that touches any of those paths fails CI unless the owner adds the label `protected-change`. CODEOWNERS also requires the owner's review.
+- You may create or modify a protected path only when your task's "Allowed to modify" lists it. The milestone PR then needs the owner's label and review.
+- **Never** edit `scripts/protected_paths.txt`, `scripts/check_protected.py`, `.github/**` or `CODEOWNERS`.
 
 ## Forbidden actions
-- **Never** edit, delete, skip or weaken an existing test to make something pass. No new `skip`/`xfail` without a `PROGRESS.md` entry explaining why, with owner sign-off.
-- **Never** edit protected paths after they are sealed:
-  - `evals/**` is sealed when M2 merges
-  - `src/cre_brain/gates/**` and `tests/protected/**` are sealed when M3 merges
-  - `program.md`, `CODEOWNERS`, `.github/**`, `PROTECTED_HASHES.txt` are always protected
+- **Never** edit, delete, skip or weaken an existing test to make something pass. Skips are allowed only through the approved markers in `tests/conftest.py`: `requires_codex`, `requires_network`, `requires_key(<NAME>)`, `requires_license(<NAME>)`.
+- **Never** change a task's `passes` unless its verify command exited 0 in that same session.
+- **Never** act as the analyst yourself, read eval truth files, or access the private eval repo. Analyst work runs only through `CodexRunner` in a repo-less container. Scoring is a separate process.
+- **Never** hand-write or edit runner transcripts. Transcripts come only from `cre record`. FakeRunner transcripts prove plumbing only; they are **never** evidence of quality.
+- **Never** hard-code model names, API keys, emails or personal data. Config and environment variables only.
+- **Never** call live models (including the Codex CLI) in unit tests or CI. Live Codex sessions are allowed only in `make eval`, `cre record`, `cre run`, and the learning loop.
+- **Never** use `--dangerously-bypass-approvals-and-sandbox` or `danger-full-access` outside a disposable container.
+- **Never** add these dependencies: LiteLLM, DSPy (it pulls in LiteLLM), HyperFormula (unless the owner licenses it), Marker, any of ii-agent's office skills, or OpenHands packages.
+- **Never** let an LLM produce a number in a deliverable. Every number must resolve to a stored `CalcResult` or `Fact`; the gates check this.
+- **Never** merge to `main`, force-push `dev` or `main`, or rewrite their history.
 
-  Changing a sealed path requires a separate PR labelled `protected-change` and owner review.
-- **Never** change a task's `passes` without its verify command exiting 0 in that same session.
-- **Never** read `evals/holdout/` or try to reconstruct the sealed test set.
-- **Never** hard-code model IDs, API keys, emails or personal data. Config and environment variables only.
-- **Never** call live models (including the Codex CLI) in unit tests or CI. Use `FakeRunner` and recorded transcripts. Live Codex sessions are allowed only in `make eval`, `cre record`, and the learning loop.
-- **Never** act as the analyst yourself during scored evals, and never read eval truth files. Analyst sessions run through `CodexRunner`, and scoring is a separate blind process.
-- **Never** use `--dangerously-bypass-approvals-and-sandbox` outside an isolated box.
-- **Never** add these dependencies: LiteLLM, HyperFormula, Marker, or any of ii-agent's bundled office skills.
-- **Never** let the LLM do arithmetic in product code. All math goes through `cre_brain.finance`.
-- **Never** merge to `main`, force-push, or rewrite history on `main`.
-
-## Environment variables (names only; Devin Secrets supply the values)
-- **Analyst runtime (v1):** the **Codex CLI**, pre-installed and authenticated on this machine. No model key is needed. Check it with `codex login status`. Optional: `TYPESAFE_API_KEY` (Jev). Later (M6): `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` for the SDK runners.
+## Environment
+- **Analyst runtime (v1):** the **Codex CLI**, pre-installed and authenticated on the build machine. Check it with `codex login status`. For anything touching customer data, the owner uses API-key auth (`CODEX_API_KEY`); see HUMAN_SETUP.
+- **Optional:** `TYPESAFE_API_KEY` (Jev, M8). Later: `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` (SDK runners, M8).
 - **Public data:** `SEC_USER_AGENT` (required for EDGAR), `FRED_API_KEY`, `CENSUS_API_KEY`, `HUD_API_TOKEN`, `BLS_API_KEY`, `SOCRATA_APP_TOKEN`.
-- **Infrastructure:** `DBOS_DATABASE_URL` (default `sqlite:///./.local/dbos.sqlite`), `DATABASE_URL` (default SQLite).
-- **CI only:** `EVAL_SEALED_SEED`.
+- **Infrastructure:** `DATABASE_URL` (Postgres via `docker compose up db` for integration tests; SQLite for unit tests only).
+- **CI only (owner-set):** `EVALS_PRIVATE_TOKEN`, for access to the private eval repo.
 
-When a runner or key is unavailable, the code must skip live work and log `SKIPPED_NO_RUNNER` / `SKIPPED_NO_KEY`. It must never crash.
+When a runner or key is unavailable, live work is skipped through the approved markers with `SKIPPED_NO_RUNNER` or `SKIPPED_NO_KEY`. It never crashes.
 
 ## Code standards
-- Python 3.12, uv, ruff (format + lint), mypy strict on `src/`, pytest + hypothesis.
-- Pydantic v2 models at every boundary. `Decimal` for money.
-- Every public function has a docstring and type hints.
-- Tool functions return concise JSON with actionable error messages.
-- Keep modules small. One responsibility per file.
-- Tests live next to the area: `tests/<area>/test_*.py`. Contract tests for gates and evaluators go in `tests/protected/`.
+- Python 3.12, uv, ruff, mypy strict on `src/`, pytest + hypothesis.
+- Pydantic v2 at every boundary. `Decimal` for money.
+- Tools return concise JSON with actionable error messages.
+- One responsibility per module.
+- Tests go in `tests/<area>/`. Contract tests for gates, policy, the keep rule and sanitization go in `tests/protected/`.
 
 ## Where things are
 | Topic | Doc |
 |---|---|
 | Method and decisions | `METHOD.md` |
-| Interfaces, layout, schemas, gates, hooks | `docs/SPEC.md` |
+| Interfaces, layout, schemas, gates, runner, security | `docs/SPEC.md` |
 | Learning loop | `docs/LEARNING.md` + `program.md` |
 | Evals | `docs/EVALS.md` |
 | Data endpoints and terms | `docs/DATA_SOURCES.md` |
 | Owner setup | `docs/HUMAN_SETUP.md` |
-| Reusable procedures for you | `.agents/skills/*/SKILL.md` |
+| Your reusable procedures | `.agents/skills/*/SKILL.md` |

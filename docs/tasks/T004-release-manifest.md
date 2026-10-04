@@ -1,29 +1,30 @@
 # T004: Brain Release manifest
 
-> Product: an autonomous CRE acquisition analyst ("the Devin of real estate"). Follow the session protocol in `AGENTS.md`.
+> Product: an autonomous CRE acquisition analyst ("the Devin of real estate"). Follow the session protocol and branch model in `AGENTS.md` (work on `dev`).
 
 | | |
 |---|---|
-| Milestone | M0: Scaffold and guards (branch `milestone/M0`) |
+| Milestone | M0: Guards and scaffold |
 | Depends on | T003 |
-| Read first | LEARNING §7 |
-| Allowed to modify | `src/cre_brain/release/**`, `tests/release/**`, `brain/**`, `PROGRESS.md`, `feature_list.json` (this task's `passes` only) |
-| Must NOT modify | Sealed paths (see AGENTS.md), other tasks' entries, existing tests' assertions |
+| Read first | LEARNING §8 |
+| Allowed to modify | `src/cre_brain/release/**`, `tests/release/**`, `PROGRESS.md`, `feature_list.json` (this task's `passes` only) |
+| Must NOT modify | Anything else in `scripts/protected_paths.txt`; other tasks' entries; existing tests' assertions |
+| Protected paths touched | No |
 
 ## Goal
-Hash-identified, replayable releases of the brain.
+Hash-identified, replayable releases.
 
 ## Acceptance criteria
-- [ ] AC1: `brain/` exists with `skills/`, `prompts/` and `playbook/global.md` placeholders
-- [ ] AC2: `cre release build` writes `releases/<hash>.json` covering brain/, config/*.yaml, the gates code hash and the model IDs
-- [ ] AC3: `cre release list` and `cre release rollback <hash>` work against a local registry
-- [ ] AC4: Tests: changing one byte in brain/ changes the hash; rollback restores the files
+Each ACn needs at least one passing, non-skipped test named `test_t004_ac<n>_*`.
+- [ ] AC1 (`test_t004_ac1_*`): `cre release build` writes `releases/<hash>.json` over brain/, config/*.yaml, gates code hash, runner/model ids, Codex CLI version (if available)
+- [ ] AC2 (`test_t004_ac2_*`): `cre release list` and `cre release rollback <hash>`
+- [ ] AC3 (`test_t004_ac3_*`): Changing one byte in brain/ changes the hash; rollback restores files
 - [ ] `make check` passes.
 
-## Verify (must exit 0, paste the tail into PROGRESS.md)
+## Verify (must exit 0; paste the tail into PROGRESS.md)
 ```bash
-uv run pytest tests/release -q
+uv run pytest tests/release -q && uv run python scripts/check_task.py T004
 ```
 
 ## Done when
-All ACs are met, verify exits 0, `passes` for T004 is set to true, the task branch is merged into `milestone/M0`, and a PROGRESS.md entry is written. If blocked, write a BLOCKED entry with evidence and move on.
+All ACs are met, verify exits 0, `passes` for T004 is true, the task branch is merged into `dev` and pushed, and a PROGRESS.md entry is written. If you are blocked, write a BLOCKED entry with evidence and move on.

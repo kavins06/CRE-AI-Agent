@@ -34,6 +34,11 @@ Never hard-code credentials or personal contact details. All of them come from e
 - **8-K / 8-K/A Rule 3-14 statements:** "Statement of Revenues and Certain Operating Expenses" for acquired apartment properties. These are audited, T-12-like statements.
 - **Reference parsers to read, not vendor:** github.com/pgoldtho/visulate-abs and github.com/jgaudani/cmbs-radar.
 
+### Honest limits of public data
+- **Annex A-1 is lender underwriting** (NCF basis), not a buyer's acquisition package. Use it to anchor extraction and realism; EX-102 *securitization* fields are the numeric truth.
+- **8-K Rule 3-14 statements** cover revenue and *certain* operating expenses (some costs are excluded by rule). Filings became much rarer after the 2020 significance amendments, so expect tens, not hundreds.
+- **No public source gives property-level rent comps.** Comp logic is tested on synthetic comp sets until licensed data (CoStar or Yardi Matrix) is connected.
+
 ## 2. Market and macro APIs
 | Source | Endpoint | Key env var | Limits | Terms |
 |---|---|---|---|---|
