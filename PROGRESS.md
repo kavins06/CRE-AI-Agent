@@ -457,3 +457,61 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - Current-session hosted verifier exited 0 on exact head `d09bb7ab0a53750b2dc5119678ee305d9ea5383c` and synthetic merge `eaadc857d6744dfedfef0d2e2bf52eb9cc2b4fbb` (combined with dev `11705ea`). Checkout and recorded merge SHA were confirmed in full job logs. Each ephemeral runner passed 55 sandbox tests and then the unchanged task checker: `30 passed, 288 deselected`; `T031: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED`. Evidence: PR #3 https://github.com/kavins06/CRE-AI-Agent/pull/3; head job `111417167439`, merge job `111417167550`. Hosted full `make check` job `111417099867` passed 307 tests, 11 integration tests deselected, Ruff/format and strict mypy; dependency audit and test count also passed. The main-only verify-features job was correctly not applicable to this dev PR, not substituted for the exact T031 checker.
 - Independent source PASS at `049025d` and exact metadata-only delta confirmation at `d09bb7a` remain applicable. Only after this corrected-source physical evidence was confirmed is T031 completion reasserted. This does not revive the rejected shared-host containment evidence or certify arbitrary runtime/model safety. No private-eval/model credentials or host Docker runtime were used. Owner review/label gates still apply to main promotion.
 - This task-metadata/evidence commit changes no source/tests/workflows or verifier; it receives a final head/merge hosted replay before dev integration. T014 remains blocked; reviewed T021 and independent T034 pre-parsing implementation are next.
+### 2026-10-04: T034 deterministic document pre-parsing (source-only review)
+- Added immutable, strict and bounded parsed-document, table, cell, page and text
+  boundaries. Every observation carries the existing canonical `Provenance`, exact
+  lexical source text, deterministic IDs, tenant scope, source SHA-256, parser versions
+  and a configuration SHA-256. Output round-trips through its schema and is atomically
+  confined to `parsed/<doc_id>.json`; it does not create `Fact`, `CalcResult` or canonical
+  finance state.
+- CSV and XLSX are parsed natively. CSV preserves BOM-sensitive text, quoting, embedded
+  newlines, empty cells, leading zeros and explicit delimiters. The OOXML reader retains
+  lexical numeric/formula values without float conversion or calculation, validates the
+  package with openpyxl, excludes phonetic annotations from rich cell text, and rejects
+  macros, external relationships, DTD/entities, unsafe ZIP members and unsupported formula
+  forms. File ownership, links, roots, paths, sizes, compression, sheets, rows, columns,
+  cells, text and output are bounded; writes use no-follow traversal and atomic replacement.
+- Born-digital PDF parsing uses the official Docling 2.133.0 model-free
+  `NativePdfPipeline` in a resource-limited subprocess. It blocks network connects, runs
+  with offline/model-download variables, retains native text, pages and dimensions, and
+  normalizes each Docling box with `to_top_left_origin(page_height)`. There is no OCR,
+  layout, table or reading-order inference: scanned/textless pages are explicitly
+  `needs_review`. The Reducto seam requires an explicit license and configured typed
+  transport; unavailable states raise `ParserUnavailable`, native spreadsheets never reach
+  that transport, and there is no successful empty fallback.
+- Portable bootstrap decision: regular dependencies now include
+  `docling-slim[convert-core,format-pdf]==2.133.0` and `pypdf==6.19.0`; dev adds
+  `reportlab==4.4.4` for real synthetic PDFs. The lock changed only root dependency
+  metadata. A clean source export ran the unchanged default `init.sh` offline, without
+  optional extras, then proved the final parser from its own new venv. It contained
+  docling-slim but no full Docling, Torch or NVIDIA distributions; network calls were
+  blocked and no models or weights were present or downloaded.
+- Tests were written first. Initial collection was RED with
+  `ImportError: cannot import name 'Limits'`; later review regressions were also RED for
+  phonetic metadata polluting source text and licensed PDF transport seeing CSV/XLSX.
+  Neither existing assertions nor acceptance criteria were edited. Final exact verifier:
+  ```text
+  uv run pytest tests/extraction -q -k preparse && uv run python scripts/check_task.py T034
+  .............................................................s           [100%]
+  61 passed, 1 skipped in 15.68s
+  .............................................................            [100%]
+  61 passed, 292 deselected, 2 warnings in 15.86s
+  T034: AC1 PASSED, AC2 PASSED, AC3 PASSED
+  ```
+  The sole skip is the approved `requires_license("REDUCTO")` external call; all mandatory
+  native AC tests passed non-skipped. The final isolated clean-install replay produced the
+  same 61 passes and all three AC passes.
+- Final offline repository check:
+  ```text
+  make check
+  All checks passed!
+  94 files already formatted
+  Success: no issues found in 62 source files
+  341 passed, 1 skipped, 11 deselected, 2 warnings in 73.50s
+  ```
+- `uv run pre-commit run --all-files` exited 0: ruff lint, ruff format and strict
+  source types all passed (rerun after recording this evidence).
+- Scope remains deliberately held: T034 `passes` is still false, no PR or dev/main
+  integration is authorized here, and no Docker, private evaluations, live data/models or
+  production service was used. T010's `DeliverableKind`/NOI acceptance dependency remains
+  unresolved; this entry reports isolated T034 source readiness only.

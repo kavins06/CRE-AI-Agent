@@ -19,6 +19,8 @@ dependencies = [
     "openpyxl==3.1.5",
     "pyxirr==0.10.8",
     "zen-engine==2.1.2",
+    "docling-slim[convert-core,format-pdf]==2.133.0",
+    "pypdf==6.19.0",
 ]
 
 [project.scripts]
@@ -55,6 +57,7 @@ dev = [
     "mypy==1.18.2",
     "pytest==9.0.3",
     "pypdf==6.19.0",
+    "reportlab==4.4.4",
     "hypothesis==6.140.2",
     "pytest-asyncio==1.3.0",
     "pytest-cov==7.0.0",
