@@ -1015,3 +1015,25 @@ T018: AC1 PASSED, AC2 PASSED, AC3 PASSED
 - Source-head hosted CI passes: check, dependency-audit, test-count, sandbox-physical and sandbox-merge. `verify-features` is intentionally dev-skipped; no skip is used as task-acceptance evidence. All three PR review findings were reproduced red-first, repaired and answered in their individual threads.
 - Set only T017/T018 flags after successful verification/review. `make check` remains 745 passed, one existing approved license skip, 11 integration deselected; all hooks, lint, types and lock checks pass.
 - Next: acceptance metadata checks and dev integration of PR #9, then T019/T020 Excel template/recalculation parity. Broader analyst and M1 remain incomplete; main promotion retains owner-controlled milestone gates.
+
+## 2026-10-04 — T019/T020 locally verified, milestone CI held
+- Code-generated five-year unlevered operating-proforma template, 517-entry named map and authoritative Fact/CalcResult writer are implemented. Optional debt/tax/value-add/return schedules remain Python-only; unsupported maps fail closed. Fact knowledge/valid time, reachable lineage, tenant-global stale identities, conflicts, units, precision and authoritative recomputation are enforced.
+- Independent GPT-6.1 Sol review first rejected nine real defects. Red-first additive tests and repairs now enforce build-bound complete parity, live formula/dependency integrity, reachable fact validity, tenant-wide invalidation, canonical namespace, local-name rejection, semantic macro detection, owned-process cleanup and stable diagnostic categories. Fresh full source review returns PASS. A subsequent duplicate-native-metadata-container regression failed before its cardinality repair; separate delta review returns PASS. No accepted assertions weakened.
+- Real LibreOffice 24.2.7.2 Python UNO on this Outpost VPS recalculates with isolated HOME/TMPDIR/profile/pipe, symbolic NEVER_EXECUTE macro mode and owned-process-group cleanup. Full deliverable integration compares all 517 mapped cells and retains formulas, caches and JSON provenance comments. Only the exact single workbook-level LibreOffice ExcelA1 metadata subtree is permitted. The native engine remains trusted-reference/synthetic-only, not an untrusted seller-workbook sandbox.
+- Exact same-session verification after the final source repair (both commands exit 0):
+```text
+uv run pytest tests/excel -q -k template
+24 passed, 72 deselected in 13.93s
+uv run python scripts/check_task.py T019
+26 passed, 827 deselected, 2 warnings in 14.97s
+T019: AC1 PASSED, AC2 PASSED, AC3 PASSED
+uv run pytest tests/excel -q
+95 passed, 1 skipped in 60.96s
+uv run python scripts/check_task.py T020
+13 passed, 840 deselected, 2 warnings in 23.65s
+T020: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
+```
+- Skip is only the approved licensed MS_GRAPH stub; all LibreOffice ACs run, not skip. Generated assets rebuild byte-identically. ./init.sh, make check (836 passed, 2 approved license skips, 15 integration deselected), Ruff lint/format, strict mypy, all pre-commit hooks, uv lock --check and git diff --check exit 0. Set only T019/T020 passes after those exact task verifiers.
+- Decisions: product parity requires a writer-issued WorkbookBuild; arbitrary descriptors/subset parity are not provenance attestations. The reference map is intentionally only one canonical proforma root. Native metadata allowance is exact-shape and single-container rather than blanket extension stripping.
+- Owner now authorizes additional delegation/Devin usage but only OpenAI models, with agent/development execution on the Outpost VPS. Local GPT-6.1 Sol review worked after selecting root XDG profile paths; noninteractive native author permissions rejected commands, so independent T030/T036 implementation runs through sandboxed OpenAI-only Codex CLI in separate local worktrees. No cloud development machines, SEC or private eval access.
+- Needs owner: clarify whether the no-cloud-computer instruction also excludes existing GitHub-hosted CI. New hosted-CI triggers and milestone/main promotion are held pending that answer; no security gate is bypassed. M1 implementation is locally complete, not yet milestone-promoted. T030 capability probing and T036 synthetic generation continue in parallel; the end-to-end autonomous analyst remains incomplete.

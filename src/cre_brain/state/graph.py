@@ -140,3 +140,18 @@ class DependencyGraph:
             for node in stale:
                 graph.setdefault(node, set())
             return [node for node in _topological_order(graph) if node in stale]
+
+    def tenant_stale_items(self, *, scope: TenantScope) -> list[str]:
+        """Invalidated identities across tasks; regeneration requires a new ID.
+
+        This union has no cross-task event ordering. The task-specific ordered
+        stale_items API remains the scheduling interface.
+        """
+        with self.engine.connect() as connection:
+            query = select(events.c.payload).where(tenant_filter(events, scope))
+            stale: set[str] = set()
+            for payload in connection.execute(query).scalars():
+                event = AgentEvent.model_validate(payload)
+                if event.kind == "stale":
+                    stale.add(identifier.validate_python(event.payload["item_id"]))
+            return sorted(stale)

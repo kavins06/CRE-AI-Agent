@@ -162,7 +162,7 @@
         "T018"
       ],
       "verify": "uv run pytest tests/excel -q -k template && uv run python scripts/check_task.py T019",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T020",
@@ -173,7 +173,7 @@
         "T019"
       ],
       "verify": "uv run pytest tests/excel -q && uv run python scripts/check_task.py T020",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T021",

@@ -71,5 +71,12 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Install accepted Excel verification runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libreoffice-calc python3-uno
       - run: ./init.sh
       - run: uv run python scripts/verify_features.py
+        env:
+          CRE_EXCEL_SOFFICE: /usr/bin/soffice
+          CRE_EXCEL_UNO_PYTHON: /usr/bin/python3
