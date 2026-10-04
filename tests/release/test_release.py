@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import shutil
 import subprocess
@@ -13,6 +15,7 @@ from typer.testing import CliRunner
 
 from cre_brain import release
 from cre_brain.cli import create_app
+from cre_brain.release.manifest import Manifest, content_hash
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -142,7 +145,11 @@ def test_t004_ac3_one_byte_changes_hash_and_rollback_restores_exact_tree(repo: P
     budget.write_text(budget.read_text().replace("nightly_sessions: 200", "nightly_sessions: 100"))
     (repo / "config/extra.yaml").write_text("extra: true")
     (repo / "config/local.txt").write_text("preserve non-YAML file")
-    release.rollback(repo, first.release_id)
+    release.rollback(
+        repo,
+        first.release_id,
+        policy_confirmation=release.policy_confirmation(repo, first.release_id),
+    )
     assert (repo / "brain/prompt.md").read_bytes() == original
     assert binary.read_bytes() == b"\x00\xff\x01"
     assert not (repo / "brain/new.md").exists()
@@ -274,3 +281,103 @@ def test_t004_ac3_offline_release_restores_offline_but_not_under_new_runtime(
     monkeypatch.setattr(release, "_codex_version", lambda: "codex-cli newly installed")
     with pytest.raises(ValueError, match="Codex CLI version"):
         release.rollback(repo, manifest.release_id)
+
+
+@pytest.mark.parametrize(
+    ("filename", "before", "after"),
+    [
+        ("gates.yaml", 'fragility_margin: "0.02"', 'fragility_margin: "0.50"'),
+        ("budget.yaml", "nightly_sessions: 200", "nightly_sessions: 999"),
+        ("toggles.default.yaml", 'browse: "off"', 'browse: "on"'),
+    ],
+)
+def test_t004_ac3_self_consistent_malicious_policy_requires_explicit_confirmation(
+    repo: Path, filename: str, before: str, after: str
+) -> None:
+    original = release.build(repo)
+    payload = original.model_dump(mode="json", exclude={"release_id"})
+    name = f"config/{filename}"
+    content = original.files[name].content().decode().replace(before, after).encode()
+    assert content != original.files[name].content()
+    payload["files"][name]["content_base64"] = base64.b64encode(content).decode()
+    payload["files"][name]["sha256"] = hashlib.sha256(content).hexdigest()
+    # Build the attack's internally valid settings, then restore owner configuration.
+    path = repo / name
+    saved = path.read_bytes()
+    path.write_bytes(content)
+    payload["settings"] = release.load(repo / "config").model_dump(mode="json")
+    path.write_bytes(saved)
+    attack = Manifest.model_validate({**payload, "release_id": content_hash(payload)})
+    attack.validate_integrity()
+    (repo / "releases" / f"{attack.release_id}.json").write_text(attack.model_dump_json())
+    with pytest.raises(ValueError, match="policy"):
+        release.rollback(repo, attack.release_id)
+    assert path.read_bytes() == saved
+    assert (repo / "brain/prompt.md").read_bytes() == b"synthetic prompt\n"
+    assert not list(repo.glob(".release-*"))
+
+
+def test_t004_ac3_exact_policy_confirmation_is_action_bound_and_stale_safe(repo: Path) -> None:
+    first = release.build(repo)
+    budget = repo / "config/budget.yaml"
+    budget.write_text(budget.read_text().replace("nightly_sessions: 200", "nightly_sessions: 100"))
+    token = release.policy_confirmation(repo, first.release_id)
+    with pytest.raises(ValueError, match="policy"):
+        release.rollback(repo, first.release_id, policy_confirmation="wrong")
+    budget.write_text(budget.read_text().replace("nightly_sessions: 100", "nightly_sessions: 101"))
+    with pytest.raises(ValueError, match="policy"):
+        release.rollback(repo, first.release_id, policy_confirmation=token)
+    token = release.policy_confirmation(repo, first.release_id)
+    (repo / "brain/prompt.md").write_text("second release")
+    second = release.build(repo)
+    with pytest.raises(ValueError, match="policy"):
+        release.rollback(repo, second.release_id, policy_confirmation=token)
+    release.rollback(repo, first.release_id, policy_confirmation=token)
+    assert budget.read_bytes() == first.files["config/budget.yaml"].content()
+    assert (repo / "brain/prompt.md").read_bytes() == b"synthetic prompt\n"
+
+
+def test_t004_ac2_cli_displays_policy_diff_and_requires_exact_confirmation(repo: Path) -> None:
+    first = release.build(repo)
+    (repo / "config/toggles.default.yaml").write_text(
+        (repo / "config/toggles.default.yaml").read_text().replace('browse: "off"', 'browse: "ask"')
+    )
+    runner = CliRunner()
+    args = ["release", "rollback", first.release_id, "--root", str(repo)]
+    result = runner.invoke(create_app(), args)
+    assert result.exit_code != 0
+    assert "Current policy" in result.output and "Proposed policy" in result.output
+    assert first.release_id in result.output and "--confirm-policy" in result.output
+    token = release.policy_confirmation(repo, first.release_id)
+    assert token in result.output
+    result = runner.invoke(create_app(), args + ["--confirm-policy", token])
+    assert result.exit_code == 0, result.output
+
+
+def test_t004_ac3_environment_cannot_hide_changed_file_policy(
+    repo: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CRE_TOGGLES__BROWSE", "off")
+    first = release.build(repo)
+    path = repo / "config/toggles.default.yaml"
+    path.write_text(path.read_text().replace('browse: "off"', 'browse: "on"'))
+    with pytest.raises(ValueError, match="policy"):
+        release.rollback(repo, first.release_id)
+    assert 'browse: "on"' in path.read_text()
+    assert not list(repo.glob(".release-*"))
+
+
+def test_t004_ac3_self_consistent_invalid_yaml_fails_cleanly_before_writes(repo: Path) -> None:
+    original = release.build(repo)
+    payload = original.model_dump(mode="json", exclude={"release_id"})
+    content = b"parity: ["
+    payload["files"]["config/gates.yaml"]["content_base64"] = base64.b64encode(content).decode()
+    payload["files"]["config/gates.yaml"]["sha256"] = hashlib.sha256(content).hexdigest()
+    invalid = Manifest.model_validate({**payload, "release_id": content_hash(payload)})
+    (repo / "releases" / f"{invalid.release_id}.json").write_text(invalid.model_dump_json())
+    with pytest.raises(ValueError, match="policy.*YAML"):
+        release.rollback(repo, invalid.release_id)
+    assert (repo / "config/gates.yaml").read_bytes() == original.files[
+        "config/gates.yaml"
+    ].content()
+    assert not list(repo.glob(".release-*"))

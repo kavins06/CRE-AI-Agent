@@ -44,9 +44,20 @@ def register_cli(app: typer.Typer) -> None:
             raise typer.Exit(1) from exc
 
     @group.command("rollback")
-    def rollback(release_id: str, root: Root = Path(".")) -> None:
+    def rollback(
+        release_id: str,
+        root: Root = Path("."),
+        policy_confirmation: Annotated[
+            str | None,
+            typer.Option("--confirm-policy", help="Exact policy confirmation shown on rejection."),
+        ] = None,
+    ) -> None:
         try:
-            typer.echo(release.rollback(root, release_id).release_id)
+            typer.echo(
+                release.rollback(
+                    root, release_id, policy_confirmation=policy_confirmation
+                ).release_id
+            )
         except (ValueError, OSError) as exc:
             typer.echo(f"Release rollback failed: {exc}", err=True)
             raise typer.Exit(1) from exc

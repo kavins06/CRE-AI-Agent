@@ -55,7 +55,7 @@ def _apply_env(data: dict[str, Any], section: str) -> None:
             raise ValueError(f"Invalid config override value for {name}") from exc
 
 
-def load(config_dir: Path | str | None = None) -> Settings:
+def load(config_dir: Path | str | None = None, *, apply_environment: bool = True) -> Settings:
     location = (
         config_dir
         if config_dir is not None
@@ -65,7 +65,8 @@ def load(config_dir: Path | str | None = None) -> Settings:
     sections = {}
     for section, filename in FILES.items():
         data = _read(directory / filename)
-        _apply_env(data, section)
+        if apply_environment:
+            _apply_env(data, section)
         sections[section] = data
     return Settings.model_validate(sections)
 

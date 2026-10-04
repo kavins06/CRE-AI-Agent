@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -17,11 +18,14 @@ import stat
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 
-from cre_brain.config import FILES, load
+import yaml
+
+from cre_brain.config import FILES, Settings, load
 from cre_brain.release.manifest import Manifest, Snapshot, checked_relative, content_hash
 
-__all__ = ["Manifest", "build", "list_releases", "read", "rollback"]
+__all__ = ["Manifest", "build", "list_releases", "policy_confirmation", "read", "rollback"]
 
 
 def _root(root: Path) -> Path:
@@ -162,7 +166,49 @@ def list_releases(root: Path) -> list[Manifest]:
     ]
 
 
-def rollback(root: Path, release_id: str) -> Manifest:
+def _policy(settings: Settings) -> dict[str, Any]:
+    return settings.model_dump(mode="json", include={"budget", "gates", "toggles"})
+
+
+def _policies(root: Path, manifest: Manifest) -> dict[str, Any]:
+    try:
+        proposed = Settings.model_validate(
+            {
+                section: yaml.safe_load(manifest.files[f"config/{filename}"].content())
+                for section, filename in FILES.items()
+            }
+        )
+    except yaml.YAMLError as exc:
+        raise ValueError("Release policy contains invalid YAML") from exc
+    return {
+        "current": {
+            "files": _policy(load(root / "config", apply_environment=False)),
+            "effective": _policy(load(root / "config")),
+        },
+        "proposed": {"files": _policy(proposed), "effective": _policy(manifest.settings)},
+    }
+
+
+def _confirmation(release_id: str, policies: dict[str, Any]) -> str:
+    return content_hash(
+        {
+            "action": "rollback-policy",
+            "release_id": release_id,
+            "current_policy_digest": content_hash(policies["current"]),
+            "proposed_policy_digest": content_hash(policies["proposed"]),
+        }
+    )
+
+
+def policy_confirmation(root: Path, release_id: str) -> str:
+    """Preview confirmation bound to this release and current/proposed policies."""
+    root = _root(root)
+    manifest = read(root, release_id)
+    _inventory(root, "config")
+    return _confirmation(release_id, _policies(root, manifest))
+
+
+def rollback(root: Path, release_id: str, *, policy_confirmation: str | None = None) -> Manifest:
     root = _root(root)
     manifest = read(root, release_id)
     if _gate_hash(root) != manifest.gates_code_hash:
@@ -171,6 +217,17 @@ def rollback(root: Path, release_id: str) -> Manifest:
         raise ValueError("Release Codex CLI version differs; install the recorded runtime first")
     _inventory(root, "brain")
     _inventory(root, "config")
+    policies = _policies(root, manifest)
+    confirmation = _confirmation(release_id, policies)
+    if (
+        policies["current"] != policies["proposed"] or policy_confirmation is not None
+    ) and policy_confirmation != confirmation:
+        raise ValueError(
+            f"Protected policy differs or confirmation is invalid for release {release_id}.\n"
+            f"Current policy: {json.dumps(policies['current'], sort_keys=True)}\n"
+            f"Proposed policy: {json.dumps(policies['proposed'], sort_keys=True)}\n"
+            f"Review the policy change, then repeat with --confirm-policy {confirmation}"
+        )
     stage = Path(tempfile.mkdtemp(prefix=".release-", dir=root))
     committed = False
     try:
