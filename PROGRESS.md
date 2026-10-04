@@ -338,3 +338,34 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
   T011: AC1 PASSED, AC2 PASSED, AC3 PASSED
   ```
 - All pre-commit lint/format/strict-type hooks passed. All existing feature flags, finance source/tests, graph/event production code and protected files remain byte-unchanged relative to coordinator dev. No private evaluation/source data, models, credentials or production deployment. Next: push only the repair task branch for coordinator review/real PostgreSQL replay; coordinator owns dev integration and explicitly releases the group. Blockers: none; awaiting coordinator integration feedback.
+
+### 2026-10-04: T013 account namespace follow-up
+- A synthetic adversarial probe demonstrated a mapped category named `unmapped:other` merging its amount with an actually unmapped `other` account. Chart boundaries now reject the reserved `unmapped:` line prefix, retaining the existing output contract and all prior assertions. The new regression failed before the validator and passes afterward.
+- Fresh exact T013 verify exited 0: `8 passed, 233 deselected, 2 warnings`; `T013: AC1 PASSED, AC2 PASSED, AC3 PASSED`. `make check` exited 0: lint/format/strict types clean, `239 passed, 2 deselected, 2 warnings in 52.58s`. No feature flag changed. Next: independent finance review and migration repair, then T014. Main promotion still requires the existing owner protected-change label/review; private evals and live services untouched.
+
+### 2026-10-04: T013 caller-independent arithmetic
+- Independent review confirmed that ambient Decimal precision changes actual money, not only formatting. Tests first reproduced changed rent-roll/T-12 results, caller-triggered Inexact/Rounded exceptions, and caller exponent-limit Overflow: `4 failed, 1 passed`. The shared private calculation wrapper now supplies every Context field explicitly, preserving standard 28-significant-digit half-even arithmetic while rejecting invalid operations, division by zero, overflow and accidental float operations. No cent quantization or new financial assumptions were introduced.
+- Every calculation gets an isolated context copy and restores its caller even on failure. Six new regressions cover low/high precision, alternate rounding, traps, exponent limits, caller flags/state preservation, and a mutated DefaultContext. Source: https://docs.python.org/3.12/library/decimal.html#decimal.localcontext and https://docs.python.org/3.12/library/decimal.html#decimal.Context (unspecified constructor fields otherwise inherit mutable defaults).
+- Exact T013 verification exited 0 in this session:
+  ```text
+  ..............                                                           [100%]
+  14 passed in 0.65s
+  ..............                                                           [100%]
+  14 passed, 233 deselected, 2 warnings in 1.15s
+  T013: AC1 PASSED, AC2 PASSED, AC3 PASSED
+  ```
+- Focused Ruff/format/strict types pass. Full `make check` exited 0: `245 passed, 2 deselected, 2 warnings in 53.64s`; source lint/format/strict types clean. Existing assertions and feature flags are unchanged. Migration repair is independently accepted and separately integrated at `e88ca8f`; this finance branch awaits fresh review and combined-dev replay before the next group release. No model calls, private eval access or live-service changes. Next: T014 pro forma/taxes/value-add using the same calculation policy.
+
+### 2026-10-04: T013 combined integration replay
+- Combined the independently accepted frozen migration repair `e88ca8f`, account namespace correction `f29af7d`, and caller-independent arithmetic `8e85cda`. The only merge conflict was concurrent progress appendices; all three evidence sections are retained. No source/test assertion conflict and no feature flag or protected guard change.
+- Fresh independent arithmetic review accepted `8e85cda`: exact T013 verifier, focused lint/format/strict types, 15 hostile context configurations, 64 threaded callers, poisoned DefaultContext before import, nested calls and validation/arithmetic failures. Original precision-28 monetary outputs, provenance, caller identity/flags/traps and global defaults are preserved; no blocking findings remain. Separate frozen/packaged migration review accepted installed-wheel SQLite/PostgreSQL execution and historical schema immutability.
+- Coordinator replay on the combined staged tree exited 0, with pytest commands serialized to avoid the repository's shared basetemp collision:
+  ```text
+  make check: Ruff/format clean, strict mypy clean in 50 source files
+  252 passed, 3 deselected, 2 warnings in 62.65s
+  uv run pytest tests/state -q: 41 passed in 6.63s (isolated PostgreSQL 16.15 included)
+  T011: 33 passed, 222 deselected; AC1 PASSED, AC2 PASSED, AC3 PASSED
+  T013: 14 passed, 241 deselected; AC1 PASSED, AC2 PASSED, AC3 PASSED
+  T012: 9 passed, 246 deselected; AC1 PASSED, AC2 PASSED, AC3 PASSED
+  ```
+- No missing-integration claim: three integration tests excluded from `make check` were separately executed successfully against the rootless/socket-only fixture; credentials stayed in its native passfile. Main PR #1 remains open/mergeable with four passing checks and the owner protected-change guard failure, no labels or owner review. No bypass, private-eval access, model calls or live-service changes. Next: release the workflow group from current tested dev, then T014 operating projections/tax/value-add.

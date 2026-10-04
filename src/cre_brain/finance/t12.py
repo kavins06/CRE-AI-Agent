@@ -10,6 +10,7 @@ from pydantic import Field, field_validator
 from cre_brain.domain import CalcResult
 from cre_brain.domain.base import Identifier
 from cre_brain.domain.models import DomainModel
+from cre_brain.finance._context import _calculation
 
 MissingMonthPolicy = Literal["zero", "annualize_observed"]
 ZERO = Decimal()
@@ -34,6 +35,13 @@ class ChartOfAccounts(DomainModel):
     input_id: Identifier
     mapping: dict[Identifier, Identifier] = Field(min_length=1)
 
+    @field_validator("mapping")
+    @classmethod
+    def mapped_lines(cls, value: dict[str, str]) -> dict[str, str]:
+        if any(line.startswith("unmapped:") for line in value.values()):
+            raise ValueError("Chart line prefix 'unmapped:' is reserved for unmapped accounts")
+        return value
+
 
 class MissingMonthRule(DomainModel):
     input_id: Identifier
@@ -44,6 +52,7 @@ def _month_number(value: date) -> int:
     return value.year * 12 + value.month - 1
 
 
+@_calculation
 def normalize_t12(
     entries: list[T12Entry],
     *,
