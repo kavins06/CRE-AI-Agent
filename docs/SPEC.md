@@ -311,6 +311,15 @@ roles:
 
 Tools return concise JSON with actionable errors.
 
+Licensed public references use the single `cre_brain.knowledge` catalog and typed
+`KnowledgeProvider.search(SearchRequest) -> SearchResult` seam (`docs/KNOWLEDGE.md`).
+The future registry's `knowledge_search` must delegate to this same provider as
+`cre knowledge search`, returning cited `global_public` reference chunks or
+metadata-only references, never verified deal `Fact`/`CalcResult` evidence.
+Imports remain operator-only/default-off until wired through this canonical
+policy; reference-only/unknown/noncommercial rights prohibit ingestion. SEC is
+disabled. Firm/user memory and evaluation truth must remain physically separate.
+
 ### 10.5 Ask-and-continue and mid-task messages
 1. `ask_user` creates a `Question`, records `default_used` as an `Assumption(set_by="agent")`, adds edges to the `affects` items, and continues.
 2. `POST /tasks/{id}/answers` updates the assumption, calls `mark_stale`, and queues a resume segment listing the stale items.
