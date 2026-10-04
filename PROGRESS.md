@@ -1093,3 +1093,28 @@ T032: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
 ```
 - The author sandbox's full check was not accepted: its masked temporary Git paths, offline wheel cache and read-only Git metadata caused unrelated fixture failures. The coordinator reran the unchanged tests in the normal local checkout; all 1112 passed. No runtime isolation, live Codex/MCP, real connector, private-eval or hosted-CI completion is claimed.
 - Set only T032's acceptance flag after the exact verifier passed. Next: commit/push the task branch without opening a CI-triggering PR, integrate locally, and compose T033/T035 then SCREEN/UW_MODEL. Dev push/main promotion stay held on the hosted-CI clarification. T030 still needs isolated-runtime proof and authorization for its two contradictory assertions; T033's bounded streaming/record/replay source is being implemented separately with its flag false.
+
+## 2026-10-04 — T033 source verified; runtime acceptance BLOCKED
+- Implemented typed bounded streaming execution, generated trusted instructions/configuration, sanitized provider JSONL normalization, tenant-bound segment/resume/accounting reservations, authenticated recording manifests, import-safe record registration and real-tool FakeRunner final-state replay. No buffered/host analyst fallback, production transcript or private-eval access.
+- Independent local OpenAI GPT-6.1 Sol review reproduced embedded/escaped credential leakage, rejected-JSON and wrapper-field bypasses, deadline extension, interrupted cleanup, cancelled-before-entry looping and swallowed parent cancellations. Additive red-first regressions cover the causal paths. Final review returns SOURCE PASS with independent in-memory probes. Replay gates consume one authenticated immutable snapshot and recheck bytes/deadlines; ambient plugins/apps/multi-agent loading are explicitly disabled in generated configuration.
+- Same-session final verification after all source repairs (exit 0):
+```text
+make check (separate PYTEST_ADDOPTS basetemp)
+Ruff: all checks passed; 181 files formatted
+Strict mypy: success, 118 source files
+1168 passed, 3 approved-marker skips, 15 integration deselected in 278.62s
+uv run pytest tests/runner -q -k 'codex or fake'
+56 passed, 1 skipped, 43 deselected
+uv run python scripts/check_task.py T033
+56 passed, 1 skipped, 1129 deselected
+T033: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
+uv run pytest tests/runner -q -k tools
+44 passed, 56 deselected
+uv run pytest tests/protected -q -k policy
+22 passed, 56 deselected
+Strict runner mypy, all pre-commit hooks, uv lock --check and git diff --check: passed
+```
+- Decisions: tests/refusal contracts prove source plumbing only. T030/T033 stay false despite the synthetic checker; there is no concrete authenticated isolated streaming adapter with effective configuration proof, preventive caps, reliable runtime cancellation and canonical MCP composition. No quality, evaluation, live recording or operational analyst claim follows. Cleanup completes accounting and records interrupted before rethrowing parent cancellation; internal deadline cancellation preserves wallclock/budget semantics.
+- Validation correction: this checkout defaults to --basetemp=.cache/pytest. Overlapping focused tests deleted full-run workbook fixtures, causing false failures/ENOENT. The final full run used a distinct basetemp and passed unchanged workbook assertions; no finance/gate weakening or source repair was needed. Use separate temporary roots for concurrent tests.
+- Next: save/push the reviewed source task branch, integrate locally with acceptance false, then author quarantined T035 extraction and T038 SCREEN in separate Outpost worktrees. These can develop source plumbing independently of live runtime acceptance.
+- Needs owner: genuine restricted runtime/auth/cap enforcement and T030's two assertion corrections remain unresolved; hosted-CI/no-cloud clarification still blocks dev push, CI-triggering PRs and milestone/main promotion. Existing owner guards and private-eval isolation remain intact.
