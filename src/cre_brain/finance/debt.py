@@ -208,12 +208,12 @@ def _cost(proceeds: Decimal, payments: list[Decimal]) -> Decimal:
 
     if residual(ZERO) == 0:
         return ZERO
-    low, high = ZERO, ONE
-    while residual(high) > 0:
-        high *= 2
-        if high > Decimal("1e30"):
-            raise ValueError("Effective cost could not be bracketed")
-    for _ in range(4 * getcontext().prec):
+    low = ZERO
+    high = max(ONE, Decimal(2) * sum(payments, ZERO) / proceeds)
+    if residual(high) > 0:
+        raise ValueError("Effective cost could not be bracketed at declared precision")
+    iterations = 4 * (getcontext().prec + max(0, high.adjusted()))
+    for _ in range(iterations):
         mid = (low + high) / 2
         if mid == low or mid == high:
             break

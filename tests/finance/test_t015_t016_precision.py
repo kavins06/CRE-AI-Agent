@@ -8,7 +8,7 @@ import pyxirr
 
 from cre_brain.domain import CalcResult
 from cre_brain.finance.debt import LoanInput, LoanTerms, compare_debt_quotes
-from cre_brain.finance.returns import NPVInput, excel_npv
+from cre_brain.finance.returns import NPVInput, ReturnsInput, calculate_returns, excel_npv
 
 D = Decimal
 META = {"calc_id": "precision", "code_version": "test"}
@@ -67,6 +67,26 @@ def test_t015_ac2_debt_tiny_fixed_fee_is_in_effective_cost(fee):
 def test_t015_ac2_debt_unsupported_quote_precision_fails_closed():
     with pytest.raises(ValueError, match="precision"):
         compare_debt_quotes(loan(), [quote("tiny", "1e-300")], **META)
+
+
+def test_t015_ac2_debt_high_fee_quote_has_bounded_finite_cost_and_last_rank():
+    expensive = LoanTerms(
+        input_id="expensive",
+        base_rate=D(0),
+        spread=D(0),
+        term_months=1,
+        amortization_months=1,
+        io_months=0,
+        fee_rate=D(0),
+        fixed_fee=D("0." + "9" * 40),
+        prepayment_rate=D(0),
+    )
+    free = expensive.model_copy(update={"input_id": "free", "fixed_fee": D(0)})
+    result = compare_debt_quotes(loan("1"), [expensive, free], **META)
+    assert result.outputs["quote:expensive:effective_annual_cost"] == D("1e480") - 1
+    assert result.outputs["quote:free:effective_annual_cost"] == 0
+    assert result.outputs["quote:free:rank"] == 1
+    assert result.outputs["quote:expensive:rank"] == 2
 
 
 @pytest.mark.parametrize("magnitude", ["1e80", "1e100", "1e200"])
@@ -139,3 +159,25 @@ def test_t016_ac2_returns_npv_supports_long_conventional_decimal_rate():
         discount = 1 / (1 + source.discount_rate)
         expected = (1 - discount**600) / source.discount_rate
     assert abs(excel_npv(source, **META).outputs["npv"] - expected) < D("1e-26")
+
+
+@pytest.mark.parametrize(
+    "dates",
+    [None, (date(2025, 1, 1), date(2026, 1, 1), date(2027, 1, 1), date(2028, 1, 1))],
+)
+def test_t016_ac1_returns_zero_rate_tangent_and_negative_root_are_both_reported(dates):
+    result = calculate_returns(
+        ReturnsInput(
+            input_id="zero-tangent",
+            cash_flows=tuple(map(D, ("-1.1", "3.2", "-3.1", "1"))),
+            dates=dates,
+            finance_rate=D(".1"),
+            reinvest_rate=D(".1"),
+        ),
+        **META,
+    )
+    assert result.outputs["root_count"] == 2
+    assert result.outputs["ambiguous"] == 1
+    roots = [result.outputs[f"root:{index}"] for index in (0, 1)]
+    assert roots[1] == 0
+    assert abs(roots[0] - D(-1) / 11) < D("1e-24")

@@ -76,6 +76,23 @@ def _remainder(dividend: Polynomial, divisor: Polynomial) -> Polynomial:
     return result
 
 
+def _exact_quotient(dividend: Polynomial, divisor: Polynomial) -> Polynomial:
+    remainder = dividend.copy()
+    quotient = [Fraction(0)] * (len(dividend) - len(divisor) + 1)
+    while len(remainder) >= len(divisor):
+        factor = remainder[-1] / divisor[-1]
+        if max(factor.numerator.bit_length(), factor.denominator.bit_length()) > 16384:
+            raise ValueError("IRR square-free reduction exceeds the rational complexity budget")
+        shift = len(remainder) - len(divisor)
+        quotient[shift] = factor
+        for index, coefficient in enumerate(divisor):
+            remainder[index + shift] -= factor * coefficient
+        _trim(remainder)
+    if remainder:
+        raise ValueError("IRR square-free reduction could not be certified exactly")
+    return _trim(quotient)
+
+
 def _sturm(polynomial: Polynomial) -> list[Polynomial]:
     derivative = [coefficient * index for index, coefficient in enumerate(polynomial)][1:]
     sequence = [polynomial, _trim(derivative)]
@@ -91,6 +108,8 @@ def _sturm(polynomial: Polynomial) -> list[Polynomial]:
         ):
             raise ValueError("IRR exact certification exceeds the rational complexity budget")
         sequence.append(remainder)
+    if len(sequence[-1]) > 1:
+        return _sturm(_exact_quotient(polynomial, sequence[-1]))
     return sequence
 
 
