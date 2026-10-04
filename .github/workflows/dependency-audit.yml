@@ -1,0 +1,24 @@
+name: Dependency audit
+on:
+  pull_request:
+    branches: [dev, main]
+  schedule:
+    - cron: '0 4 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.12.19'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Audit all locked core, development and optional dependencies
+        run: uv audit --locked

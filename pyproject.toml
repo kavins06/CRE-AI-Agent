@@ -25,14 +25,15 @@ dependencies = [
 cre = "cre_brain.cli:main"
 
 [project.optional-dependencies]
-documents = ["docling==2.133.0", "reportlab==4.4.4", "pypdf==6.1.1"]
+documents = ["docling==2.133.0", "reportlab==4.4.4", "pypdf==6.19.0"]
 eval = ["inspect-ai==0.3.276"]
 learning = ["gepa==0.1.4"]
 jev = ["typesafe-sdk==0.7.2"]
 runtime = [
-    "fastapi==0.119.0",
+    "fastapi==0.135.2",
+    "starlette==1.3.1",
     "uvicorn==0.37.0",
-    "mcp==1.18.0",
+    "mcp==1.28.1",
     "playwright==1.55.0",
     "unoserver==3.4",
     "opentelemetry-api==1.37.0",
