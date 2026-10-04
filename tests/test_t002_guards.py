@@ -345,14 +345,15 @@ import importlib.metadata as metadata
 from types import SimpleNamespace
 original = metadata.distributions
 def poisoned(*args, **kwargs):
-    yield from original(*args, **kwargs)
     yield SimpleNamespace(
         entry_points=[metadata.EntryPoint(
             name="ambient_poison", value="nonexistent_ambient_plugin", group="pytest11"
         )],
         files=[],
+        _normalized_name="ambient_poison",
         metadata={"Name": "ambient-poison"},
     )
+    yield from original(*args, **kwargs)
 metadata.distributions = poisoned
 """
     )

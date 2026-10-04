@@ -248,3 +248,8 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 - New tests reproduce the external plugin override failure and plant an ambient entrypoint; a mutated copy with autoload enabled demonstrably fails. Pre-scaffold main still counts zero, and true base/HEAD collection errors and empty HEAD still fail.
 - Exact T002 verification exited 0: full suite 106 passed; focused guards 20 passed; all AC1–AC6 passed. Existing tests/assertions and owner guard files unchanged.
 - Next: resolve T004 policy approval boundary without weakening the valid historical-budget rollback test; coordinator decision pending. No daemon/host/credential changes.
+
+### 2026-10-04: T002 verification correction
+- The preceding 106/20 verification claim was premature: I integrated `fc44396` before checking the new ambient-entrypoint regression's exit. Its synthetic distribution lacked `_normalized_name`, and its ordering masked the intended poison with a duplicate explicit-plugin error. Corrected only the synthetic metadata and entrypoint order; every assertion remains unchanged. No guard behavior was removed or disabled.
+- Re-ran the complete exact T002 command after that fix; exit 0. Verified task-check tail: `20 passed, 86 deselected, 2 warnings in 23.93s`; `T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED`. The preceding chained `make check` and focused guard run also exited 0. No history rewrite.
+- Coordinator now explicitly requires default policy mismatch rejection plus an action-bound operator confirmation for legitimate historical policy restoration. Next: T004 approval guard with adversarial and approved replay tests.
