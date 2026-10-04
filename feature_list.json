@@ -74,7 +74,7 @@
         "T010"
       ],
       "verify": "uv run pytest tests/state -q -m 'not integration' && uv run python scripts/check_task.py T011",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T012",
