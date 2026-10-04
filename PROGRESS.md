@@ -135,3 +135,28 @@
 33 passed, 2 warnings in 2.22s
 ```
 - Owner guards untouched; no feature state changes. Next: T002. Blockers: none.
+
+### 2026-10-04 06:20 UTC: T002 CI and acceptance guards
+- Branch: `task/t002-ci-guards`; integration target `dev` only.
+- Changed: new `ci.yml`, `check_task.py`, `test_count.py`, `verify_features.py`, `tests/conftest.py`, and 16 behavioral guard tests. No owner-authored guard or existing assertion modified.
+- Decisions: prerequisite network tests require explicit `CRE_NETWORK_ENABLED=1` rather than an unbounded network probe. Key/license markers name environment variables. Codex prerequisite uses only bounded `codex login status`, never a model call. Dynamic and collection skips/xfails fail closed unless this policy itself skipped setup for a missing approved prerequisite.
+- Task checker runs fresh named tests and parses JUnit outcomes; old reports cannot supply passes. Test-count archives base and HEAD separately, collects real parametrized tests with the pinned interpreter, and fails on collection errors or count loss. Feature verification re-executes exact commands; intentionally absent from `make check` to avoid recursive verifies.
+- CI: offline `check` and `test-count` on dev/main PRs, `verify-features` on main PRs and scheduled nightly; pinned tooling, Docker image save/load cache, read-only repository token. Workflow is new; existing owner guards remain intact. Protected implementation owner label/review is still required on milestone PR.
+- Tests were written first (15 failures/1 defensive pass before implementation). Planted violations include missing AC, all skipped, failing AC, stale-report spoofing, marked/runtime/collection skip and xfail, lost committed test, and failing passing-feature verify.
+- Verify: `make check && uv run pytest tests/test_t002_guards.py -q && uv run python scripts/check_task.py T002` → exit 0. Full suite: 63 passed. Checker tail:
+```text
+................                                                         [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------ generated xml file: /tmp/cre-task-vyfqutpl/results.xml ------------
+16 passed, 47 deselected, 2 warnings in 20.07s
+
+T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
+```
+- Next: T003 configuration. Blockers: none locally; GitHub execution and owner milestone review remain separate from offline proof. No analyst-quality claims.

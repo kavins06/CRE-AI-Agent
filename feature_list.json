@@ -30,7 +30,7 @@
         "T001"
       ],
       "verify": "make check && uv run pytest tests/test_t002_guards.py -q && uv run python scripts/check_task.py T002",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T003",
