@@ -271,7 +271,7 @@
         "T034"
       ],
       "verify": "uv run pytest tests/evals -q -k generator && uv run python scripts/check_task.py T036",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T037",
@@ -285,7 +285,7 @@
         "T018"
       ],
       "verify": "uv run pytest tests/gates tests/protected -q && uv run python scripts/check_task.py T037",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T038",
