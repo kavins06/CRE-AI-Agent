@@ -52,7 +52,7 @@
         "T003"
       ],
       "verify": "uv run pytest tests/release -q && uv run python scripts/check_task.py T004",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T010",

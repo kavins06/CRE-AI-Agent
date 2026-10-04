@@ -188,3 +188,30 @@ T002: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED, AC5 PASSED, AC6 PASSED
 T003: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
 ```
 - Existing owner guards/assertions unchanged. New budget/gate files need milestone protected-change label and owner review. Next: T004 replayable releases. Blockers: none for offline task verification; no live/quality/production readiness claim.
+
+### 2026-10-04: T004 content-addressed brain releases
+- Branch: `task/t004-release`; integration target `dev`.
+- Added self-contained Pydantic manifests, build/list/rollback APIs, release command group and 13 offline tests. SHA-256 covers exact brain/config bytes and permissions, effective validated settings (including runner/model IDs/env overrides), gate code hash, optional bounded Codex version probe and explicitly supplied firm playbook version references.
+- Snapshots contain global brain/config only. Firm contents/raw documents/private truth are never traversed. Supplied firm version references are pinned metadata, not a claim that tenant playbooks were restored.
+- Decisions: deterministic manifests omit timestamps. Contents are base64 with per-file checksums to restore binary files without relying on Git. Default root is cwd; `--root` selects a checkout. `--firm-playbook-versions` accepts a JSON mapping of references. No external actions/models are invoked; CLI version/status tests are fully mocked.
+- Rollback validates manifest ID/checksums, canonical allowed paths, symlinks, current gate-code identity and effective environment before modification. It replaces brain and config YAML exactly, preserving unrelated non-YAML config. It never overwrites gate code or changes environment/tenant data. Mismatched gate code requires the corresponding reviewed checkout; mismatched env requires original overrides.
+- Restore stages both trees and recovers originals on installation failures/interrupts. If recovery itself fails, backups remain at the reported `.release-*` path. Offline/exclusive access is required: this is not a concurrent live-service deployment transaction. Abrupt process death can leave recovery backups; no cross-process atomicity claim.
+- Cross-task plumbing correction: T001's existing discovery assertion requires an empty installed plugin list. Release is now a built-in group (`release/commands.py`) registered by the app factory. Installed plugin discovery/security checks remain unchanged; explicitly supplied plugins replace the registry for isolated factory tests. No existing test assertions were edited.
+- Test-first: 11 missing-implementation errors initially. Added planted recovery-failure test, reproduced lost-backup behavior, then replaced unsafe automatic staging cleanup with backup-preserving recovery. Tests cover one-byte hash change, bytes/tree restore, runner/CLI/gate/firm identity changes, missing CLI, tampering/traversal/symlink rejection, env mismatch and restoration failure.
+- Verify: `uv run pytest tests/release -q && uv run python scripts/check_task.py T004` → exit 0; `make check` → exit 0 (98 passed; lint/strict typing passed). Checker tail:
+```text
+.............                                                            [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+------------ generated xml file: /tmp/cre-task-jhxo5dyq/results.xml ------------
+13 passed, 85 deselected, 2 warnings in 0.73s
+
+T004: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Existing owner guards untouched. Next: M0 protected-change owner review; T010 begins M1. Blockers: none for offline verification. No SEC requests, private eval access, live models, workbook/analyst-quality/production claims.

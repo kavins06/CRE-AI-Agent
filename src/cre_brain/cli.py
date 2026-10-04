@@ -58,7 +58,7 @@ def _validate_names(app: typer.Typer) -> None:
 
 
 def create_app(*, plugins: Iterable[ModuleType] | None = None) -> typer.Typer:
-    """Create a fresh application so registration is testable and never duplicated."""
+    """Create a fresh app; supplied plugins replace its command registry for testing."""
     app = typer.Typer(
         help="CRE acquisition analyst brain: deterministic tools and orchestration.",
         no_args_is_help=True,
@@ -75,6 +75,10 @@ def create_app(*, plugins: Iterable[ModuleType] | None = None) -> typer.Typer:
         pass
 
     root_callback = app.registered_callback
+    if plugins is None:
+        from cre_brain.release.commands import register_cli
+
+        register_cli(app)
     for module in discover_plugins() if plugins is None else plugins:
         if not module.__name__.startswith("cre_brain."):
             raise ValueError("CLI plugins must be installed under cre_brain.")
