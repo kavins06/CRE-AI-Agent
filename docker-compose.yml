@@ -1,0 +1,20 @@
+services:
+  db:
+    image: postgres:17.6-bookworm
+    environment:
+      POSTGRES_USER: cre
+      POSTGRES_DB: cre
+      POSTGRES_PASSWORD: "${CRE_POSTGRES_PASSWORD:-cre-local-only}"
+    ports:
+      - "127.0.0.1:${CRE_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cre -d cre"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+    security_opt:
+      - no-new-privileges:true
+volumes:
+  db-data:

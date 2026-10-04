@@ -19,7 +19,7 @@
       "task_file": "docs/tasks/T001-scaffold.md",
       "depends_on": [],
       "verify": "./init.sh && make check && uv run cre --help && uv run pytest tests/test_t001_scaffold.py -q",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T002",

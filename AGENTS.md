@@ -4,6 +4,20 @@
 
 **Read first, in this order:** this file → [METHOD.md](METHOD.md) → [docs/SPEC.md](docs/SPEC.md) → your task file in [docs/tasks/](docs/tasks/). Library usage: [docs/LIBRARY_NOTES.md](docs/LIBRARY_NOTES.md). Do not invent architecture; the decisions are made. If something is truly unspecified, choose the simplest option consistent with SPEC and record it in `PROGRESS.md` under "Decisions".
 
+## Owner-authorized implementation flexibility (2026-10-04)
+
+The owner approved the following in the coordinator conversation:
+https://app.devin.ai/sessions/70d6ca47bdbf4faf8083ca76c4988784
+
+- Implementation/build edits may cross task scopes, including **new** CI workflows and portable `.gitignore` rules.
+- Coupled tasks may be grouped and reordered to satisfy their actual dependencies.
+- Registry-validated dependency/setup corrections and internal architecture improvements are permitted while preserving public interfaces.
+- Contradictory process/plumbing may be corrected; acceptance criteria, tests, evaluation bars and security gates must not be weakened.
+- Evidence-supported analyst improvements are permitted. Routine implementation choices are autonomous; record decisions in `PROGRESS.md`.
+
+These permissions do **not** authorize changes to existing owner guards (`scripts/check_protected.py`, `scripts/protected_paths.txt`, `.github/workflows/guards.yml`, `CODEOWNERS`), protected-change/owner review bypass, main merges, private-eval access, fabricated evidence, or weaker finance/provenance/tenant isolation.
+The latest scope excludes SEC downloads/data work; licensed books/articles/reference-library work replaces that sourcing direction.
+
 ## Branch model (read carefully)
 - **`dev` is the integration branch.** All task state lives there. Never work from `main`.
 - Each task goes on a branch `task/<task-id>-<slug>` from `dev`. When verify passes, merge it into `dev` yourself (fast-forward or merge commit). Then push `dev`.
@@ -38,8 +52,8 @@ If you are blocked (a missing secret, an unclear spec, an external outage):
 ## Protected paths
 - The canonical list is **`scripts/protected_paths.txt`**, written by the owner.
 - A PR to `main` that touches any of those paths fails CI unless the owner adds the label `protected-change`. CODEOWNERS also requires the owner's review.
-- You may create or modify a protected path only when your task's "Allowed to modify" lists it. The milestone PR then needs the owner's label and review.
-- **Never** edit `scripts/protected_paths.txt`, `scripts/check_protected.py`, `.github/**` or `CODEOWNERS`.
+- Task "Allowed to modify" lists are default scopes; the owner authorization above permits required implementation/build edits across those scopes. Protected implementation changes still require the owner's label and review on the milestone PR; owner-authored guards remain immutable.
+- **Never** edit `scripts/protected_paths.txt`, `scripts/check_protected.py`, `.github/workflows/guards.yml` or `CODEOWNERS`. New CI workflows are allowed under the owner authorization above; all applicable owner review and protection gates remain.
 
 ## Forbidden actions
 - **Never** edit, delete, skip or weaken an existing test to make something pass. Skips are allowed only through the approved markers in `tests/conftest.py`: `requires_codex`, `requires_network`, `requires_key(<NAME>)`, `requires_license(<NAME>)`.
