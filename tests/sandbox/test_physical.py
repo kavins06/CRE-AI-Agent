@@ -1,9 +1,10 @@
-"""These tests fail, never skip, when a real isolated Docker runtime/image is missing."""
+"""Prepare reference images, then require real Docker isolation; never skip or use host code."""
 
 from __future__ import annotations
 
 import json
 import os
+import subprocess
 import tarfile
 import uuid
 from pathlib import Path
@@ -19,8 +20,42 @@ pytestmark = pytest.mark.integration
 SENTINEL = "sandbox-test-credential-not-a-live-api-key"
 
 
+@pytest.fixture(scope="session")
+def reference_images(tmp_path_factory) -> None:
+    client = tmp_path_factory.mktemp("docker-build-client")
+    root = Path(__file__).resolve().parents[2]
+    for variable, tag, directory in (
+        ("CRE_SANDBOX_IMAGE", "cre-box:local", "box"),
+        ("CRE_SANDBOX_EXTRACT_IMAGE", "cre-extract:local", "extract"),
+        ("CRE_SANDBOX_PROXY_IMAGE", "cre-egress:local", "egress"),
+    ):
+        if variable in os.environ:
+            continue
+        subprocess.run(
+            [
+                os.environ.get("CRE_SANDBOX_DOCKER", "docker"),
+                "--host",
+                os.environ.get("DOCKER_HOST", "unix:///var/run/docker.sock"),
+                "--config",
+                str(client),
+                "build",
+                "-f",
+                f"docker/{directory}/Dockerfile",
+                "-t",
+                tag,
+                ".",
+            ],
+            cwd=root,
+            env={"PATH": os.defpath, "LANG": "C.UTF-8"},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=True,
+            timeout=900,
+        )
+
+
 @pytest.fixture
-def provider(tmp_path: Path) -> LocalDockerProvider:
+def provider(tmp_path: Path, reference_images: None) -> LocalDockerProvider:
     return LocalDockerProvider(
         DockerConfig(
             state_dir=tmp_path / "provider",

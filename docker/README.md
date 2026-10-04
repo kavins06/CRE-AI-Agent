@@ -53,5 +53,8 @@ For the local factory, set `CRE_SANDBOX_STATE`, `CRE_SANDBOX_NAMESPACE`,
 `CRE_SANDBOX_MODEL_DOMAINS`, `CRE_SANDBOX_DOCKER`,
 `CRE_SANDBOX_PROXY_IMAGE`, `DOCKER_HOST`; use
 `--factory cre_brain.sandbox.local:provider_from_env`. The CLI factory deliberately
-injects no real credentials. Physical tests fail rather than skip if the
-daemon/images are absent; `make check` excludes service integration tests.
+injects no real credentials. The physical fixture builds default reference images
+once per pytest process, so fresh CI feature verification needs no manual image
+setup. Explicit `CRE_SANDBOX_*_IMAGE` choices are never rebuilt or replaced.
+Missing daemons or custom images fail rather than skip or run host code;
+`make check` excludes service integration tests.
