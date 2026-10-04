@@ -929,3 +929,19 @@ T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Source-head hosted checks passed: check, dependency-audit, test-count, sandbox physical and merge validation, plus Devin Review; the task-flag metadata commit requires its own final hosted replay before dev integration.
 - T015 and T016 flags are now true. No model, SEC, private-eval, UI, runtime, guard or owner-security change.
+
+## 2026-10-04 — T017 authored (independent acceptance pending)
+- Isolated task checkout from origin/dev `0fa49e0d6aee41f2d5e80c9884ade295e3b30217`; accepted base ancestry verified. Baseline `./init.sh && make check`: 661 passed, one existing approved Reducto-license skip, 11 integration deselected.
+- Tests first: new T017 AC tests failed collection because `finance.exit` did not exist. Subsequent green replay below; no existing assertions, skips or acceptance criteria changed.
+- Decisions: European waterfall pays ACT/365 simple LP pref on unreturned capital, then pari-passu capital, cumulative 100%-GP catch-up to configured profit share, then LP dated fixed-NPV IRR hurdles and an unbounded final promote tier. Negative flows are explicit pro-rata additional capital calls, not clawbacks. Same-day flows execute in input order; unreturned capital/unpaid pref stay visible. Certified returns retain all roots and MIRR/undefined/ambiguous flags.
+- Exact Fraction money preserves fee/cost cancellation; ACT/365 fractional-date powers use 80–256 isolated Decimal digits; final outputs use 28 half-even digits. Explicit input span and rational complexity limits fail closed. No authoritative binary64 money.
+- Hold/sell/refi ranks forward decision-date NPVs, excluding sunk capital; historical flows remain in return calculations. Operating flows explicitly include debt service; refinance accounts for draw, payoff, fees/prepayment, and terminal ExitInput explicitly supplies outstanding debt. Equal decision values share rank.
+- Matching add-cre-tool skill read: deterministic typed finance guidance applies. Registry/MCP/transcript steps are intentionally not applied: T017 is the pure finance library, not the later tool-server task; no live runner or transcript was invoked.
+- Exact verify tail (exit 0):
+```text
+18 passed, 169 deselected in 1.06s
+15 passed, 673 deselected, 2 warnings in 2.10s
+T017: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Full `make check`: Ruff lint/format green (115 files), strict mypy green (73 source files), 676 passed, one existing approved license skip, 11 integration deselected. Every pytest run serialized.
+- Next: implement coupled T018, then independent source review. T017/T018 passes remain false by author protocol; no PR, dev/main merge, runtime/security changes or blockers.
