@@ -1037,3 +1037,16 @@ T020: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
 - Decisions: product parity requires a writer-issued WorkbookBuild; arbitrary descriptors/subset parity are not provenance attestations. The reference map is intentionally only one canonical proforma root. Native metadata allowance is exact-shape and single-container rather than blanket extension stripping.
 - Owner now authorizes additional delegation/Devin usage but only OpenAI models, with agent/development execution on the Outpost VPS. Local GPT-6.1 Sol review worked after selecting root XDG profile paths; noninteractive native author permissions rejected commands, so independent T030/T036 implementation runs through sandboxed OpenAI-only Codex CLI in separate local worktrees. No cloud development machines, SEC or private eval access.
 - Needs owner: clarify whether the no-cloud-computer instruction also excludes existing GitHub-hosted CI. New hosted-CI triggers and milestone/main promotion are held pending that answer; no security gate is bypassed. M1 implementation is locally complete, not yet milestone-promoted. T030 capability probing and T036 synthetic generation continue in parallel; the end-to-end autonomous analyst remains incomplete.
+
+## 2026-10-04 — T036 locally accepted; dev push held on hosted-CI boundary
+- Added a deterministic Decimal latent-deal generator with documented priors, Yardi/RealPage/broker XLSX and CSV rent rolls, T-12 workbooks, OM PDFs and finance-derived scoring truth. Package and scoring roots publish independently through pinned descriptors with no overwrite, path aliasing, truth leakage or partial output.
+- Adversarial reviews rejected publication substitution, replacement cleanup, inherited Decimal context, plugin-discovery regression and three descriptor-ownership failures. Each was reproduced with additive tests before repair. The final source-only delta review returned PASS; existing assertions and owner guards were untouched.
+- Same-session final verification after the last source repair:
+```text
+make check: 899 passed, 2 skipped, 15 deselected
+tests/evals -k generator: 63 passed, 853 deselected
+T036: AC1 PASSED, AC2 PASSED, AC3 PASSED
+Ruff, strict mypy, pre-commit, uv lock --check and git diff --check: passed
+```
+- Set only T036's flag after the exact verifier exited zero. This proves deterministic generator plumbing on public synthetic data, not analyst quality or hidden-eval performance.
+- Next: commit and integrate locally into `dev`; pushing `dev` is held because open milestone PR #1 would trigger GitHub-hosted CI, and the owner has not yet clarified whether hosted Actions are permitted under the no-cloud-computer rule. T032 tools and T037 gate repairs continue independently on the Outpost.
