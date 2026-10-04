@@ -1,173 +1,324 @@
-# Blueprint: How to build the "brain" of an autonomous CRE Acquisition Analyst agent
+# Method: build an autonomous CRE acquisition analyst that learns
 
-**For:** the engineers or agent who will build it.
-**Scope:** the brain only. UI/UX, integrations and the CRE domain content are owned by the user.
+**Status:** evolving implementation and research plan, revised October 3, 2026.
+**Owner:** the user, a CRE analyst and the system's domain teacher.
+**Research:** [primary sources, books, evidence limits, and proposed experiments](docs/RESEARCH_BASIS.md). References such as R1 and B1 below refer to that document.
 
-## What we are building and the constraints
+## 1. Goal and working assumptions
 
-| | |
+Build an AI acquisition analyst that can independently carry a supported deal from intake through screening, underwriting, diligence, investment recommendation, IC memo, proposed LOI, and deal-file QA. Start with multifamily; expand asset classes and strategies as competence is demonstrated. It should also identify its own knowledge gaps, study authorized sources, practice, learn from feedback, and improve its capabilities.
+
+This document is the overall route to that endpoint. Early supervised stages are ways to build and evaluate competence. Update methods when experiments reveal a better approach; preserve the ambition while making progress measurable.
+
+| Topic | Current position |
 |---|---|
-| **Job** | Do everything an acquisition analyst does, from a received deal package to the finished deal file: screening, underwriting, due diligence, IC memo, LOI, deal-file QA |
-| **Asset class** | Multifamily first. Other asset classes come later, each with its own skills and evals. |
-| **Approach** | A **model-agnostic harness**. No fine-tuning of weights. Runs on any frontier API. |
-| **Autonomy** | Fully autonomous in production. Each phase earns autonomy by passing a measured bar in shadow mode first. |
-| **Data** | Almost none. One expert at about 10 h/week, books, and public sources. |
-| **Language** | Python |
-| **Underwriting output** | A Python model and a live-formula Excel model, cross-checked against each other |
+| Expert teaching | The owner has meaningful time and expertise to teach, review, demonstrate, and correct. There is no assumed ten-hour weekly ceiling. |
+| Data | Use owner-supplied cases, authorized public sources, licensed references, generated practice cases, and accumulated operational experience. Public sources should supply a substantial part of the curriculum and background knowledge. |
+| Autonomy | Full analyst execution within a stated investment mandate is the target. Autonomous learning is a separate capability that also develops over time. |
+| Technology | Python, a provider-portable agent interface, deterministic finance tools, and an editable Excel model cross-checked against Python. |
+| Model learning | Begin with knowledge, memory, prompts, skills, and tools. Permit later supervised fine-tuning or reinforcement learning if verified data and measured benefit justify it. |
+| Product boundary | Build the brain and its learning infrastructure. UI and external integrations connect to explicit input/output and authority contracts. |
+| Roadmap | Use capability milestones and measured dependencies; do not promise autonomy on a fixed calendar before the system exists. |
+| Novelty | “First fully autonomous acquisition analyst” is an ambition. Establish a separate prior-art and product review before making a public first-of-kind claim. |
 
-**What "training" means here.** The brain is a set of versioned files that get improved against an evaluation suite:
-- prompts
-- skills (`SKILL.md`)
-- a playbook
-- decision tables
-- tool code
+Define autonomy in operational terms: the agent chooses and executes the next permitted analytical step, researches missing information, uses tools, verifies results, and delivers a defensible result without routine step-by-step human instruction. An explicitly identified missing inspection, legal determination, private document, or investment-committee decision remains a dependency. It must not invent evidence to appear autonomous.
 
-This is the autoresearch idea applied to agent instructions instead of model code. Mapped to ordinary model training:
-- **Weights:** the files above
-- **Loss function:** the evaluation suite
-- **Optimizer:** the autoresearch loop with GEPA
+Define distinct authority to **analyze, recommend, draft, approve, communicate, and transact**. The analytical endpoint does not inherently require authority to sign an LOI, commit capital, or contact third parties. External actions require a configured mandate and integrations; analysis should not stall on ordinary internal tool use.
 
----
+## 2. What “training itself” means
 
-## 1. Frameworks and tools
+Treat these as separate learning processes with separate artifacts and checks:
 
-| Need | Use | Why / notes |
-|---|---|---|
-| Agent framework | **Pydantic AI** | Typed outputs and native adapters for Anthropic, OpenAI and Google, so you can swap models freely. Durable-execution integrations. |
-| Workflow durability | **DBOS + Postgres** in v1, **Temporal** in v2 | Phases checkpoint and resume. Move to Temporal once diligence events arrive over weeks. |
-| Model gateway | Native SDKs through Pydantic AI. **Avoid LiteLLM.** | LiteLLM had a PyPI supply-chain compromise in March 2026. Gateways also lose prompt caching and thinking features. |
-| Fast typed decisions | **Jev (TypeSafe AI)**, wrapped in a `DecisionModel` interface with an LLM fallback | Use it for document classification, routing and red-flag scoring. It is new (Sept 2026). Keep it off the critical path until thresholds are calibrated on real labelled cases. |
-| Deterministic rules | **GoRules ZEN Engine (JDM decision tables)** | For the buy-box, policy bands for LOI terms, allowed assumption ranges and escalation policy. The expert edits these in its visual editor. |
-| Document extraction | **Docling** (self-hosted, MIT) as the primary extractor. A frontier vision model as the second pass, only on high-value fields or failed checks. **Reducto** optional for hard scans. | Read native XLSX/CSV directly as cells and never send them through a vision model. |
-| Finance math | **pyxirr** plus an in-house finance library, tested with `hypothesis` | The LLM never does arithmetic. Watch pyxirr's `npv` convention, which differs from Excel's. |
-| Excel | **openpyxl** to fill the template, **LibreOffice headless** to recalculate it, then a cell-by-cell diff against Python | Restrict the template to a whitelist of functions and no circular references. Check each template once in real Excel in CI. Avoid HyperFormula (GPL/commercial licence) and Marker (licence restrictions). |
-| Skills format | The **Agent Skills standard** (`SKILL.md`) | Portable across Claude, Codex and Gemini. Only loaded when needed. |
-| Code sandbox | **E2B** or Docker+gVisor | Only for code the LLM writes. Trusted finance tools run outside it. |
-| Evals | **Inspect AI** (or promptfoo) plus a custom synthetic deal generator | |
-| Optimizers | **GEPA** (prompt and skill optimizer), **DSPy** (extraction signatures), **ACE pattern** (playbook) | |
-| Observability | **OpenTelemetry**, sent to a self-hosted **Langfuse** | Deal data is under NDA, so self-host and redact. |
-| Storage | Postgres, and S3 with a separate encryption key per deal | |
-
-## 2. Architecture
-
-**Shape.** A fixed workflow of phases, with an agent working inside each phase. This follows Anthropic's "workflows vs agents" guidance and Cognition's "Don't build multi-agents" essay. A single orchestrator makes every decision. Parallel sub-agents are used only for read-only extraction, one per lease or report, and each returns cited JSON.
-
-| Phase | Work | How agentic |
-|---|---|---|
-| P0 Intake | Classify documents and list what is missing | Low (Jev) |
-| P1 Extraction | Turn documents into typed facts, each with its page or cell citation | Medium (parallel sub-agents) |
-| P2 Screening | Fast go/no-go, under 10 min and $5 | Low (ZEN buy-box) |
-| P3 Underwriting | Set assumptions, then build the Python model and the Excel mirror | Low for the math, medium for the assumptions |
-| P4 Due diligence | Review leases, title, survey, Phase I, PCA, zoning and estoppels. Hunt for anomalies. | **High** (open investigation within a tool budget) |
-| P5 IC memo | Write the memo. Every number must trace back to a fact or a calculation. | Medium |
-| P6 LOI | Price comes from the return hurdle. Terms come from the policy tables. | Low (template) |
-| P7 Deal-file QA | Check the deal file for completeness and consistency | Low |
-
-**Rules the harness must follow:**
-- **State lives on disk, not in the context window.** Keep `deal.json` (facts with sources), `assumptions.json`, `dd_checklist.json` and `todo.md`. Phases re-run when new documents arrive.
-- **Quarantine against prompt injection.** Models that read seller documents get no tools and may only output schema-checked JSON. The orchestrator never sees raw document text.
-- **Context engineering** (from Manus and Anthropic):
-  - Keep the prompt prefix stable so caching works.
-  - Fetch documents only when needed, by path and page.
-  - Reset context between phases, passing a handoff file.
-  - Keep errors visible in context.
-- **Verification gates.** Deterministic checks run first; the LLM judge runs last.
-  1. Coverage and checksum ties: rent roll to GPR, T-12 sums, unit counts.
-  2. Python and Excel parity.
-  3. ZEN rules, plus allowed ranges for each assumption.
-  4. **Fragility test.** If the decision flips anywhere inside any assumption's plausible range, escalate.
-  5. **Provenance checker.** Every number in the memo or LOI must link to a fact or calculation ID.
-  6. A verifier from a different model family checks against a rubric, with at most 2 revision loops.
-- **Escalation is a deliverable, not a stop.** The agent still produces the full deal file, marked BLOCKED or CONDITIONAL, with the question it needs answered and the default assumption it used.
-- **Hard limits live in code, not prompts:** budgets, LOI term bands, and no external side effects.
-
-## 3. Which model for what
-
-Assign **roles**, not hard-coded models. Pin dated snapshots, and re-run the evals whenever a model changes.
-
-| Role | Used in | Pick | Why |
+| Process | What changes | How learning happens | Evidence required |
 |---|---|---|---|
-| **Lead / orchestrator** (planning, judgment, assumptions, memo, LOI reasoning) | P3–P6, P4 investigation | The top frontier reasoning model: **Claude Opus 5.5**, or the current GPT or Gemini flagship, whichever scores best on *your* evals | Judgment and long-horizon reliability matter most here |
-| **Sidekick** (bulk extraction, normalization, lease abstraction) | P1, P4 document reading | A mid-tier model: **Claude Sonnet 5.5**, or the GPT or Gemini mid-tier equivalent | High volume, so cost matters. Accuracy is enforced by checksums. |
-| **Vision pass** (scans, tables in PDFs) | P1 second pass | **The strongest vision model on your extraction evals.** Research found Gemini strongest on PDF tables, and Claude sometimes silently dropping whole tables. | Verify with row-count checks |
-| **Verifier / judge** | Gates and evals | **A different model family from the lead** (for example, Claude as lead means GPT or Gemini as judge) | Avoids a model rating its own errors favourably |
-| **Fast decisions** | P0 classification, routing, red-flag scores | **Jev**, with **Claude Haiku 4.5** as fallback | Fast and cheap, returns typed probabilities |
-| **Math, rules, Excel** | Everywhere | **No LLM.** Use Python, ZEN and LibreOffice. | LLMs make arithmetic errors, as finance benchmarks show |
-| **Optimizer reflection** (GEPA proposals) | Training loop only | The strongest available reasoning model | Runs offline, so quality matters more than cost |
+| Knowledge acquisition | Source library, claims, current facts, retrieval index | Read books, guides, filings, research, and public records; resolve and refresh claims | Source authority, scope, time, evidence linkage, permitted use |
+| Case learning | Reviewed examples, corrections, decision records | Attempt tasks; compare with the owner's analysis and independent checks | Observed error, correction, relevant context, reason it generalizes |
+| Procedural learning | Prompts, skills, playbook, retrieval/routing settings | Propose and evaluate bounded changes; retain effective procedures | Improvement on selection data and separate release evaluation |
+| Tool learning | Candidate extraction or analysis code | Implement and test tools in an isolated experiment | Independent specifications, meaningful tests, compatibility and release checks |
+| Weight learning, optional | Trainable model weights or adapters | Supervised fine-tuning on verified examples; later RL where rewards are defensible | Dataset provenance, model support, train/test separation, useful gain over simpler approaches |
 
-Prompts that are specific to one model family live in **per-model overlays**. The shared core (skills, rules, tools) must pass evals on every supported model family.
+Reading a book into a retrieval index does not update model weights. Editing a skill can change system behavior substantially without updating those weights. A normal API request cannot rewrite the parameters of a hosted frontier model. Weight training requires a provider-supported training route or a model we can train ourselves.
 
-## 4. Should you use autoresearch? Yes, adapted.
+Our initial learning strategy is external and inspectable. Voyager, GEPA, and ACE support different parts of this approach (R3–R5). STaR and Self-Instruct provide precedents for a later weight-learning track (R9–R10). Do not rule out fine-tuning forever, and do not assume that fine-tuning is necessary to begin learning.
 
-Karpathy's autoresearch loop: an agent edits one file, runs against a fixed budget, checks one metric, keeps the change if it is better and reverts it if not, and uses git as the log. Use that loop to train the brain, with four changes the adversarial review showed are necessary:
+## 3. Architecture: acquisition work and learning work
 
-1. **Edit prompts and skills, not model code.** `agent/` is editable. `evals/` is frozen and hidden from the optimizer. Humans edit only `program.md`.
-2. **Use GEPA as the change proposer.** It reflects on failure traces and keeps a Pareto set of candidates. In its paper it beat RL fine-tuning (GRPO) while using up to 35x fewer runs. Give it failure *categories*, not the rubric text.
-3. **Optimize one phase at a time on frozen fixtures, not the full pipeline.** End-to-end nightly runs would cost tens of thousands of dollars a night. Instead, run end-to-end weekly as a "no regression" check.
-4. **Keep a change only if it is statistically real.** That means:
-   - paired runs repeated 3 or more times
-   - a confirmation run on a held-out set
-   - no regression in counter-metrics: false flags, escalation rate, memo length, cost
+Build two connected systems with separate permissions and state.
 
-**Other self-improvement methods:**
-- **ACE (evolving playbook):** yes. Live runs only *propose* bullets, into a queue. Bullets get promoted through the same keep/revert loop. Only deterministic failure signals create candidates. Deal-specific data must be scrubbed out.
-- **Agent Workflow Memory (turning successful runs into skills):** yes, later. Only use runs that passed the held-out set and an expert spot-check.
-- **Darwin Gödel Machine, ADAS, AI Scientist:** no. They are research-grade. The Darwin Gödel Machine was caught gaming its own checker.
+```mermaid
+flowchart TD
+    A[Owner cases and corrections] --> C[Evidence and case stores]
+    B[Authorized books and public sources] --> R[Research and source validation]
+    R --> C
+    C --> D[Acquisition analyst]
+    D --> E[Calculations, workbook, memo, exceptions]
+    D --> F[Observed errors and skill gaps]
+    F --> G[Curriculum and practice tasks]
+    C --> G
+    G --> H[Candidate prompts, skills, tools or models]
+    H --> I[Independent evaluation and release gate]
+    I --> J[Versioned brain release]
+    J --> D
+    A --> I
+```
 
-## 5. Evals (the "loss function"). Build these before the agent.
+**Acquisition system:** one accountable orchestrator manages the deal workflow, retrieves evidence, invokes typed tools, and produces outputs. Bounded workers may process independent documents or research tasks where measurement justifies parallelism. Workers return evidence and structured results; they do not silently change shared deal state or policy.
 
-| Set | What | Role |
+**Learning system:** a research collector, curriculum scheduler, practice environment, experiment runner, evaluator, and release registry. These are logical responsibilities; they do not each require a separate model or service. Start with simple jobs and explicit interfaces.
+
+Keep four forms of memory distinct, informed by the broader learning and cognitive-architecture literature (B1–B2):
+
+- **Knowledge:** general concepts, dated facts, source-linked claims, and approved policy.
+- **Case memory:** particular deals, attempted actions, results, corrections, and eventual outcomes.
+- **Procedural memory:** reusable skills and tested tools, with preconditions and failure cases.
+- **Active deal state:** the evidence, assumptions, decisions, and unfinished work for one current transaction.
+
+Promote experience into reusable knowledge only after checking its scope. “This property received a tax concession” must not become “all acquisitions receive this concession.”
+
+## 4. An autonomous research and knowledge pipeline
+
+The system should research because a task or competency needs evidence, not because more scraped pages are automatically valuable. MineDojo and Co-Scientist offer complementary precedents for knowledge collection tied to practice and hypothesis testing (R1, R11).
+
+### Source classes
+
+| Source | Primary use | Boundary |
 |---|---|---|
-| Synthetic deals | A generator that produces OMs, rent rolls, T-12s and leases with planted defects (about 30 types) plus clean controls. Calibrated to CMBS data and rendered by a different model family. | Training signal only |
-| Real documents | Public broker OMs, the expert's anonymized rent rolls and T-12s, and purchased dead-deal data rooms (about 230 docs) | Extraction accuracy |
-| CMBS backtest | EDGAR ABS-EE multifamily loans with 36-month outcomes | Screening and underwriting risk accuracy |
-| Transaction backtest | REIT acquisition filings plus county deed and assessor records | Cap rate and value accuracy |
-| **Reality Set** | About 40 real deals (the expert's past deals, purchased deals, and public deals), plus 1 more per week | **The gate that decides whether a change is kept** |
-| Adversarial | Prompt injection, contradictory documents, missing documents | Must reach 100% on critical items |
-| Shadow | The expert's live deals run in parallel | Evidence for switching autonomy on |
+| Owner's methods, workbook, cases, and corrections | Investment mandate, domain conventions, decision examples | Distinguish personal/institutional policy from general facts; identify uncertainty and exceptions |
+| Authorized textbooks and professional references | Durable concepts, worked examples, curriculum | Preserve edition and page references; books can be outdated or disagree |
+| Fannie Mae/Freddie Mac guides and other primary requirements | Financing criteria and underwriting definitions | Apply to the relevant program, effective date, and loan type; not universal investor policy |
+| Government data, local records, filings, and original research | Market context, property facts, historical evidence | Verify units, reporting periods, population, jurisdiction, and revisions |
+| Seller packages and broker reports | Deal-specific assertions and market perspectives | Interested-party claims need reconciliation and corroboration |
+| Practitioner articles, presentations, forums, and videos | Discovery, hypotheses, examples, vocabulary | Do not promote popularity or repetition into authority |
+| Generated content | Exercises, counterexamples, candidate lessons | Never treat it as independent corroboration of its own source |
 
-- **Judgment calls:** the expert labels each assumption as a P10/median/P90 range, and each decision as pursue, pass, or "either is defensible."
-- **One expert with no contract reviewers:** measure the expert's own consistency by re-labelling 10% of cases blind after 4+ weeks, and use the public outcome backtests as an independent check.
-- **Graders:** deterministic checks first, then binary rubric items judged by a panel from a different model family, calibrated on at least 150 expert labels per critical item.
-- **North star metric:** Clean Autonomous Deal Rate. A deal counts if it was not escalated, had no critical errors, and its decision falls within the expert's defensible set.
-- **Autonomy bar:** each phase must meet its bar on the sealed Reality Set for 2 consecutive releases and on at least 20 shadow deals.
+Start discovery from the verified portals in the research companion. Validate additional sources as markets and tasks are selected. The first corpus should be curated and expandable; the agent may discover further sources under documented acquisition and quality rules.
 
-## 6. Build order
+### Collection and promotion procedure
 
-| Stage | Weeks | Deliverable |
-|---|---|---|
-| 0 Foundations | 0–3 | Schemas, the finance library with tests, the Brain Release manifest (a version hash of all brain files and model IDs), the security/NDA data-flow setup |
-| 1 Evals first | 2–10 | The generator, backtests, Reality Set v0, calibrated judges, and a baseline score for every phase |
-| 2 MVP brain | 6–16 | P0–P3, the screening memo, the template LOI, the Excel mirror, ZEN tables. **Shadow mode starts.** |
-| 3 Training loop | 12–22 | The per-phase autoresearch + GEPA loop, the ACE queue, per-model overlays, the P5 memo |
-| 4 Diligence and autonomy | 18–30 | P4, P7, Temporal, Jev calibrated. Each phase unlocks autonomy as it passes its bar. |
+1. Identify a knowledge gap from a live task, failed exercise, changed market condition, or scheduled review.
+2. Form a research question and identify the strongest available primary sources. Search with public descriptions; do not disclose private deal contents through public queries.
+3. Acquire authorized material with suitable rate limits. Record rights separately for storage, retrieval, generated examples, and model training; public readability does not automatically authorize every reuse. Do not bypass paywalls or access restrictions.
+4. Store source identity, publisher/author, URL or document locator, edition/version, publication/effective dates, retrieval time, content hash, permitted use, jurisdiction, and source family. Retain bounded excerpts or full content according to permitted use.
+5. Extract claims with exact evidence locations, units, scope, limitations, and contradictions. Deduplicate both text and originating sources; copied articles are not independent corroboration.
+6. Classify each claim as a source assertion, verified fact, interpretation, hypothesis, approved policy, or unresolved conflict. Keep conflicting claims visible. Prefer authority appropriate to the question rather than a universal source ranking.
+7. Turn promising material into candidate knowledge cards, exercises, or policy proposals. A public source can update a dated fact through an approved rule; it cannot silently alter the owner's return hurdle or risk mandate.
+8. Test promoted lessons against relevant real or controlled cases. Publish accepted knowledge with its evidence, and schedule refresh or expiry for changing facts.
 
-**Expert's 10 h/week:**
+Each knowledge card needs: `claim`, `source_ids`, `evidence_locations`, `scope`, `valid_time`, `known_at`, `status`, `conflicts`, `examples`, and `related_skills`. A generated summary must remain traceable to its originals.
 
-| Hours | Task |
+Public material can teach concepts and supply substantial practice. It cannot reveal an unavailable lease amendment, an unperformed physical inspection, or the correct private assumptions for a particular buyer. The research process should identify such gaps precisely and continue independent work.
+
+## 5. Curriculum and the owner's teaching role
+
+Build a competency graph with prerequisites, supported task types, evidence of mastery, known failures, and last evaluation date. Start with:
+
+1. Document literacy: OMs, rent rolls, T-12s, leases, amendments, operating statements, and loan terms.
+2. Financial conventions: periods, units, accrual/cash distinctions, normalized NOI, concessions, bad debt, reserves, and capex.
+3. Underwriting: debt sizing, amortization, taxes, insurance, renovation, exit values, returns, and price constraints.
+4. Evidence judgment: conflicting documents, source authority, missing information, and materiality.
+5. Investment judgment: comparable selection, defensible assumptions, correlated downside cases, and recommendation under uncertainty.
+6. Diligence: lease exceptions and issue investigation across the supported legal, physical, environmental, and market document classes.
+7. Communication: an auditable IC memo, proposed LOI, exceptions, and complete deal-file handoff.
+8. Long-running execution: revised documents, changing facts, resumption, and downstream invalidation.
+
+The scheduler selects the next task using failure frequency, business consequence, uncertainty, expected learning value, prerequisite coverage, and available budget. Mix remediation with previously mastered tasks to detect forgetting. Avoid a curriculum that repeatedly chooses easy wins.
+
+The owner supplies worked examples, reviews disputed interpretations, defines policy, and corrects agent attempts. Capture a **structured decision record**: evidence available, chosen action, calculation or cited justification, acceptable alternatives, missing information, and the correction. No hidden model reasoning is required.
+
+Use a DAgger-inspired cycle (R8): run the learner, inspect the states and mistakes it actually reaches, obtain expert corrections, and add those to development data. Ask high-value questions in batches. Also sample apparently confident successes to find undetected errors. Significant available expert time accelerates this process; the system should nevertheless learn to need less routine instruction.
+
+Expert agreement is not universal truth. Record whether a label is a factual correction, a financial convention, the owner's preference, or a defensible judgment range. Preserve alternative acceptable conclusions and the assumptions that make them valid.
+
+## 6. A practice environment for acquisition analysis
+
+Create practice from three complementary sources:
+
+- **Real case replay:** owner-supplied packets and authorized public examples, with reviewed evidence and expected outcomes.
+- **Controlled synthetic cases:** a structured underlying property, leases, cash flows, financing, and events; derive answers before rendering documents. Include missing, contradictory, and misleading observations.
+- **Counterfactual exercises:** vary an existing case's price, financing, rent, taxes, expense growth, capex, or document completeness while retaining explicit assumptions and recalculable outputs.
+
+AlphaGeometry suggests the value of generated tasks with independently checkable answers (R6); Sutton and Barto explain why learning in a model must account for model error (B1). Our simulator is a training environment, not evidence that its market assumptions are true.
+
+Define feedback by task:
+
+| Task | Strongest available feedback |
 |---|---|
-| 3 | Labels for the judges |
-| 2 | Shadow-mode deal review |
-| 1.5 | Reviewing traces to find failure types |
-| 1.5 | One new Reality Set case |
-| 1 | Reviewing accepted changes |
-| 1 | Spot-checking escalations |
+| Financial arithmetic | Independent reference calculations, accounting identities, properties, and approved workbook cases |
+| Extraction | Source-linked labels, coverage checks, and reviewed semantic accuracy |
+| Policy execution | Versioned policy tests and explicit applicability rules |
+| Assumptions and recommendations | Expert-reviewed defensible ranges, evidence completeness, prospective comparison, and eventual outcomes |
+| Research and knowledge | Source entailment, authority, contradiction handling, freshness, and demonstrated downstream usefulness |
+| Long-running workflow | Correct resumption, dependency invalidation, version consistency, and idempotency checks |
 
-## Verification of this blueprint
-- **Every user constraint maps to a section:**
-  - model-agnostic: §1, §3
-  - autonomy: §2, §5
-  - Python + Excel: §1
-  - Jev: §1, §3
-  - autoresearch: §4
-  - limited expert time: §5, §6
-- **Main sources:**
-  - Karpathy autoresearch (github.com/karpathy/autoresearch)
-  - GEPA (arxiv 2507.19457)
-  - ACE (arxiv 2510.04618)
-  - Anthropic engineering posts on context engineering, long-running harnesses and multi-agent research
-  - Cognition's "Don't build multi-agents"
-  - The Manus context-engineering post
-  - Finance Agent Benchmark (arxiv 2508.00828)
-  - TypeSafe Jev docs
-  - GoRules ZEN
+A model judge can assist with evaluation and triage. It cannot create independent ground truth by agreeing with another model. Measure judge errors against reviewed examples before using its decisions to gate autonomous updates.
+
+Adversarial cases should include swapped unit identifiers with unchanged totals; wrong periods; omitted amendments; stale spreadsheet caches; circular or undefined return calculations; optimistic assumptions hidden in a seller model; unsupported citations; prompt injection; simultaneous market shocks; and newly received evidence that changes an earlier conclusion.
+
+## 7. The automated improvement loop
+
+Use GEPA-style candidate optimization, optional ACE-style memory updates, and an autoresearch-style experiment log (R4–R5, R14). Compare them against simpler baselines before committing to every component.
+
+```text
+identify a material failure or knowledge gap
+select a task family and bounded experiment budget
+retrieve relevant source evidence and reviewed examples
+propose one attributable change or a recorded candidate combination
+run isolated practice and development checks
+compare candidates on selection data, including errors, coverage and cost
+reject invalid changes and preserve failed-experiment records
+submit a selected candidate to the independent release gate
+publish a versioned release if its current authority permits it
+monitor prospective behavior; roll back on defined regressions
+```
+
+### What may change
+
+| Change class | Development behavior | Promotion policy |
+|---|---|---|
+| New source records and candidate lessons | Automatic collection and staging under source rules | Evidence and applicability checks; policy changes remain distinct |
+| Prompts, retrieval settings, and approved skill surfaces | Autonomous bounded experiments | Independent evaluation and versioned release |
+| Tools or workflow code | Candidate changes in an isolated branch/experiment workspace | Meaningful tests and controlled deployment; no live self-modification |
+| Model weights/adapters | Optional training experiments on authorized verified data | Compare to baseline; separate compatibility, quality, and rollback checks |
+| Investment policy, evaluator definitions, release thresholds, permissions, or budgets | Agent may propose changes with evidence | Owner-governed changes; the candidate cannot rewrite the criteria deciding its own success |
+
+Protect release cases, scores, secrets, and evaluator implementation from unauthorized access by the candidate process; a “do not look” prompt is insufficient. Keep evaluator changes in a separate change history with their own validation. Freeze the deployed release during a deal run unless an explicit migration is recorded.
+
+Start by approving releases with the owner. Advance to automatic promotion for specified change classes once the evaluator and rollback process have earned that authority. The eventual learning system should not require a human to approve every successful low-impact lesson or skill update.
+
+### Optional weight-training track
+
+When a verified corpus exists, compare supervised fine-tuning or distillation of a supported model against the retrieval/prompt/skill baseline. Train on observable task records and reviewed outputs with appropriate rights. Revalidate rare cases, general capabilities, calibration, and supported providers after each change.
+
+Use RL only where actions and rewards can be specified and tested. A later realized investment return is affected by markets, financing, execution, and selection; it is not an immediate, unconfounded reward for every analytical choice. Do not start by pretraining a frontier model from scratch or by feeding arbitrary scraped text into repeated self-training (R9–R12).
+
+## 8. Evaluation, data separation, and autonomy gates
+
+Maintain separate purposes:
+
+| Data partition | Allowed use |
+|---|---|
+| Development/training | Generate lessons, debug, fit candidate prompts or models |
+| Selection validation | Compare candidates and decide what to submit for release |
+| Restricted release evaluation | Assess selected releases under a controlled test-access policy |
+| Prospective shadow/operational audit | Measure performance on subsequently arriving real tasks |
+
+Partition by underlying deal and related source lineage, not document chunk. Account for shared properties, sponsors, templates, time periods, and generated-case ancestry. When release-test feedback is used for further development, record the exposure and eventually retire or replenish that test pool. Repeated automated releases require a managed stream of independent evaluation cases; hiding one fixed benchmark does not make it inexhaustible.
+
+For historical cases, record both what a fact describes and when it became knowable. ALFRED and dated source snapshots can help. A pretrained model may already know an outcome, so date filtering and anonymization alone cannot prove that a retrospective test is uncontaminated. Use prospective cases as a separate check.
+
+Evaluate **correctness and useful coverage separately**:
+
+- Critical error and false-clearance rates, with severity and uncertainty intervals.
+- Financial correctness, source entailment, missing-information detection, and justified abstention.
+- False rejection and excessive escalation, judged against the mandate and available evidence.
+- Calibration of uncertainty and sensitivity to correlated downside scenarios.
+- Complete, useful deliverables; reviewer time and material corrections required.
+- Total latency and cost, including research, extraction, retries, optimization, and evaluation.
+- Transfer to new cases and retention of prior capabilities.
+
+Define error tolerances and supported populations with the owner before release; do not optimize an undefined aggregate “autonomy score.” A correctly identified need for unavailable evidence should not be penalized as though it were a reasoning failure. Equally, count avoidable escalations so permanent dependence on the owner is visible.
+
+Choose statistical comparisons at the deal level where appropriate. Repeated model runs measure stochastic variation but do not create new independent properties. With zero critical failures in 20 independent representative deals, the one-sided 95% binomial upper failure-rate bound is about 13.9%; 20 successes is a learning milestone, not universal proof of readiness.
+
+Track two independent progressions:
+
+| Analyst execution | Learning and release |
+|---|---|
+| Observe expert examples | Collect and propose lessons |
+| Attempt tasks with review | Run bounded experiments automatically |
+| Execute validated phases independently | Promote specified update classes after independent checks |
+| Own the supported end-to-end analytical workflow | Maintain curriculum, evaluate, release, monitor, and roll back within policy |
+
+A fully autonomous analyst release must pass the supported end-to-end workflow, including research, exceptions, revisions, and QA. Per-phase success alone is insufficient.
+
+## 9. Acquisition workflow and state
+
+The workflow follows transaction needs rather than forcing every deal through an inflexible sequence. Screening and an initial LOI can precede full diligence; new evidence may revisit price, assumptions, or the recommendation.
+
+| Capability | Required output |
+|---|---|
+| Intake | Document inventory, property identity, versions, missing requirements |
+| Extraction and reconciliation | Typed facts with evidence locations, dates, units, conflicts, and confidence/status |
+| Screening | Supported pursue/pass/conditional recommendation and reasons |
+| Underwriting | Explicit assumptions, Python calculations, live-formula Excel, scenario and price analysis |
+| Research and diligence | Investigated issues, source-backed findings, unresolved dependencies, materiality |
+| IC memo | Recommendation, alternatives, risks, evidence, financial derivations, and conditions |
+| Proposed LOI | Price and terms consistent with approved policy and the current deal state |
+| Deal-file QA | Completeness, consistency, provenance, version alignment, and handoff status |
+
+Use a canonical versioned state store. JSON files can be exports or local views; they must not silently compete with the database as independent truth. Track source revisions, effective/known dates, facts, assumptions, approved overrides, derived calculations, decisions, and their dependency graph.
+
+When a document or policy changes, mark affected descendants stale, recompute or request adjudication as required, and publish a consistent new set of outputs. An older memo cannot quietly accompany a revised workbook. Replays should use the original source, code, policy, and model configuration or clearly record differences.
+
+A brain release manifest records model identifiers and settings, prompts, skill and code hashes, policy and schema versions, source-index snapshot, training/selection dataset versions, evaluator version, and release evidence. Preserve prior releases and rollback capability.
+
+## 10. Financial and evidence controls
+
+Keep arithmetic in tested tools. Specify sign, timing, day-count, rounding, leverage, reserves, exit, and cash-flow conventions. Treat multiple or undefined IRRs explicitly; do not conceal them behind a single default number. Independently validate the approved financial specification and representative examples.
+
+Python/Excel parity is a useful consistency test, not a proof that the shared model is economically correct. Recalculate supported spreadsheets and test relevant template, formula, and engine changes. Preserve input/output provenance and surface unresolved material assumptions.
+
+Distinguish seller assertions from accepted facts and analytical assumptions. Validate that citations entail the associated claim. Retain source spans so an isolated evidence-review tool can investigate novel clauses or contradictions without giving document contents policy-changing authority.
+
+Untrusted documents and websites may contain instructions or malicious content. Treat them as evidence, constrain document-processing permissions, sandbox generated code and appropriate parsers, and validate tool outputs. Schema-valid JSON can still contain wrong facts or hostile text.
+
+Test downside scenarios jointly where economic drivers interact; one-variable sensitivity alone is insufficient. Distinguish a modest change in valuation from a breached policy constraint or a fragile go/no-go recommendation. Represent maximum supportable price and conditional conclusions where those better express the decision.
+
+## 11. Initial stack, with explicit reasons to change it
+
+| Need | Starting choice | Reconsider when |
+|---|---|---|
+| Agent interfaces | Python and Pydantic AI, native provider adapters | Required model/tool capabilities or measured reliability favor another adapter |
+| Durable execution | DBOS with Postgres once resumable work is needed | A documented operational capability gap justifies another engine; elapsed weeks alone do not require Temporal |
+| Evidence storage | Versioned object storage plus structured metadata; add hybrid retrieval when corpus needs it | Measured retrieval failures justify a different index or representation |
+| Extraction | Native XLSX/CSV parsing, Docling as a candidate PDF parser, evaluated vision fallback | Real-document tests identify a better pipeline |
+| Finance and Excel | Tested Python functions/PyXIRR, openpyxl, LibreOffice recalculation, supported Excel validation | Required financial conventions or workbook compatibility demand alternatives |
+| Policy | Versioned typed rules; ZEN where a visual editor helps the owner | Editing and audit requirements justify the added engine |
+| Evaluation | One reproducible runner, such as Inspect AI, plus deterministic task checks | A demonstrated evaluation requirement is not met |
+| Learning | Curriculum scheduler, experiment registry, GEPA candidate; incremental memory tested separately | Controlled comparisons favor another optimizer or memory method |
+| Classification | Typed model interface and simple baseline; benchmark Jev as a candidate | Target-distribution accuracy, calibration, price, and availability justify adoption |
+| Isolation and observability | Restricted experiment execution; structured traces, optional OpenTelemetry/Langfuse | Workload and confidentiality requirements determine deployment |
+
+Pin concrete versions and model identifiers during implementation. Measure each model's capability and cost on our tasks rather than treating a brand or generation as permanently best. Different model families may help challenge conclusions, but are not automatically independent evaluators.
+
+Define deployment choices from actual workload and data policy. Self-hosting telemetry alone does not determine how model providers handle supplied data. Apply access, retention, and permitted-use rules to documents, traces, training examples, and model calls alike.
+
+## 12. Milestones to the complete system
+
+Stages may overlap when their prerequisites are satisfied. Every stage needs an executable demonstration and documented evidence before its dependent capabilities are claimed.
+
+| Milestone | Build | Evidence to advance |
+|---|---|---|
+| M0. Domain and authority contract | Supported deal class, investment mandate, reference workbook, initial curriculum, definitions of material error, source and action policy | The owner and system can distinguish facts, assumptions, preferences, and unknowns on representative examples |
+| M1. Evidence and teaching foundations | Source registry, claim/case stores, demonstrations, correction capture, independent finance examples, initial evaluation partitions | A concept and a correction can be traced from source to exercise to evaluated behavior |
+| M2. Complete baseline workflow | One supported deal from intake to workbook, recommendation, memo, proposed LOI, and QA with review | Real-packet run completes; errors and needed corrections are measured; document revisions propagate correctly |
+| M3. Autonomous research and practice | Gap-driven collection, curriculum scheduling, controlled cases, replay, deterministic checks | Agent identifies a gap, finds legitimate evidence, creates valid practice, and improves performance on separate cases |
+| M4. Automated improvement | Candidate experiments, protected evaluation, manifests, regression controls, rollback | Improvement beats a fixed baseline and expert-only revision under comparable budgets; release process rejects planted evaluator-gaming attempts |
+| M5. Diligence and breadth | Additional document classes, complex assumptions, long-running investigation, uncertainty and exception handling | Supported difficult cases and correlated downside scenarios work end to end with bounded material error |
+| M6. Autonomous analyst operation | Prospective execution within the mandate, defined action permissions, monitoring and rollback | End-to-end targets are met on independent prospective work; authority limits and required external dependencies are correctly handled |
+| M7. Autonomous continuing learning | Policy-bounded source refresh, curriculum, experimentation, promotion, and drift response | Approved update classes improve the system without routine human release approval, while regression and rollback tests remain effective |
+| M8. Expansion and optional specialized models | Other strategies/asset classes and, where justified, weight training | Each extension earns its own coverage and reliability evidence; shared capabilities retain performance |
+
+Revisit architecture and sequencing after each milestone. Record what changed, the evidence, expected benefit, and how to reverse it. A failed experiment can eliminate an approach without changing the ultimate product goal.
+
+## 13. First implementation experiments
+
+1. **Source-to-skill:** choose one substantive underwriting concept, collect primary/reference material, reconcile it with the owner's convention, build exercises, and test transfer to a separate real case.
+2. **Expert-to-skill:** let the agent attempt a task, capture the owner's correction, implement a candidate lesson, and measure whether the same error disappears without introducing new ones.
+3. **Verified practice:** construct a deal state, render consistent and corrupted versions, and verify that finance and evidence checks distinguish them.
+4. **Learning comparison:** compare fixed baseline, retrieval, expert revision, GEPA, and incremental memory with the same tasks and total budget. Test components separately before stacking them.
+5. **Revision and autonomy:** introduce a new lease amendment or rent roll, require the agent to locate all affected outputs, update them, and explain the changed decision without step-by-step instruction.
+
+Start these with enough cases to expose failure modes; choose subsequent sample sizes from error tolerances and the supported population. Finalize budget caps, markets, source licenses, and model access when needed for the relevant experiment. Do not invent fixed dataset counts, development weeks, or nightly training costs.
+
+## 14. What this revision changes
+
+- Makes autonomous acquisition analysis **and** autonomous learning explicit goals.
+- Replaces the assumed expert-time shortage with an active teaching partnership.
+- Adds internet research, source validation, curriculum, practice, and knowledge promotion as first-class systems.
+- Separates knowledge/skill learning from optional weight training.
+- Adopts published mechanisms with explicit transfer limits rather than treating framework names as proof.
+- Separates candidate selection from release testing and manages repeated test exposure.
+- Measures critical errors, justified uncertainty, useful coverage, and autonomy separately.
+- Adds revision semantics, canonical state, protected evaluation, and graduated automatic releases.
+- Keeps the full product destination while replacing the fixed calendar with evidence-based milestones.
