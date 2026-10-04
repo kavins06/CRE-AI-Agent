@@ -8,7 +8,9 @@ Dated calculations use ACT/365 fixed, aggregate repeated dates and sort them.
 pyxirr 0.10.8 IRR/XIRR and Excel-timed NPV are cross-checks, not the authority
 for root count. Only normalized cash flows/rates cross its binary64 boundary.
 Authoritative monetary arithmetic is 28-digit Decimal; root isolation uses
-80+ digits and returns rates rounded to 28 digits with residual diagnostics.
+80–256 digits and returns rates rounded to 28 digits with residual diagnostics.
+Working precision covers the full nonzero input exponent span, sum growth
+and 40 guard digits, so repeated-date aggregation is exact in any input order.
 No pyxirr float is converted into authoritative money or a reported root.
 Unresolvable precision/complexity fails closed rather than inventing an IRR.
 """
@@ -90,7 +92,7 @@ def _sign(value: Decimal, scale: Decimal, epsilon: Decimal) -> int:
 
 def _bisect(terms: Terms, left: Decimal, right: Decimal, epsilon: Decimal) -> Decimal:
     left_sign = _sign(*_evaluate(terms, left), epsilon)
-    for _ in range(4 * len(str(epsilon)) + 400):
+    for _ in range(4 * max(0, -epsilon.adjusted()) + 400):
         middle = (left + right) / 2
         if middle == left or middle == right:
             return middle
@@ -136,10 +138,17 @@ def _isolate(terms: Terms, low: Decimal, high: Decimal, epsilon: Decimal) -> lis
 
 
 def _root_rates(source: ReturnsInput) -> tuple[list[Decimal], bool, Decimal]:
-    digits = max(len(value.as_tuple().digits) for value in source.cash_flows)
-    precision = max(80, digits + 40)
+    nonzero = [value for value in source.cash_flows if value]
+    aligned_digits = (
+        max(value.adjusted() for value in nonzero)
+        - min(int(value.as_tuple().exponent) for value in nonzero)
+        + 1
+        if nonzero
+        else 0
+    )
+    precision = max(80, aligned_digits + len(str(len(nonzero))) + 40)
     if precision > 256:
-        raise ValueError("IRR cash-flow precision exceeds the supported 216 input digits")
+        raise ValueError("IRR cash-flow exponent span requires more than 256 precision digits")
     with localcontext() as context:
         context.prec = precision
         by_time: dict[Decimal, Decimal] = {}

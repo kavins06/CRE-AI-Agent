@@ -802,3 +802,20 @@ T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
 T015: AC1 PASSED, AC2 PASSED, AC3 PASSED
 ```
 - Both acceptance flags remain false. Next: repair T016 R2, then coupled full checks and independent review. No PR or dev/main integration; no blocker.
+
+## 2026-10-04 — T016 required-review R2 repair (acceptance pending)
+- Red-first cancellation/permutation regressions reproduced incorrect root counts at 1e80, 1e100 and 1e200, changed close/tangent roots, and absent rejection at unsupported exponent span: 9 failed, 1 passed, 91 deselected.
+- Decision: compute working precision from the largest adjusted exponent minus the smallest nonzero coefficient exponent, plus a sum-growth allowance based on input count and 40 guard digits. This bounds exact duplicate-date additions independent of order, including the net +1 from [1e200, 1, -1e200]. Precision remains bounded to 80–256 digits; unsupported spans reject before arithmetic instead of silently dropping a cash flow. Public results remain isolated 28-digit Decimal; pyxirr remains a binary64 diagnostic, never authoritative.
+- The expanded working precision exposed a previously insufficient bisection budget (5 failed, 40 passed): its old budget measured the length of scientific-notation text, not requested accuracy. Budget now scales to the actual epsilon exponent, bounded by the existing 256-digit limit. Regression checks retain all roots, including tangent/1e-12-separated cases after large cancellations.
+- New tests exercise 96 cash-flow/date permutations, 24 close/tangent cancellation permutations, six fail-closed permutations, hostile caller context and CalcResult JSON round trips. No existing assertions/skips or public schemas changed.
+- Focused Ruff and strict mypy (69 files) pass; lock synchronization remains unchanged. Exact T016 verify exits 0; tail:
+```text
+.............................................                            [100%]
+45 passed, 56 deselected in 1.43s
+
+.............................................                            [100%]
+45 passed, 557 deselected, 2 warnings in 2.85s
+
+T016: AC1 PASSED, AC2 PASSED, AC3 PASSED
+```
+- Both flags remain false. Next: coupled full checks/hooks and push for independent review. No PR or dev/main integration; no blocker.

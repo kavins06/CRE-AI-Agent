@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from decimal import ROUND_UP, Decimal, getcontext, localcontext
+from itertools import permutations
 
 import pytest
 import pyxirr
@@ -258,3 +259,67 @@ def test_t016_ac3_returns_caller_context_independent_and_json_round_trip():
         assert getcontext().rounding == before.rounding
         assert getcontext().flags == before.flags
     assert type(result).model_validate_json(result.model_dump_json()) == result
+
+
+@pytest.mark.parametrize("magnitude", ["1e80", "1e100", "1e200", "1e-80"])
+def test_t016_ac1_returns_duplicate_date_cancellation_is_order_independent(magnitude):
+    start = date(2024, 1, 1)
+    large = D(magnitude)
+    entries = [(large, start), (D(1), start), (large.copy_negate(), start)]
+    entries.append((D(-2), start + timedelta(days=365)))
+    for ordered in permutations(entries):
+        source = flows([amount for amount, _ in ordered], dates=tuple(day for _, day in ordered))
+        result = calculate_returns(source, **META)
+        assert result.outputs["unique"] == 1
+        assert result.outputs["undefined"] == result.outputs["ambiguous"] == 0
+        assert roots(result) == pytest.approx([D(1)], abs=D("1e-24"))
+        assert result.outputs["max_relative_npv_residual"] < D("1e-24")
+        assert result.inputs == {"cash_flows": "cashflows"}
+
+
+@pytest.mark.parametrize("magnitude", ["1e80", "1e200"])
+@pytest.mark.parametrize("gap", ["0", ".000000000001"])
+def test_t016_ac1_returns_cancelled_dates_preserve_close_and_tangent_roots(magnitude, gap):
+    start = date(2024, 1, 1)
+    a, b = D("1.1"), D("1.1") + D(gap)
+    large = D(magnitude)
+    for initial in permutations([large, D(-1), large.copy_negate()]):
+        source = flows(
+            [*initial, a + b, -a * b],
+            dates=(start, start, start, start + timedelta(days=365), start + timedelta(days=730)),
+        )
+        result = calculate_returns(source, **META)
+        expected = [a - 1] if gap == "0" else [a - 1, b - 1]
+        assert roots(result) == pytest.approx(expected, abs=D("1e-24"))
+        assert result.outputs["ambiguous"] == (gap != "0")
+        assert result.outputs["unique"] == (gap == "0")
+
+
+def test_t016_ac1_returns_unsupported_exponent_span_rejects_before_aggregation():
+    start = date(2024, 1, 1)
+    for initial in permutations([D("1e300"), D(1), D("-1e300")]):
+        source = flows(
+            [*initial, D(-2)],
+            dates=(start, start, start, start + timedelta(days=365)),
+        )
+        with pytest.raises(ValueError, match="precision"):
+            calculate_returns(source, **META)
+
+
+def test_t016_ac3_returns_cancelled_xirr_preserves_hostile_context_and_serialization():
+    source = flows(
+        ["1e200", 1, "-1e200", -2],
+        dates=(date(2024, 1, 1),) * 3 + (date(2024, 12, 31),),
+    )
+    expected = calculate_returns(source, **META)
+    assert expected.outputs["xirr"] == pytest.approx(D(1), abs=D("1e-24"))
+    with localcontext() as caller:
+        caller.prec = 5
+        caller.rounding = ROUND_UP
+        before = caller.copy()
+        actual = calculate_returns(source, **META)
+        assert actual == expected
+        assert caller.prec == before.prec
+        assert caller.rounding == before.rounding
+        assert caller.flags == before.flags
+    assert type(expected).model_validate_json(expected.model_dump_json()) == expected
