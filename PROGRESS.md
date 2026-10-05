@@ -1168,3 +1168,21 @@ unchanged check_task.py T039: 5 passed; exit1 for missing AC3
 - Decisions: the core is host-only, not an analyst command or parallel authoritative state store. Workbook creation delegates existing trusted mapping/recalculation and returns only after parity; unsupported optional schedules, assumptions and horizons refuse rather than masquerading as whole-model parity. The host binding snapshot limit is separately 1 MiB; the shared ordinary tool-message limit remains 128 KiB.
 - T039 remains false. Real subset recalculation does not prove broader model parity, risk/protected paired publication, an underwrite skill/FakeRunner, CLI, live runtime, analyst quality or hidden evaluation success. No baseline assertions, acceptance bars, owner guards or private evals were changed.
 - Next: integrate with reviewed T035/T038 locally, wire the supported core into checked UW publication and resumable run orchestration, then add read-only advisory review. Dev/main promotion remains held on hosted-CI clarification and applicable owner gates.
+
+## 2026-10-05 — T040 durable helper integration; run-loop/runtime acceptance BLOCKED
+- Integrated reviewed durable jobs, canonical-budget snapshot and trusted-clock stuck helpers locally at `ef40ee1`; T039 source is also integrated locally at `a581ce6`. The source task branches remain separate from milestone promotion.
+- Independent authenticated GPT-6.1 Sol read-only review of `e56288c`: SOURCE PASS for this partial helper slice, not T040 acceptance. Delayed receipts are bound to their original claim generation; both nudge paths persist the trusted-host watchdog baseline through JSON checkpoint restoration. No new ledger or runtime fallback.
+- Same-session assembled coordinator evidence:
+```text
+make check
+Ruff lint/format and strict mypy: passed (141 source files)
+1576 passed, 3 approved-marker skips, 17 integration deselected
+isolated-schema PostgreSQL state/publication/jobs: 5 passed, 106 deselected
+check_task.py T039: 5 passed; exit1, missing AC3
+check_task.py T040: 79 passed, 1 approved integration skip; exit1, missing AC1-AC4
+pre-commit --all-files: passed before local merge
+```
+- Decisions: T039/T040 remain false. Durable helpers are not proof of native receipt authentication, preventive caps, process recovery, product review, full checked UW publication, or an operational analyst. Factory installation must remain trusted host code, never a deal/environment-controlled plugin or subprocess fallback.
+- Active parallel Outpost worktrees: first bounded host-composed `cre run` source and read-only advisory review source, both delegated through authenticated OpenAI-only GPT-6.1 Sol/Codex. No live model calls in tests, private eval access or SEC work.
+- Authentication correction: the initial delegation used the wrong `CODEX_HOME`; native `/root/.codex` authentication is valid. No expired-login claim or new credential requirement remains.
+- Next: review and verify the two source candidates, integrate only supported safe composition, then wire authenticated verifier/revision transport once runtime prerequisites exist. Hosted CI, dev push and main promotion remain held on the no-cloud clarification and protected owner gates.
