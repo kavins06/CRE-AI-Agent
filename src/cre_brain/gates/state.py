@@ -1,10 +1,11 @@
 """Reload and validate canonical identities, lineage, freshness and deal scope."""
 
+from contextlib import AbstractContextManager, nullcontext
 from datetime import UTC, date
 from decimal import Decimal
 
 from pydantic import BaseModel
-from sqlalchemy import Engine, select
+from sqlalchemy import Connection, Engine, select
 
 from cre_brain.domain import CalcResult, ClaimType, Deliverable, Fact
 from cre_brain.domain.base import TenantScope
@@ -43,6 +44,22 @@ UNITS = frozenset(
 class GateStore[RecordT: BaseModel](SqlVersionedStore[RecordT]):
     """Domain store reader with a numeric serialization budget before decoding."""
 
+    def __init__(
+        self,
+        engine: Engine,
+        model: type[RecordT],
+        connection: Connection | None = None,
+    ) -> None:
+        super().__init__(engine, model)
+        if connection is not None and connection.engine is not engine:
+            raise ValueError("Canonical transaction must belong to the same engine")
+        self.connection = connection
+
+    def reader(self) -> AbstractContextManager[Connection]:
+        return (
+            nullcontext(self.connection) if self.connection is not None else self.engine.connect()
+        )
+
     def get(
         self, record_id: str, *, scope: TenantScope, version: int | None = None
     ) -> RecordT | None:
@@ -53,7 +70,7 @@ class GateStore[RecordT: BaseModel](SqlVersionedStore[RecordT]):
         if version is not None:
             query = query.where(self.table.c.version == version)
         query = query.order_by(self.table.c.version.desc()).limit(1)
-        with self.engine.connect() as connection:
+        with self.reader() as connection:
             payload = connection.execute(query).scalar_one_or_none()
         if payload is None:
             return None
@@ -65,15 +82,29 @@ class GateStore[RecordT: BaseModel](SqlVersionedStore[RecordT]):
 
 class CanonicalState:
     def __init__(
-        self, engine: Engine, scope: TenantScope, inputs: InputProvider, as_of: date
+        self,
+        engine: Engine,
+        scope: TenantScope,
+        inputs: InputProvider,
+        as_of: date,
+        *,
+        connection: Connection | None = None,
     ) -> None:
         self.engine, self.scope, self.inputs, self.as_of = engine, scope, inputs, as_of
-        self.facts = GateStore(engine, Fact)
-        self.calcs = GateStore(engine, CalcResult)
+        if connection is not None and connection.engine is not engine:
+            raise ValueError("Canonical transaction must belong to the same engine")
+        self.connection = connection
+        self.facts = GateStore(engine, Fact, connection)
+        self.calcs = GateStore(engine, CalcResult, connection)
+
+    def reader(self) -> AbstractContextManager[Connection]:
+        return (
+            nullcontext(self.connection) if self.connection is not None else self.engine.connect()
+        )
 
     def fresh(self, identity: str) -> None:
         if identity in DependencyGraph(self.engine, release_id="gates").tenant_stale_items(
-            scope=self.scope
+            scope=self.scope, connection=self.connection
         ):
             raise ValueError(f"Stale canonical dependency {identity}")
 
@@ -98,7 +129,7 @@ class CanonicalState:
         if not fact.provenance:
             raise ValueError("Fact requires canonical source provenance")
         # Two fact identities for a semantic key cannot be selected by convenience.
-        with self.engine.connect() as connection:
+        with self.reader() as connection:
             identities = (
                 connection.execute(
                     select(self.facts.table.c.record_id)
@@ -120,7 +151,7 @@ class CanonicalState:
         return fact
 
     def fact_for_key(self, key: str, deal_id: str) -> Fact:
-        with self.engine.connect() as connection:
+        with self.reader() as connection:
             identities = (
                 connection.execute(
                     select(self.facts.table.c.record_id)
@@ -150,7 +181,7 @@ class CanonicalState:
             raise ValueError(f"Missing or ambiguous canonical calculation {identity}")
         bounded_values(calc)
         calc = CalcResult.model_validate(calc.model_dump())
-        with self.engine.connect() as connection:
+        with self.reader() as connection:
             payloads = (
                 connection.execute(
                     select(self.calcs.table.c.payload).where(

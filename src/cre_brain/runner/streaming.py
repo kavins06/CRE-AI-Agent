@@ -18,8 +18,9 @@ binding and the isolated CODEX_HOME even on resume. Operations must be bounded;
 a confirmed cancellation receipt means all descendants are absent.
 """
 
-from collections.abc import AsyncIterator
-from typing import Literal, Protocol
+import asyncio
+from collections.abc import AsyncIterator, Coroutine
+from typing import Any, Literal, Protocol
 
 from pydantic import Field
 
@@ -27,6 +28,33 @@ from cre_brain.runner.segment import SegmentSpec
 from cre_brain.runner.tools.contracts import Boundary
 from cre_brain.runner.tools.registry import ToolRegistry
 from cre_brain.sandbox.base import Box, SandboxProvider
+
+
+async def bounded_operation[T](
+    operation: Coroutine[Any, Any, T], pending: set[asyncio.Task[Any]]
+) -> T:
+    """A hard acknowledgement bound, even if the adapter suppresses cancellation.
+
+    Retain unsettled tasks and consume late failures; a late result never changes
+    the durable recovery verdict made by the caller at the deadline.
+    """
+    task = asyncio.create_task(operation)
+    pending.add(task)
+
+    def settled(finished: asyncio.Task[T]) -> None:
+        pending.discard(finished)
+        if not finished.cancelled():
+            finished.exception()
+
+    task.add_done_callback(settled)
+    try:
+        done, _ = await asyncio.wait((task,), timeout=5)
+        if not done:
+            raise TimeoutError("Runtime acknowledgement timed out")
+        return task.result()
+    finally:
+        if not task.done():
+            task.cancel()
 
 
 class RuntimeCapabilities(Boundary):

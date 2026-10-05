@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 
 from pydantic import Field, model_validator
 
-from cre_brain.domain import DeliverableKind
+from cre_brain.domain import AgentEvent, DeliverableKind
 from cre_brain.runner.tools.contracts import AuthenticatedContext, Boundary
 from cre_brain.runner.tools.state import ToolState, fingerprint
 
@@ -38,6 +38,30 @@ class Limits(Boundary):
     max_tokens: int = Field(default=1000000, strict=True, ge=1)
 
 
+def remaining_seconds(
+    context: HostContext, limits: Limits, history: list[AgentEvent], now: datetime
+) -> float:
+    """One task deadline for lead, tools, extraction and publication/resume."""
+    first = min(
+        [
+            context.started_at,
+            *[
+                e.ts
+                for e in history
+                if e.kind == "segment_start"
+                or (
+                    e.payload.get("binding") == "extraction_attempt"
+                    and e.payload.get("phase") == "start"
+                )
+            ],
+        ]
+    )
+    return min(
+        limits.max_session_s - (now - context.started_at).total_seconds(),
+        limits.max_wallclock_s - (now - first).total_seconds(),
+    )
+
+
 def charge(state: ToolState, context: HostContext, limits: Limits) -> None:
     history = state.history()
     sessions = [e for e in history if e.kind == "segment_start" and e.payload.get("tools_session")]
@@ -46,7 +70,6 @@ def charge(state: ToolState, context: HostContext, limits: Limits) -> None:
     if session is not None and session.payload.get("snapshot") != snapshot:
         raise Refusal("policy_conflict", "Host session policy changed; resume through the host.")
     now = datetime.now(UTC)
-    first = min([context.started_at, *[e.ts for e in sessions]])
     usage = [e for e in history if e.kind == "usage" and e.payload.get("tools_call")]
     tokens = 0
     for event in history:
@@ -61,8 +84,7 @@ def charge(state: ToolState, context: HostContext, limits: Limits) -> None:
         or tokens >= limits.max_tokens
         or sum(e.payload.get("session") == context.session_id for e in usage)
         >= limits.max_session_calls
-        or (now - first).total_seconds() > limits.max_wallclock_s
-        or (now - context.started_at).total_seconds() > limits.max_session_s
+        or remaining_seconds(context, limits, history, now) <= 0
         or (session is None and len(sessions) >= limits.max_sessions)
     ):
         raise Refusal("budget_exceeded", "Host budget exhausted; request a host-authorized resume.")

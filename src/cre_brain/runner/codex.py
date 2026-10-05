@@ -18,6 +18,7 @@ from cre_brain.runner.streaming import (
     RunningProcess,
     RuntimeCapabilities,
     StreamingAdapter,
+    bounded_operation,
 )
 from cre_brain.runner.tools.registry import ToolRegistry
 from cre_brain.sandbox.base import SandboxError, SandboxProvider
@@ -54,6 +55,7 @@ class CodexRunner:
         self.firm_summary = firm_summary
         self.user_memory = user_memory
         self.capture = capture
+        self._cleanup_operations: set[asyncio.Task[Any]] = set()
 
     def with_capture(self, capture: CaptureSink) -> "CodexRunner":
         return CodexRunner(
@@ -76,7 +78,9 @@ class CodexRunner:
         if self.runtime.registry is not self.registry:
             raise SandboxError("Runtime registry must be the canonical host tool registry")
         try:
-            caps = await asyncio.wait_for(self.runtime.capabilities(ws.box), 5)
+            caps = await bounded_operation(
+                self.runtime.capabilities(ws.box), self._cleanup_operations
+            )
             caps = RuntimeCapabilities.model_validate(caps.model_dump())
         except Exception:
             raise SandboxError("missing_runtime: restricted capabilities unavailable") from None
@@ -88,6 +92,8 @@ class CodexRunner:
             raise SandboxError("missing_auth: authorized runtime authentication required")
         if not caps.hard_caps:
             raise SandboxError("missing_capabilities: preventive turn/token caps required")
+        if caps.evidence == "isolated_runtime" and self.model_provider != "openai":
+            raise SandboxError("Lead runtime requires the OpenAI model provider")
         if seg.resume_session_id and not caps.resume_supported:
             raise SandboxError("missing_capabilities: verified resume syntax required")
         role = self.registry.settings.models.roles["lead"]
@@ -186,6 +192,7 @@ class CodexRunner:
             self.capture.bind(caps, bundle)
             self.capture.event(stored_start)
         process: RunningProcess | None = None
+        start_attempted = False
         reason = "interrupted"
         cancelled = False
         usage_complete = False
@@ -201,13 +208,21 @@ class CodexRunner:
 
         async def cancel(*, shield_interruptions: bool = False) -> None:
             nonlocal cancelled, usage_complete, cancel_task, interruption
-            if process is None or cancelled:
+            if process is None:
+                if start_attempted:
+                    # A failed start does not prove that no process or spend exists.
+                    persist(normalizer.make("error", {"category": "cleanup_unverified"}))
+                    raise SandboxError(
+                        "cleanup_unverified: unknown runtime start requires recovery"
+                    )
+                return
+            if cancelled:
                 return
             target = process
 
             async def bounded_cancel() -> CancellationReceipt:
                 try:
-                    result = await asyncio.wait_for(target.cancel(), 5)
+                    result = await bounded_operation(target.cancel(), self._cleanup_operations)
                     return CancellationReceipt.model_validate(result.model_dump())
                 except asyncio.CancelledError:
                     return CancellationReceipt(confirmed=False, total_tokens=None)
@@ -233,25 +248,31 @@ class CodexRunner:
                 persist(normalizer.make("error", {"category": "cleanup_unverified"}))
                 raise SandboxError("cleanup_unverified: runtime cancellation not confirmed")
             cancelled = True
+            # A confirmed native stop says nothing about committed journal usage.
+            # Never mark usage complete until reconciliation has committed.
+            usage_complete = False
             if receipt.total_tokens is None or receipt.total_tokens < normalizer.tokens:
                 usage_complete = False
             else:
+                stored = state.reconcile_usage(
+                    stored_start,
+                    total=receipt.total_tokens,
+                    observed=normalizer.tokens,
+                    make_charge=lambda additional: normalizer.make(
+                        "usage",
+                        {
+                            "host_tokens": additional,
+                            "session_id": normalizer.session_id,
+                            "accounting": "trusted_cancellation_meter",
+                        },
+                    ),
+                )
+                if stored is not None:
+                    cleanup_events.append(stored)
+                    if self.capture:
+                        self.capture.event(stored)
+                normalizer.tokens = receipt.total_tokens
                 usage_complete = True
-                additional = receipt.total_tokens - normalizer.tokens
-                if additional:
-                    cleanup_events.append(
-                        persist(
-                            normalizer.make(
-                                "usage",
-                                {
-                                    "host_tokens": additional,
-                                    "session_id": normalizer.session_id,
-                                    "accounting": "trusted_cancellation_meter",
-                                },
-                            )
-                        )
-                    )
-                    normalizer.tokens = receipt.total_tokens
             if interruption is not None and not shield_interruptions:
                 raise interruption
 
@@ -266,6 +287,7 @@ class CodexRunner:
                 if remaining <= 0:
                     raise TimeoutError
                 request = request.model_copy(update={"timeout_s": remaining})
+                start_attempted = True
                 process = await self.runtime.start(ws.box, request)
                 yield stored_start
                 count = 0

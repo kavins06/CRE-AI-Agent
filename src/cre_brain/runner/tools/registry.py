@@ -23,7 +23,7 @@ from cre_brain.domain import (
 )
 from cre_brain.excel.base import ExcelEngine
 from cre_brain.gates.snapshot import ArtifactSnapshot
-from cre_brain.runner.policy import HostContext, Limits, Refusal, charge
+from cre_brain.runner.policy import HostContext, Limits, Refusal, charge, remaining_seconds
 from cre_brain.runner.tools import files, finance
 from cre_brain.runner.tools.contracts import (
     Artifact,
@@ -546,16 +546,7 @@ class ToolRegistry:
                 "policy_conflict",
                 "Host context changed during a tool call; resume through the host.",
             )
-        now = datetime.now(UTC)
-        sessions = [
-            e.ts
-            for e in state.history()
-            if e.kind == "segment_start" and e.payload.get("tools_session")
-        ]
-        first = min([self.context.started_at, *sessions])
-        if (now - self.context.started_at).total_seconds() > self.limits.max_session_s or (
-            now - first
-        ).total_seconds() > self.limits.max_wallclock_s:
+        if remaining_seconds(self.context, self.limits, state.history(), datetime.now(UTC)) <= 0:
             raise Refusal(
                 "budget_exceeded", "Host deadline elapsed; request a host-authorized resume."
             )

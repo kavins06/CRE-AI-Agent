@@ -1118,3 +1118,23 @@ Strict runner mypy, all pre-commit hooks, uv lock --check and git diff --check: 
 - Validation correction: this checkout defaults to --basetemp=.cache/pytest. Overlapping focused tests deleted full-run workbook fixtures, causing false failures/ENOENT. The final full run used a distinct basetemp and passed unchanged workbook assertions; no finance/gate weakening or source repair was needed. Use separate temporary roots for concurrent tests.
 - Next: save/push the reviewed source task branch, integrate locally with acceptance false, then author quarantined T035 extraction and T038 SCREEN in separate Outpost worktrees. These can develop source plumbing independently of live runtime acceptance.
 - Needs owner: genuine restricted runtime/auth/cap enforcement and T030's two assertion corrections remain unresolved; hosted-CI/no-cloud clarification still blocks dev push, CI-triggering PRs and milestone/main promotion. Existing owner guards and private-eval isolation remain intact.
+
+## 2026-10-05 — T035 extraction source handoff; live acceptance BLOCKED
+- Added exact-document typed extraction schemas/anchors, SELLER_ASSERTION conversion, bounded concurrent disposable-runtime contracts, canonical coverage/checksum gates, deadline/freshness enforcement, cache identity and fact dependency edges. No host analyst subprocess fallback, private eval access, quality claim or live runtime transcript.
+- Independent GPT-6.1 Sol reviews reproduced failed usage writes, lost runtime starts, incomplete cleanup and companion accounting failures. Red-first repairs reconcile native receipts against durable canonical charges, retain unknown reservations, enforce tenant-wide unresolved lead lifetimes and preserve contiguous recording origins. Latest independent review returns SOURCE PASS; its probes were bounded synthetic/in-memory substitutions, not production recovery proof.
+- Same-session coordinator verification after source repair3 (exit0):
+```text
+make check
+Ruff/format/strict mypy: passed
+1308 passed, 3 approved-marker skips, 15 integration deselected
+uv run pytest tests/extraction -q -k quarantine
+131 passed, 75 deselected
+uv run python scripts/check_task.py T035
+140 passed, 1186 deselected
+T035: AC1 PASSED, AC2 PASSED, AC3 PASSED, AC4 PASSED
+Author focused extraction: 205 passed, 1 existing approved skip
+Author focused runner: 109 passed
+```
+- Decisions: observed usage is not a durable charge; only authenticated committed ledger totals discharge native receipt obligations. Missing recovery markers do not prove cleanup. Native lead/extraction phases cannot overlap while lead ownership is unresolved. Shared monotonic deadlines and trusted-operation acknowledgement bounds preserve fail-closed behavior.
+- T035 stays false. Synthetic acceptance-name tests demonstrate plumbing only; genuine restricted Codex containment/authentication, preventive caps, descendant termination, trusted recovery, production crash/outage behavior and extraction quality remain unproved. Exact verifier success does not waive these prerequisites.
+- Next: save reviewed source on its task branch, integrate locally after staged-checkout verification, finish SCREEN/UW source integration and the first resumable run with advisory review/revision. Task-branch source pushes must not trigger hosted CI; dev push, CI-triggering PRs and main promotion remain held on the no-cloud clarification.

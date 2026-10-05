@@ -1,6 +1,7 @@
 """Tenant-scoped dependency DAG and durable, event-sourced invalidation."""
 
 import secrets
+from contextlib import nullcontext
 from datetime import UTC, datetime, timedelta
 from graphlib import CycleError, TopologicalSorter
 from heapq import heappop, heappush
@@ -141,16 +142,20 @@ class DependencyGraph:
                 graph.setdefault(node, set())
             return [node for node in _topological_order(graph) if node in stale]
 
-    def tenant_stale_items(self, *, scope: TenantScope) -> list[str]:
+    def tenant_stale_items(
+        self, *, scope: TenantScope, connection: Connection | None = None
+    ) -> list[str]:
         """Invalidated identities across tasks; regeneration requires a new ID.
 
         This union has no cross-task event ordering. The task-specific ordered
         stale_items API remains the scheduling interface.
         """
-        with self.engine.connect() as connection:
+        if connection is not None and connection.engine is not self.engine:
+            raise ValueError("Canonical transaction must belong to the same engine")
+        with nullcontext(connection) if connection is not None else self.engine.connect() as reader:
             query = select(events.c.payload).where(tenant_filter(events, scope))
             stale: set[str] = set()
-            for payload in connection.execute(query).scalars():
+            for payload in reader.execute(query).scalars():
                 event = AgentEvent.model_validate(payload)
                 if event.kind == "stale":
                     stale.add(identifier.validate_python(event.payload["item_id"]))
