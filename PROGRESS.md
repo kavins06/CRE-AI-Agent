@@ -1408,3 +1408,67 @@ uv run --locked pytest tests -m "not integration" -q
   https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/core/src/rollout_budget.rs
   and
   https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/ext/goal/tests/goal_extension_backend.rs
+
+### 2026-10-05: Agent-first brain implemented; genuine analyst acceptance remains blocked
+
+- Owner-approved ADR-0002 supersedes the infrastructure-first sequencing and permits
+  normal Devin quota for CRE analyst execution. Development remains on isolated Outpost.
+- Replaced placeholder lead, extraction, verifier, classifier and reflection behavior;
+  added research, underwriting, diligence and independent-review procedures. The lead
+  plans, chooses investigations, challenges its thesis and owns a conditional recommendation.
+- Connected canonical public knowledge retrieval to authenticated tools and replay.
+  Public references remain `global_public` / `public_reference_not_deal_fact`; reference-only
+  books are not downloaded. Research cannot invent source IDs, pages or property Fact pins.
+- Added typed role outputs and a bounded model-directed advisory loop with blocking
+  questions, independent objections, revision logs and no publication authority.
+- Added an offline-tested Devin draft HTTP adapter and host-journaled advisory recording.
+  These are explicitly unverified public-development evidence, not an accepted Runner.
+  No live analyst run, private evaluation, external send or production publication occurred.
+- Tests use external temporary probe/cache directories even when pytest's base is in Git.
+  Initial full-check failures were fixture locations, repaired without relaxing any guard.
+- Validation: `./init.sh` succeeded. Final `TMPDIR=/dev/shm make check` exited 0.
+  Final verify tail (30 lines):
+
+```text
+........................................................................ [ 25%]
+......................................s................................. [ 29%]
+........................................................................ [ 33%]
+........................................................................ [ 37%]
+........................................................................ [ 41%]
+........................................................................ [ 46%]
+........................................................................ [ 50%]
+........................................................................ [ 54%]
+........................................................................ [ 58%]
+........................................................................ [ 62%]
+........................................................................ [ 67%]
+........................................................................ [ 71%]
+.........................................................s.............. [ 75%]
+........................................................................ [ 79%]
+........................................................................ [ 83%]
+........................................................................ [ 88%]
+........................................................................ [ 92%]
+........................................................................ [ 96%]
+............................................................             [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  /srv/infra/devin-outpost/sessions/devin-492866a8c1be4f4caee4c55096f31e28/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:24: DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_binary_stream as get_binary_stream
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  /srv/infra/devin-outpost/sessions/devin-492866a8c1be4f4caee4c55096f31e28/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:25: DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_text_stream as get_text_stream
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1713 passed, 3 skipped, 17 deselected, 2 warnings in 567.64s (0:09:27)
+```
+
+- No feature acceptance flags or protected paths changed. Do not infer acceptance from
+  test counts, HTTP mocks, prompt completeness or synthetic replay.
+- Next: install a trusted public-probe host factory and verify real Outpost/profile
+  binding, planning, tool/evidence use, reviewer objections and revisions; repair failures.
+- BLOCKED / Needs owner: provide a scoped Devin API credential for live application
+  integration. Preventive token caps, descendant containment, authenticated usage and
+  durable recovery remain unproven and must not be asserted.
+- Save the tested task branch only. Do not create a PR, push integration branches or
+  trigger new hosted CI until the previously unresolved hosted-CI placement policy is
+  clarified. Required CI and owner gates still govern promotion.

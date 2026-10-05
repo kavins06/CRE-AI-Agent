@@ -76,6 +76,7 @@ def create_app(*, plugins: Iterable[ModuleType] | None = None) -> typer.Typer:
 
     root_callback = app.registered_callback
     if plugins is None:
+        from cre_brain.analyst.commands import register_cli as register_analyst
         from cre_brain.evals.commands import register_cli as register_evals
         from cre_brain.knowledge.commands import register_cli as register_knowledge
         from cre_brain.release.commands import register_cli
@@ -84,6 +85,7 @@ def create_app(*, plugins: Iterable[ModuleType] | None = None) -> typer.Typer:
         from cre_brain.runner.tools.tools_commands import register_cli as register_tools
 
         register_cli(app)
+        register_analyst(app)
         register_knowledge(app)
         register_tools(app)
         register_evals(app)

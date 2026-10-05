@@ -13,7 +13,7 @@ from cre_brain.runner.segment import SegmentSpec, Workspace
 from cre_brain.runner.state_adapter import RunnerState
 from cre_brain.runner.tools.finalization import trusted_release
 from cre_brain.runner.tools.json_io import canonical, parse
-from cre_brain.runner.tools.registry import CORE_TOOLS, ToolRegistry
+from cre_brain.runner.tools.registry import ToolRegistry
 
 
 class ReplayError(ValueError):
@@ -156,7 +156,7 @@ class FakeRunner:
             args = call.payload.get("arguments")
             if (
                 not isinstance(tool, str)
-                or tool not in CORE_TOOLS
+                or tool not in self.registry.tool_models
                 or not isinstance(args, dict)
                 or call.payload.get("call_id") != result.payload.get("call_id")
                 or tool != result.payload.get("tool")
@@ -169,7 +169,7 @@ class FakeRunner:
             if set(actual) != set(args):
                 raise ReplayError("Loose matching requires the same tool and argument keys")
             try:
-                CORE_TOOLS[tool].model_validate(actual)
+                self.registry.tool_models[tool].model_validate(actual)
             except ValueError:
                 raise ReplayError("Unsupported recorded tool arguments") from None
             prepared.append((tool, actual, result_status(result.payload)))

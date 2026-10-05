@@ -31,13 +31,24 @@ def generate(
     """
     assets: dict[str, bytes] = {}
     lead = files.read(brain_root, brain_root / "prompts/lead.md").decode("utf-8")
+    playbook_path = brain_root / "playbook/global.md"
+    public_playbook = (
+        files.read(brain_root, playbook_path).decode("utf-8") if playbook_path.exists() else ""
+    )
     overlays = [
         files.read(brain_root, path).decode("utf-8")
         for path in sorted((brain_root / "prompts/overlays/codex").glob("*.md"))
     ]
     catalog = "Deliverable catalog\n" + "\n".join(kind.value for kind in DeliverableKind)
     assets["AGENTS.md"] = "\n\n".join(
-        (lead, *overlays, "Firm playbook\n" + firm_summary, "User memory\n" + user_memory, catalog)
+        (
+            lead,
+            *overlays,
+            "Public playbook\n" + public_playbook,
+            "Firm playbook\n" + firm_summary,
+            "User memory\n" + user_memory,
+            catalog,
+        )
     ).encode()
     # Read only explicit skill trees. No symlinks, credentials, Python repo or truth.
     skill_root = brain_root / "skills"

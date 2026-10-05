@@ -8,7 +8,7 @@ HTTP, sampling or model calls. This module claims offline protocol plumbing only
 from typing import Any, TextIO
 
 from cre_brain.runner.tools.json_io import MAX_BYTES, canonical, parse
-from cre_brain.runner.tools.registry import CORE_TOOLS, ToolRegistry, refused
+from cre_brain.runner.tools.registry import ToolRegistry, refused
 
 VERSIONS = ("2025-06-18", "2025-03-26", "2024-11-05")
 
@@ -54,7 +54,7 @@ def handle_message(registry: ToolRegistry, message: dict[str, Any]) -> dict[str,
                         "description": f"Canonical scoped CRE {name} tool",
                         "inputSchema": model.model_json_schema(),
                     }
-                    for name, model in CORE_TOOLS.items()
+                    for name, model in registry.tool_models.items()
                 ]
             }
         elif method == "tools/call":

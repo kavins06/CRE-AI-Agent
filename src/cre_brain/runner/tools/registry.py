@@ -24,6 +24,8 @@ from cre_brain.domain import (
 from cre_brain.excel.base import ExcelEngine
 from cre_brain.finance.risk import RiskPolicy
 from cre_brain.gates.snapshot import ArtifactSnapshot
+from cre_brain.knowledge.library import KnowledgeProvider
+from cre_brain.knowledge.models import SearchRequest, SearchResult
 from cre_brain.runner.policy import HostContext, Limits, Refusal, charge, remaining_seconds
 from cre_brain.runner.tools import files, finance
 from cre_brain.runner.tools.contracts import (
@@ -92,6 +94,7 @@ class ToolRegistry:
         connectors: dict[str, ExternalConnector] | None = None,
         risk_policy: RiskPolicy | None = None,
         publication_authority: PublicationAuthority | None = None,
+        knowledge_provider: KnowledgeProvider | None = None,
     ) -> None:
         self._publication_authority = publication_authority
         self.engine = engine
@@ -115,11 +118,19 @@ class ToolRegistry:
             ).model_dump(warnings=False)
         )
         self.gates = gates
+        self.knowledge_provider = knowledge_provider
         self.excel_engine = excel_engine
         self.connectors = dict(connectors or {})
         self.risk_policy = (
             None if risk_policy is None else RiskPolicy.model_validate(risk_policy.model_dump())
         )
+
+    @property
+    def tool_models(self) -> dict[str, type[BaseModel]]:
+        models = dict(CORE_TOOLS)
+        if self.knowledge_provider is not None:
+            models["knowledge_search"] = SearchRequest
+        return models
 
     @property
     def publication_authority(self) -> PublicationAuthority | None:
@@ -149,6 +160,7 @@ class ToolRegistry:
             connectors=self.connectors,
             risk_policy=self.risk_policy,
             publication_authority=self.publication_authority,
+            knowledge_provider=self.knowledge_provider,
         )
 
     @contextmanager
@@ -182,7 +194,7 @@ class ToolRegistry:
             self.limits = Limits.model_validate(self.limits.model_dump(warnings=False))
             # Round-trip even direct calls: reject non-JSON objects and deep payloads.
             arguments = parse(canonical(arguments))
-            if name not in CORE_TOOLS:
+            if name not in self.tool_models:
                 return refused("unknown_tool", "Choose a tool from the canonical registry.")
             body_hash = files.digest(canonical({"name": name, "args": arguments}).encode())
             identity = request_id or "auto-" + body_hash
@@ -200,7 +212,7 @@ class ToolRegistry:
                         "Only the authenticated lead or user may call CRE tools.",
                     )
                 try:
-                    request = CORE_TOOLS[name].model_validate(arguments)
+                    request = self.tool_models[name].model_validate(arguments)
                 except ValidationError:
                     return refused(
                         "invalid_input", "Provide only the fields in this tool's input schema."
@@ -277,7 +289,7 @@ class ToolRegistry:
                     "ok",
                     "pending_confirmation",
                     "pending_delivery",
-                } and name not in {"facts_get", "rules_eval", "finance_run"}:
+                } and name not in {"facts_get", "rules_eval", "finance_run", "knowledge_search"}:
                     state.event(
                         "tool_result",
                         {"request_id": identity, "body_hash": body_hash, "response": response},
@@ -305,6 +317,13 @@ class ToolRegistry:
     def dispatch(
         self, state: ToolState, name: str, request: BaseModel, identity: str
     ) -> dict[str, Any]:
+        if isinstance(request, SearchRequest):
+            if self.knowledge_provider is None:
+                raise Refusal("missing_provider", "Host must inject the public knowledge provider.")
+            result = SearchResult.model_validate(
+                self.knowledge_provider.search(request).model_dump(mode="json")
+            )
+            return ok(result.model_dump(mode="json"))
         if isinstance(request, FactGet):
             if request.reference.kind != "fact":
                 raise Refusal("invalid_input", "facts_get requires a fact reference.")
