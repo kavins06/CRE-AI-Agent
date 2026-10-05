@@ -1329,3 +1329,56 @@ uv run --locked pytest tests -m "not integration" -q
 - BLOCKED: genuine runtime caps, authenticated cancellation/usage/resume and recovery
   evidence remain absent. Runtime choice and hosted-CI scope need owner alignment;
   no new broad analyst role or speculative adapter is justified by synthetic tests.
+
+### 2026-10-04: Assembled reviewed run-loop/accounting source settles locally
+
+- Branch: `dev`, assembled source commit `a829e2587be7b0b2acb5bb296db98e3055699674`.
+  The source tree matches the reviewed T033 task branch exactly.
+- Pre-commit: lint, formatting and strict source types all passed on both task and
+  assembled checkouts. Full unchanged assembled `make check` -> exit 0, isolated
+  `TMPDIR=/dev/shm/cre-70d6-dev-assembled-7yPstr`, `PYTEST_ADDOPTS=''`.
+- Final verifier tail (30 lines):
+
+```text
+........................................................................ [ 25%]
+......................................s................................. [ 29%]
+........................................................................ [ 34%]
+........................................................................ [ 38%]
+........................................................................ [ 42%]
+........................................................................ [ 47%]
+........................................................................ [ 51%]
+........................................................................ [ 55%]
+........................................................................ [ 59%]
+........................................................................ [ 64%]
+........................................................................ [ 68%]
+........................................................................ [ 72%]
+.........................s.............................................. [ 77%]
+........................................................................ [ 81%]
+........................................................................ [ 85%]
+........................................................................ [ 89%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+.........................                                                [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  /srv/infra/devin-outpost/sessions/devin-70d6ca47bdbf4faf8083ca76c4988784/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:24: DeprecationWarning: 'click.utils.get_binary_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_binary_stream
+
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  /srv/infra/devin-outpost/sessions/devin-70d6ca47bdbf4faf8083ca76c4988784/workspace/repos/CRE-AI-Agent/.venv/lib/python3.12/site-packages/typer/__init__.py:25: DeprecationWarning: 'click.utils.get_text_stream' is deprecated and will be removed in Click 9.0.
+    from click.utils import get_text_stream
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1678 passed, 3 skipped, 17 deselected, 2 warnings in 569.26s (0:09:29)
+```
+
+- Saved task-branch source to GitHub without triggering configured hosted workflows.
+  `dev`/`main` are not pushed/promoted pending hosted-CI scope and applicable owner gates.
+- Audit conclusion stands: retain finance/provenance/security, prove one SCREEN runtime,
+  then replace retained CLI loops with one persistent submit/status/replay host. No new
+  broad orchestration or advisory integration. T030/T033/T039/T040 remain false.
+- Next / BLOCKED: decide the genuine runtime path; require caps, authenticated native
+  cancellation/usage/resume and recovery proof before extending the product. OpenAI's
+  Responses parameter documents a generation bound including reasoning tokens, but that
+  alone does not prove whole-segment accounting or approve new API spending:
+  https://github.com/openai/openai-python/blob/main/src/openai/types/responses/response_create_params.py
