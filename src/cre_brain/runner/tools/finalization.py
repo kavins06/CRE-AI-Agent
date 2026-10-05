@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
 from cre_brain.domain import Deliverable, GateResult
 from cre_brain.domain.base import TenantScope
@@ -15,6 +15,23 @@ from cre_brain.runner.tools.json_io import canonical
 from cre_brain.runner.tools.registry import ToolRegistry, ok, refused
 from cre_brain.runner.tools.state import ToolState
 from cre_brain.state import publications
+
+
+class PublicationAuthority(Protocol):
+    """Independent, host-bound lifecycle authorization; never a gate verdict.
+
+    Existing hosts may omit this additional restriction. Once an embedding binds
+    it to a registry, every finalization and trusted release replay must authorize
+    under the same canonical transaction, regardless of the chosen gate provider.
+    """
+
+    def authorize(self, registry: ToolRegistry, state: ToolState) -> None: ...
+
+
+def authorize_publication(registry: ToolRegistry, state: ToolState) -> None:
+    authority = registry.publication_authority
+    if authority is not None:
+        authority.authorize(registry, state)
 
 
 def artifact_snapshot(
@@ -94,6 +111,7 @@ def artifact_snapshot(
 
 
 def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dict[str, Any]:
+    authorize_publication(registry, state)
     anchor, snapshot = registry.artifact_snapshot(state, request.deliverable_id, final_replay=True)
     registry.require_gates()
     assert registry.gates is not None
@@ -176,6 +194,7 @@ def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dic
     # encoded into the ordinary stored/streamed/exported event envelope.
     canonical(payload)
     registry.deadline(state)
+    authorize_publication(registry, state)
     state.append(final, publication=publication)
     state.event("deliverable", payload)
     # A workspace race during the transition must roll back the entire release.
@@ -247,6 +266,7 @@ def trusted_release(
     current: Deliverable,
 ) -> None:
     """One authentication rule for finalization replay, FakeRunner and external sends."""
+    authorize_publication(registry, state)
     names = required_gates(current.kind, anchor.extraction)
     baseline = Deliverable.model_validate(
         {

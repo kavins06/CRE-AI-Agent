@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import Engine
@@ -50,6 +50,10 @@ from cre_brain.runner.tools.json_io import canonical, parse
 from cre_brain.runner.tools.state import ToolState, fingerprint
 from cre_brain.state.store import lock_append
 
+if TYPE_CHECKING:
+    from cre_brain.runner.tools.finalization import PublicationAuthority
+
+
 CORE_TOOLS: dict[str, type[BaseModel]] = {
     "facts_get": FactGet,
     "facts_put": FactPut,
@@ -87,7 +91,9 @@ class ToolRegistry:
         excel_engine: ExcelEngine | None = None,
         connectors: dict[str, ExternalConnector] | None = None,
         risk_policy: RiskPolicy | None = None,
+        publication_authority: PublicationAuthority | None = None,
     ) -> None:
+        self._publication_authority = publication_authority
         self.engine = engine
         self.context = HostContext.model_validate(context.model_dump(warnings=False))
         self.workspace = workspace.absolute()
@@ -115,6 +121,19 @@ class ToolRegistry:
             None if risk_policy is None else RiskPolicy.model_validate(risk_policy.model_dump())
         )
 
+    @property
+    def publication_authority(self) -> PublicationAuthority | None:
+        """Host lifecycle authorization is independent of replaceable gate providers."""
+        return self._publication_authority
+
+    def bind_publication_authority(self, authority: PublicationAuthority) -> None:
+        """Trusted embedding binds once; ordinary gate/provider changes cannot remove it."""
+        if self._publication_authority is not None and self._publication_authority is not authority:
+            raise Refusal(
+                "publication_authority_conflict", "Recompose through the authenticated host."
+            )
+        self._publication_authority = authority
+
     def clone(
         self, *, context: HostContext | None = None, limits: Limits | None = None
     ) -> ToolRegistry:
@@ -129,17 +148,22 @@ class ToolRegistry:
             excel_engine=self.excel_engine,
             connectors=self.connectors,
             risk_policy=self.risk_policy,
+            publication_authority=self.publication_authority,
         )
 
     @contextmanager
-    def transaction(self) -> Iterator[ToolState]:
-        with self.engine.begin() as connection:
-            lock_append(connection, self.context.scope, ("tools",))
+    def transaction(
+        self, *, context: HostContext | None = None, engine: Engine | None = None
+    ) -> Iterator[ToolState]:
+        context = context or self.context
+        engine = engine or self.engine
+        with engine.begin() as connection:
+            lock_append(connection, context.scope, ("tools",))
             if connection.dialect.name == "postgresql":
                 # Coordinate with existing state graph and event writers as well.
-                lock_append(connection, self.context.scope, ("graph",))
-                lock_append(connection, self.context.scope, ("events", self.context.task_id))
-            yield ToolState(connection, self.context)
+                lock_append(connection, context.scope, ("graph",))
+                lock_append(connection, context.scope, ("events", context.task_id))
+            yield ToolState(connection, context)
 
     def call_json(self, name: str, raw: str, *, request_id: str | None = None) -> dict[str, Any]:
         try:
