@@ -1154,3 +1154,17 @@ independent final source review: SOURCE PASS
 - Decisions: protected publication bodies are retrieved only through authenticated tenant/task/deal/release/version bindings. Current reads require canonical freshness; explicit versions are immutable archival reads. Reauthorization occurs immediately before connector delivery. Metadata, aggregate bytes and deadlines are bounded before commit. Complete bodies and reversible whole-body encodings never enter ordinary events.
 - T038 stays false. Acceptance-name tests and FakeRunner replay prove plumbing, not analyst quality. Risk calibration, real host intake, restored authority pins, live isolated runtime, download integration, production crash/concurrency behavior and latency targets remain unproved.
 - Next: save reviewed source, integrate it locally with T035, then integrate the deterministic UW core and resumable jobs before wiring the first run plus independent advisory review. Task-branch pushes do not trigger hosted CI; dev push, CI-triggering PRs and main promotion remain held on the no-cloud clarification.
+
+## 2026-10-05 — T039 host-only underwriting core handoff; full acceptance BLOCKED
+- Added typed Fact/Assumption/CalcResult composition over existing proforma, tax, value-add, debt and returns functions. Canonical append-only calculations retain inputs, output references, implementation digests and dependency edges. Explicit assumption ranges/rationale/proxy flags and seller provenance remain in evidence snapshots. Undefined/ambiguous IRRs are labelled; this core makes no investment recommendation.
+- Independent GPT-6.1 Sol review reproduced superseded assumptions, lost refusal charges, post-work deadline bypass and unbounded traversal/computation. Red-first repairs require active assumptions across cached dependencies, preserve typed-refusal charges while atomically rolling back calculation writes, check deadlines at commit, and preflight bounded request/graph/cohort/flow shapes. Final review: SOURCE PASS, including 46 in-memory cases and five independent probes.
+- Same-session verified evidence:
+```text
+focused UW/finance/Excel: 404 passed, 1 existing approved license skip, 5 integration deselections
+Ruff/format/strict mypy: passed
+coordinator genuine UNO UW tests using persistent approved runtime: 58 passed, no skips
+unchanged check_task.py T039: 5 passed; exit1 for missing AC3
+```
+- Decisions: the core is host-only, not an analyst command or parallel authoritative state store. Workbook creation delegates existing trusted mapping/recalculation and returns only after parity; unsupported optional schedules, assumptions and horizons refuse rather than masquerading as whole-model parity. The host binding snapshot limit is separately 1 MiB; the shared ordinary tool-message limit remains 128 KiB.
+- T039 remains false. Real subset recalculation does not prove broader model parity, risk/protected paired publication, an underwrite skill/FakeRunner, CLI, live runtime, analyst quality or hidden evaluation success. No baseline assertions, acceptance bars, owner guards or private evals were changed.
+- Next: integrate with reviewed T035/T038 locally, wire the supported core into checked UW publication and resumable run orchestration, then add read-only advisory review. Dev/main promotion remains held on hosted-CI clarification and applicable owner gates.
