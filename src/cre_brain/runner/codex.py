@@ -215,6 +215,7 @@ class CodexRunner:
                     raise SandboxError(
                         "cleanup_unverified: unknown runtime start requires recovery"
                     )
+                usage_complete = True
                 return
             if cancelled:
                 return

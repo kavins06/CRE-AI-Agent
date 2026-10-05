@@ -1,5 +1,7 @@
 """Offline lead regressions: observed usage is not a durable charge."""
 
+import time
+
 import pytest
 from tests.runner import test_codex_t033 as fixtures
 
@@ -129,3 +131,30 @@ async def test_t035_ac1_lead_reconciliation_failure_keeps_commitment(setup, monk
         await fixtures.collect(
             runner, seg.model_copy(update={"segment_no": 1}), ws, registry.context
         )
+
+
+@pytest.mark.asyncio
+async def test_repair_deadline_before_native_start_has_complete_zero_usage(setup, monkeypatch):
+    registry, _, _, ws, seg = setup
+    runner, runtime = fixtures.build(setup)
+    reserve = RunnerState.reserve
+
+    def slow_reserve(self, *args, **kwargs):
+        result = reserve(self, *args, **kwargs)
+        time.sleep(0.03)
+        return result
+
+    with monkeypatch.context() as patch:
+        patch.setattr(RunnerState, "reserve", slow_reserve)
+        events = await fixtures.collect(
+            runner, seg.model_copy(update={"timeout_s": 0.005}), ws, registry.context
+        )
+    assert runtime.request is None
+    assert not runtime.process.cancelled
+    assert events[-1].payload["reason"] == "budget"
+    assert events[-1].payload["tokens"] == 0
+    assert events[-1].payload["usage_complete"] is True
+    resumed = await fixtures.collect(
+        runner, seg.model_copy(update={"segment_no": 1}), ws, registry.context
+    )
+    assert resumed[-1].payload["reason"] == "completed"

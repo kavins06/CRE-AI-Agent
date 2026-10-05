@@ -16,6 +16,15 @@
 ## Needs owner
 <!-- Blockers that need the owner: missing secrets, licences, spec questions. -->
 
+- T030/T033 runtime decision: the installed Codex CLI's configured rollout budget
+  accounts after usage, not proof of a preventive per-call cap. Per ADR-0001, do not
+  extend orchestration around this gap: obtain a verified infrastructure adapter or
+  decide whether separately funded, capped OpenAI API execution is acceptable.
+  Authentication, cancellation receipts and resume/recovery still need genuine proof.
+- GitHub-hosted CI remains held pending clarification of the Outpost-only instruction.
+  Saving a task branch does not trigger the configured PR workflows; pushing `dev`
+  updates open PR #1 and does. No owner guards or required checks may be bypassed.
+
 ## Log
 
 ### Template
@@ -1267,3 +1276,56 @@ Ruff: all checks passed; eight files already formatted. Strict mypy: no issues i
 - Blockers: T039/T040 stay false because synthetic plumbing and source review do not prove
   containment, preventive hard caps, descendant termination, authenticated cancellation,
   killed-run attach/resume, persistence-outage recovery or canonical live usage.
+
+### 2026-10-04: T033 known-zero pre-start usage repair (live acceptance remains false)
+
+- Branch: `task/T033-no-start-accounting`, based on the assembled `8d21f66` source.
+- Reproduced red-first: durable reservation can exhaust the segment deadline before
+  native start is attempted. Cleanup then incorrectly left known-zero usage incomplete,
+  preventing the next segment. One-line repair marks usage complete only in that
+  no-start branch. A failed/unknown native start still requires recovery.
+- Added regression: delayed reservation -> no native request/cancellation, budget stop,
+  zero tokens, complete usage; a later segment remains admissible. No existing assertion,
+  acceptance flag, safety gate, transcript or protected owner control changed.
+- Independent GPT-6.1 Sol read-only source review: `SOURCE PASS`. Reviewed staging/start
+  ownership, unknown-start refusal, accounting, next-segment admission and tenant binding.
+- Focused neighboring runner/accounting/cleanup checks: 112 passed, 1 deselected.
+- Full check attempts are retained, not hidden: first had 1677 passes and a Hypothesis
+  input-generation health-check failure; its reported seed then passed unchanged.
+  Second had 1677 passes and the existing consumer-close test's 20 ms pre-start timing
+  assumption failed. The new deadline regression confirms no unstarted process should
+  be cancelled merely to satisfy that assumption. No health check or assertion changed.
+- Five sequential runs of that existing consumer-close test plus the new regression
+  passed unchanged with isolated RAM-backed temporary SQLite files. This does not prove
+  that every timing-sensitive fixture is generally free of flakes.
+- Final `make check` -> exit 0, isolated `TMPDIR`, empty inherited `PYTEST_ADDOPTS`:
+
+```bash
+TMPDIR=/dev/shm/cre-70d6-no-start-full-oqQpTb PYTEST_ADDOPTS='' make check
+```
+
+```text
+uv run --locked ruff check src tests
+All checks passed!
+uv run --locked ruff format --check src tests
+223 files already formatted
+uv run --locked mypy src
+Success: no issues found in 144 source files
+uv run --locked pytest tests -m "not integration" -q
+1678 passed, 3 skipped, 17 deselected, 2 warnings in 499.60s (0:08:19)
+```
+
+- Runtime reconnaissance only: installed CLI is 0.160.0; its matching upstream schema
+  defines `features.rollout_budget.limit_tokens`, and `RolloutBudgetController.record_usage`
+  adds returned usage before checking exhaustion. This is not preventive hard-cap evidence.
+  Source: https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/core/src/rollout_budget.rs
+- A trusted, model-free bubblewrap 0.9.0 smoke on this Outpost produced namespace UID/GID
+  65534, zero capabilities, only loopback, and no host home/repository mounts. No shared
+  daemon, host network/firewall change, authenticated model call or production adapter
+  was started. This is not complete containment, egress or cancellation acceptance.
+- Next: integrate the reviewed source into local `dev`, rerun assembled checks, and save
+  the task branch without launching hosted CI. Follow ADR-0001's narrow SCREEN/runtime
+  sequencing; advisory transport stays deferred. T030/T033/T039/T040 remain false.
+- BLOCKED: genuine runtime caps, authenticated cancellation/usage/resume and recovery
+  evidence remain absent. Runtime choice and hosted-CI scope need owner alignment;
+  no new broad analyst role or speculative adapter is justified by synthetic tests.
