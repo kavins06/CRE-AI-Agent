@@ -2,6 +2,7 @@
 
 import hashlib
 from collections.abc import Callable
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel
@@ -17,15 +18,17 @@ from cre_brain.finance.returns import (
     cash_on_cash,
     excel_npv,
 )
+from cre_brain.finance.risk import RiskInput, RiskPolicy, risk_score
 from cre_brain.runner.policy import Refusal
 from cre_brain.runner.tools.contracts import FinanceRun, Reference
-from cre_brain.runner.tools.evidence import number
+from cre_brain.runner.tools.evidence import number, screen_fact
 from cre_brain.runner.tools.json_io import canonical
 from cre_brain.runner.tools.state import ToolState, fingerprint
 
 # Actual finance functions only. Complex debt/tax/waterfall contracts can be added
 # with field-specific units; arbitrary import names or Python execution are forbidden.
 SCHEMAS: dict[str, tuple[type[BaseModel], Callable[..., CalcResult], dict[str, str]]] = {
+    "risk_score": (RiskInput, risk_score, {"occupancy": "ratio", "dscr": "ratio"}),
     "calculate_exit": (
         ExitInput,
         calculate_exit,
@@ -66,6 +69,8 @@ SCHEMAS: dict[str, tuple[type[BaseModel], Callable[..., CalcResult], dict[str, s
 
 
 def output_units(fn: str, outputs: dict[str, Any]) -> dict[str, str]:
+    if fn == "risk_score":
+        return {"risk_score": "ratio"}
     if fn in {"calculate_exit", "build_proforma"}:
         return dict.fromkeys(outputs, "USD")
     if fn == "excel_npv":
@@ -93,7 +98,9 @@ def output_units(fn: str, outputs: dict[str, Any]) -> dict[str, str]:
     return result
 
 
-def run(state: ToolState, request: FinanceRun) -> CalcResult:
+def run(
+    state: ToolState, request: FinanceRun, *, risk_policy: RiskPolicy | None = None
+) -> CalcResult:
     if request.fn not in SCHEMAS:
         raise Refusal("unknown_function", "Select a supported deterministic finance function.")
     model, function, units = SCHEMAS[request.fn]
@@ -123,7 +130,19 @@ def run(state: ToolState, request: FinanceRun) -> CalcResult:
                 )
             values[field] = tuple(dates)
             continue
-        numbers = [number(state, ref, units[field]) for ref in group]
+        if request.fn == "risk_score":
+            numbers = []
+            for ref in group:
+                fact = screen_fact(state, ref)
+                if (
+                    ref.key != field
+                    or ref.unit != units[field]
+                    or not isinstance(fact.value, Decimal)
+                ):
+                    raise Refusal("incompatible_evidence", "Risk inputs require canonical ratios.")
+                numbers.append(fact.value)
+        else:
+            numbers = [number(state, ref, units[field]) for ref in group]
         if field == "projection_months":
             if len(numbers) != 1 or numbers[0] != numbers[0].to_integral_value():
                 raise Refusal(
@@ -147,22 +166,36 @@ def run(state: ToolState, request: FinanceRun) -> CalcResult:
     code_version = hashlib.sha256(
         b"".join(p.name.encode() + p.read_bytes() for p in files)
     ).hexdigest()
+    if request.fn == "risk_score":
+        if risk_policy is None:
+            raise Refusal("missing_provider", "Risk calculation requires an immutable host policy.")
+        values["policy"] = RiskPolicy.model_validate(risk_policy.model_dump())
     identity_data = {
         "deal": state.context.deal_id,
         "fn": request.fn,
         "args": request.model_dump(mode="json", warnings=False)["args"],
         "code": code_version,
+        **(
+            {"policy": values["policy"].model_dump(mode="json")}
+            if request.fn == "risk_score"
+            else {}
+        ),
     }
     calc_id = "calc-" + hashlib.sha256(canonical(identity_data).encode()).hexdigest()
-    source = model.model_validate({"input_id": calc_id, **values})
+    source = model.model_validate(
+        {"input_id": "risk-input-" + calc_id if request.fn == "risk_score" else calc_id, **values}
+    )
     result = function(source, calc_id=calc_id, code_version=code_version)
     result = CalcResult.model_validate(
         {
             **result.model_dump(warnings=False),
             "inputs": {
-                f"{field}:{index}": ref.record_id
-                for field, raw in request.args.items()
-                for index, ref in enumerate(raw if isinstance(raw, list) else [raw])
+                **({"policy": source.input_id} if isinstance(source, RiskInput) else {}),
+                **{
+                    f"{field}:{index}": ref.record_id
+                    for field, raw in request.args.items()
+                    for index, ref in enumerate(raw if isinstance(raw, list) else [raw])
+                },
             },
         }
     )

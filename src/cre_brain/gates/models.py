@@ -19,6 +19,7 @@ from cre_brain.domain.models import DomainModel
 from cre_brain.excel.models import TemplateMap
 from cre_brain.finance.proforma import ProFormaInput
 from cre_brain.finance.returns import ReturnsInput
+from cre_brain.finance.risk import RiskInput
 from cre_brain.finance.scenarios import FragilityInput
 from cre_brain.rules.models import AssumptionPolicy, BuyBoxPolicy, LoiPolicy
 
@@ -117,9 +118,9 @@ class FinanceRecipe(Boundary):
     """
 
     calc_id: Identifier
-    function: Literal["calculate_returns", "build_proforma"]
+    function: Literal["calculate_returns", "build_proforma", "risk_score"]
     code_version: Identifier
-    source: ReturnsInput | ProFormaInput
+    source: ReturnsInput | ProFormaInput | RiskInput
     dependencies: dict[str, EvidenceRef] = Field(default_factory=dict)
     model_id: Identifier | None = None
     model_version: int = Field(default=1, strict=True, ge=1)
@@ -127,8 +128,18 @@ class FinanceRecipe(Boundary):
 
     @model_validator(mode="after")
     def compatible(self) -> "FinanceRecipe":
-        if (self.function == "calculate_returns") != isinstance(self.source, ReturnsInput):
+        expected = {
+            "calculate_returns": ReturnsInput,
+            "build_proforma": ProFormaInput,
+            "risk_score": RiskInput,
+        }
+        if type(self.source) is not expected[self.function]:
             raise ValueError("Recipe function must match its typed finance input")
+        if isinstance(self.source, RiskInput) and (
+            set(self.dependencies) != {"occupancy", "dscr"}
+            or any(ref.kind != "fact" for ref in self.dependencies.values())
+        ):
+            raise ValueError("Risk recipes require complete canonical headline fact pins")
         return self
 
 
@@ -145,7 +156,17 @@ class ModelContract(Boundary):
     assumptions: dict[str, AssumptionCheck] = Field(default_factory=dict)
 
 
+class MemoPair(Boundary):
+    """Host-issued byte identities for the two representations of one SCREEN memo."""
+
+    markdown: Path
+    json_path: Path
+    markdown_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    json_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
 class GatePlan(Boundary):
+    memo_pair: MemoPair | None = None
     model: ModelContract | None = None
     coverage: tuple[CoverageField, ...] = ()
     checksums: tuple[Checksum, ...] = ()
@@ -167,7 +188,7 @@ class GatePlan(Boundary):
     extraction: bool = False
 
 
-FinanceInput = ReturnsInput | FragilityInput | ProFormaInput
+FinanceInput = ReturnsInput | FragilityInput | ProFormaInput | RiskInput
 
 
 class InputProvider(Protocol):
@@ -230,7 +251,7 @@ class TrustedInputs:
         key = (scope.user_id, scope.firm_id, deal_id, recipe.calc_id)
         if key in self._recipes and self._recipes[key] != recipe:
             raise ValueError("Canonical finance recipes are immutable")
-        if not recipe.dependencies:
+        if not recipe.dependencies or isinstance(recipe.source, RiskInput):
             self.put_input(scope, deal_id, recipe.source)
         self._recipes[key] = recipe
 

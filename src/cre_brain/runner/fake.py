@@ -11,6 +11,7 @@ from cre_brain.runner.policy import ADVISORY, HostContext, required_gates
 from cre_brain.runner.record import RecordError, load_recording
 from cre_brain.runner.segment import SegmentSpec, Workspace
 from cre_brain.runner.state_adapter import RunnerState
+from cre_brain.runner.tools.finalization import trusted_release
 from cre_brain.runner.tools.json_io import canonical, parse
 from cre_brain.runner.tools.registry import CORE_TOOLS, ToolRegistry
 
@@ -52,7 +53,7 @@ class RegistryReplayAdapter:
                     for name, result in zip(names, current.gate_results, strict=True):
                         if name in ADVISORY:
                             continue
-                        fresh = self.registry.gates.check_bytes(name, current, snapshot)
+                        fresh = self.registry.gates.check_bytes(name, anchor.deliverable, snapshot)
                         if (
                             not result.passed
                             or result.failures
@@ -60,15 +61,7 @@ class RegistryReplayAdapter:
                             or fresh.failures
                         ):
                             raise ReplayError("Replay final state has failing blocking gates")
-                    if not any(
-                        e.kind == "deliverable"
-                        and e.release_id == self.registry.context.release_id
-                        and e.payload.get("d_id") == identity
-                        and e.payload.get("version") == current.version
-                        and e.payload.get("sha256") == anchor.sha256
-                        for e in state.history()
-                    ):
-                        raise ReplayError("Replay final state has no trusted release transition")
+                    trusted_release(self.registry, state, anchor, snapshot, current)
                     self.registry.artifact(state, identity, final_replay=True)
                     self.registry.deadline(state)
         except ReplayError:

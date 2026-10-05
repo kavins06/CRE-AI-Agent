@@ -5,6 +5,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     Integer,
+    LargeBinary,
     MetaData,
     String,
     Table,
@@ -32,6 +33,21 @@ for name in VERSIONED:
         Column("record_id", String(128), primary_key=True),
         Column("version", Integer, primary_key=True),
         Column("payload", JSON, nullable=False),
+        *(
+            [
+                Column(
+                    "publication",
+                    LargeBinary,
+                    CheckConstraint(
+                        "publication IS NULL OR length(publication) <= 33685508",
+                        name="deliverables_bounded_publication",
+                    ),
+                    nullable=True,
+                )
+            ]
+            if name == "deliverables"
+            else []
+        ),
         CheckConstraint("version >= 1", name=f"{name}_positive_version"),
     )
 

@@ -96,10 +96,16 @@ class FactAnchor(Boundary):
     authority: Literal["verified_source", "authorized_user", "quarantine"]
 
 
+class ArtifactCompanion(Boundary):
+    path: Path
+    sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
 class Artifact(Boundary):
     deliverable: Deliverable
     sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     extraction: bool = False
+    companions: tuple[ArtifactCompanion, ...] = Field(default=(), max_length=4)
 
 
 class Template(Boundary):

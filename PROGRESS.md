@@ -1118,3 +1118,19 @@ Strict runner mypy, all pre-commit hooks, uv lock --check and git diff --check: 
 - Validation correction: this checkout defaults to --basetemp=.cache/pytest. Overlapping focused tests deleted full-run workbook fixtures, causing false failures/ENOENT. The final full run used a distinct basetemp and passed unchanged workbook assertions; no finance/gate weakening or source repair was needed. Use separate temporary roots for concurrent tests.
 - Next: save/push the reviewed source task branch, integrate locally with acceptance false, then author quarantined T035 extraction and T038 SCREEN in separate Outpost worktrees. These can develop source plumbing independently of live runtime acceptance.
 - Needs owner: genuine restricted runtime/auth/cap enforcement and T030's two assertion corrections remain unresolved; hosted-CI/no-cloud clarification still blocks dev push, CI-triggering PRs and milestone/main promotion. Existing owner guards and private-eval isolation remain intact.
+
+## 2026-10-05 — T038 SCREEN source handoff; calibration/runtime acceptance BLOCKED
+- Added rules-first document classification; canonical-Fact headline resolution; host-authorized buy-box evaluation; deterministic uncalibrated risk provenance; paired Markdown/JSON SCREEN drafts; strict gate/replay/send contracts; immutable protected publication storage; and migration `0002_deliverable_publication` without modifying frozen `0001` or its canonical table set.
+- Independent GPT-6.1 Sol reviews reproduced empty anchors, mutable companion swaps, source-text masking regressions, publication-body event leakage, stale-default retrieval and workspace-mirror publication authority. Red-first repairs keep body bytes in the bounded append-only SQL publication column, keep only references/digests in ordinary events, use protected SQL bodies for replay/cache/send, reject stale omitted-version reads and preserve explicitly authenticated historical versions. Mirrors remain fail-closed integrity/availability guards rather than byte authority.
+- Same-session coordinator verification after final repairs (exit0):
+```text
+make check: 1300 passed, 3 approved-marker skips, 15 integration deselected
+Ruff/format/strict mypy: passed
+uv run pytest tests/deliverables -q -k screen: 130 passed
+uv run python scripts/check_task.py T038: 132 passed, T038 AC1-AC3 PASSED
+isolated-schema PostgreSQL migration/publication tests: 3 passed
+independent final source review: SOURCE PASS
+```
+- Decisions: protected publication bodies are retrieved only through authenticated tenant/task/deal/release/version bindings. Current reads require canonical freshness; explicit versions are immutable archival reads. Reauthorization occurs immediately before connector delivery. Metadata, aggregate bytes and deadlines are bounded before commit. Complete bodies and reversible whole-body encodings never enter ordinary events.
+- T038 stays false. Acceptance-name tests and FakeRunner replay prove plumbing, not analyst quality. Risk calibration, real host intake, restored authority pins, live isolated runtime, download integration, production crash/concurrency behavior and latency targets remain unproved.
+- Next: save reviewed source, integrate it locally with T035, then integrate the deterministic UW core and resumable jobs before wiring the first run plus independent advisory review. Task-branch pushes do not trigger hosted CI; dev push, CI-triggering PRs and main promotion remain held on the no-cloud clarification.

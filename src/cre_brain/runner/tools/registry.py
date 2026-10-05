@@ -22,6 +22,7 @@ from cre_brain.domain import (
     Question,
 )
 from cre_brain.excel.base import ExcelEngine
+from cre_brain.finance.risk import RiskPolicy
 from cre_brain.gates.snapshot import ArtifactSnapshot
 from cre_brain.runner.policy import HostContext, Limits, Refusal, charge
 from cre_brain.runner.tools import files, finance
@@ -85,6 +86,7 @@ class ToolRegistry:
         gates: GateProvider | None = None,
         excel_engine: ExcelEngine | None = None,
         connectors: dict[str, ExternalConnector] | None = None,
+        risk_policy: RiskPolicy | None = None,
     ) -> None:
         self.engine = engine
         self.context = HostContext.model_validate(context.model_dump(warnings=False))
@@ -109,6 +111,9 @@ class ToolRegistry:
         self.gates = gates
         self.excel_engine = excel_engine
         self.connectors = dict(connectors or {})
+        self.risk_policy = (
+            None if risk_policy is None else RiskPolicy.model_validate(risk_policy.model_dump())
+        )
 
     def clone(
         self, *, context: HostContext | None = None, limits: Limits | None = None
@@ -123,6 +128,7 @@ class ToolRegistry:
             gates=self.gates,
             excel_engine=self.excel_engine,
             connectors=self.connectors,
+            risk_policy=self.risk_policy,
         )
 
     @contextmanager
@@ -207,7 +213,12 @@ class ToolRegistry:
                                 "idempotency_conflict",
                                 "A new artifact version requires a new release request ID.",
                             )
-                        self.artifact(state, arguments["deliverable_id"], final_replay=True)
+                        from cre_brain.runner.tools.finalization import trusted_release
+
+                        anchor, snapshot = self.artifact_snapshot(
+                            state, arguments["deliverable_id"], final_replay=True
+                        )
+                        trusted_release(self, state, anchor, snapshot, current)
                     if response["status"] != "pending_confirmation":
                         return dict(response)
                 try:
@@ -353,7 +364,11 @@ class ToolRegistry:
                 }
             )
         if isinstance(request, FinanceRun):
-            return ok(finance.run(state, request).model_dump(mode="json", warnings=False))
+            return ok(
+                finance.run(state, request, risk_policy=self.risk_policy).model_dump(
+                    mode="json", warnings=False
+                )
+            )
         if isinstance(request, AskUser):
             for affected in request.affects:
                 self.artifact(state, affected)
@@ -529,6 +544,18 @@ class ToolRegistry:
         from cre_brain.runner.tools.finalization import artifact_snapshot
 
         return artifact_snapshot(self, state, identity, final_replay=final_replay)
+
+    def published_artifact(
+        self, identity: str, publication_id: str, *, version: int | None = None
+    ) -> bytes:
+        """Protected host adapter using this registry's authenticated tenant/task context.
+
+        The host must authorize context from its session/token claims, never from
+        request parameters. Returned bytes must stay out of event/log/export paths.
+        """
+        from cre_brain.runner.tools.finalization import published_artifact
+
+        return published_artifact(self, identity, publication_id, version=version)
 
     def finalize(self, state: ToolState, request: Finalize) -> dict[str, Any]:
         from cre_brain.runner.tools.finalization import finalize

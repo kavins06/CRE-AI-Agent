@@ -7,10 +7,11 @@ from typing import Any
 from pydantic import BaseModel
 from sqlalchemy import Connection, select
 
-from cre_brain.domain import AgentEvent
+from cre_brain.domain import AgentEvent, Deliverable
 from cre_brain.domain.base import TenantScope
 from cre_brain.domain.models import AgentEventKind
 from cre_brain.runner.tools.contracts import AuthenticatedContext
+from cre_brain.runner.tools.json_io import canonical
 from cre_brain.state.events import _append_locked
 from cre_brain.state.graph import _adjacency, _new_event_id, _topological_order
 from cre_brain.state.schema import edges, events, metadata
@@ -45,6 +46,11 @@ class ToolState:
             runner="tools",
             payload=payload,
         )
+        # Publication release metadata must fit the streamable envelope. Existing
+        # workbook state bindings contain full descriptors; their storage contract
+        # predates the release boundary and is not a tool JSON response.
+        if kind == "deliverable":
+            canonical(event.model_dump(mode="json", warnings=False))
         _append_locked(self.connection, event, self.scope)
 
     def records[T: BaseModel](self, model: type[T], identity: str) -> list[T]:
@@ -68,7 +74,9 @@ class ToolState:
         records = [self.current(model, identity) for identity in identities]
         return [record for record in records if record is not None]
 
-    def append[T: BaseModel](self, record: T, *, identity: str | None = None) -> T:
+    def append[T: BaseModel](
+        self, record: T, *, identity: str | None = None, publication: bytes | None = None
+    ) -> T:
         record = type(record).model_validate(record.model_dump(warnings=False))
         table_name, id_field = COLLECTIONS[type(record)]
         native_id = getattr(record, id_field)
@@ -77,6 +85,10 @@ class ToolState:
         version = len(records) + 1
         if getattr(record, "version", version) != version:
             raise StateConflict("Reload current version before appending")
+        if publication is not None and (
+            not isinstance(record, Deliverable) or record.status != "final"
+        ):
+            raise ValueError("Publication requires a final canonical deliverable")
         self.connection.execute(
             metadata.tables[table_name]
             .insert()
@@ -86,6 +98,7 @@ class ToolState:
                 record_id=identity,
                 version=version,
                 payload=record.model_dump(mode="json", warnings=False),
+                **({"publication": publication} if publication is not None else {}),
             )
         )
         return record
