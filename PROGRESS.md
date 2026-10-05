@@ -1118,3 +1118,17 @@ Strict runner mypy, all pre-commit hooks, uv lock --check and git diff --check: 
 - Validation correction: this checkout defaults to --basetemp=.cache/pytest. Overlapping focused tests deleted full-run workbook fixtures, causing false failures/ENOENT. The final full run used a distinct basetemp and passed unchanged workbook assertions; no finance/gate weakening or source repair was needed. Use separate temporary roots for concurrent tests.
 - Next: save/push the reviewed source task branch, integrate locally with acceptance false, then author quarantined T035 extraction and T038 SCREEN in separate Outpost worktrees. These can develop source plumbing independently of live runtime acceptance.
 - Needs owner: genuine restricted runtime/auth/cap enforcement and T030's two assertion corrections remain unresolved; hosted-CI/no-cloud clarification still blocks dev push, CI-triggering PRs and milestone/main promotion. Existing owner guards and private-eval isolation remain intact.
+
+## 2026-10-05 — T039 host-only underwriting core handoff; full acceptance BLOCKED
+- Added typed Fact/Assumption/CalcResult composition over existing proforma, tax, value-add, debt and returns functions. Canonical append-only calculations retain inputs, output references, implementation digests and dependency edges. Explicit assumption ranges/rationale/proxy flags and seller provenance remain in evidence snapshots. Undefined/ambiguous IRRs are labelled; this core makes no investment recommendation.
+- Independent GPT-6.1 Sol review reproduced superseded assumptions, lost refusal charges, post-work deadline bypass and unbounded traversal/computation. Red-first repairs require active assumptions across cached dependencies, preserve typed-refusal charges while atomically rolling back calculation writes, check deadlines at commit, and preflight bounded request/graph/cohort/flow shapes. Final review: SOURCE PASS, including 46 in-memory cases and five independent probes.
+- Same-session verified evidence:
+```text
+focused UW/finance/Excel: 404 passed, 1 existing approved license skip, 5 integration deselections
+Ruff/format/strict mypy: passed
+coordinator genuine UNO UW tests using persistent approved runtime: 58 passed, no skips
+unchanged check_task.py T039: 5 passed; exit1 for missing AC3
+```
+- Decisions: the core is host-only, not an analyst command or parallel authoritative state store. Workbook creation delegates existing trusted mapping/recalculation and returns only after parity; unsupported optional schedules, assumptions and horizons refuse rather than masquerading as whole-model parity. The host binding snapshot limit is separately 1 MiB; the shared ordinary tool-message limit remains 128 KiB.
+- T039 remains false. Real subset recalculation does not prove broader model parity, risk/protected paired publication, an underwrite skill/FakeRunner, CLI, live runtime, analyst quality or hidden evaluation success. No baseline assertions, acceptance bars, owner guards or private evals were changed.
+- Next: integrate with reviewed T035/T038 locally, wire the supported core into checked UW publication and resumable run orchestration, then add read-only advisory review. Dev/main promotion remains held on hosted-CI clarification and applicable owner gates.
