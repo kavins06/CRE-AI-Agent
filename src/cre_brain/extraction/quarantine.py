@@ -7,6 +7,7 @@ import os
 import tempfile
 import uuid
 from collections.abc import Coroutine
+from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -100,15 +101,26 @@ class Extractor:
         self.model_provider, self.allow_synthetic = model_provider, allow_synthetic
         self._semaphore = asyncio.Semaphore(registry.settings.budget.max_parallel_extractions)
         self._cleanup_operations: set[asyncio.Task[Any]] = set()
+        self._batch_ledger: RunnerState | None = None
+
+    @property
+    def _ledger(self) -> RunnerState:
+        return self._batch_ledger or RunnerState(self.registry)
+
+    def _check_bindings(self) -> None:
+        ledger = self._ledger
+        if self.registry.context != ledger.context or self.registry.engine is not ledger.engine:
+            raise SandboxError("Extraction host ledger bindings changed")
 
     def _source(self, identity: str) -> SourceDocument:
-        context = self.registry.context
+        self._check_bindings()
+        context = self._ledger.context
         supplied = self.sources.document(context, identity)
         if supplied is None:
             raise ValueError("Missing authenticated parsed document/inventory")
         source = SourceDocument.model_validate(supplied.model_dump())
         doc = source.document
-        with self.registry.transaction() as state:
+        with self._ledger.transaction() as state:
             if not state.fresh(identity):
                 raise ValueError("Authenticated source document is stale")
         data = doc.model_dump_json().encode()
@@ -198,7 +210,7 @@ class Extractor:
                     ):
                         problem = True
                     else:
-                        with self.registry.transaction() as state:
+                        with self._ledger.transaction() as state:
 
                             def charges() -> list[AgentEvent]:
                                 return [
@@ -248,7 +260,7 @@ class Extractor:
                     interrupted = True
         except BaseException:
             # This owner runs even if finish was cancelled before coroutine entry.
-            with self.registry.transaction() as state:
+            with self._ledger.transaction() as state:
                 state.event(
                     "error",
                     {
@@ -354,7 +366,8 @@ class Extractor:
                         text = await self._output(process, box, usage)
                         if await process.wait() != 0:
                             raise SandboxError("Extractor runtime failed")
-                        return convert(source, text, self.registry.context), caps.evidence
+                        self._check_bindings()
+                        return convert(source, text, self._ledger.context), caps.evidence
             except TimeoutError:
                 raise SandboxError("Extraction time budget exceeded") from None
             except asyncio.CancelledError:
@@ -368,7 +381,7 @@ class Extractor:
                     await self._cleanup(box, process, usage)
                 elif creation_attempted:
                     # No handle means neither destruction nor its absence was verified.
-                    with self.registry.transaction() as state:
+                    with self._ledger.transaction() as state:
                         state.event(
                             "error",
                             {
@@ -395,6 +408,7 @@ class Extractor:
         running_items: set[str] = set()
         completed = False
         async for line in process.stdout():
+            self._check_bindings()
             observed.output_seen = True
             count += 1
             size += len(line)
@@ -474,7 +488,7 @@ class Extractor:
                 observed.tokens += usage["input_tokens"] + usage["output_tokens"]
                 for key in ("input_tokens", "output_tokens"):
                     tokens += usage[key]
-                    with self.registry.transaction() as state:
+                    with self._ledger.transaction() as state:
                         state.event(
                             "usage",
                             {
@@ -500,7 +514,8 @@ class Extractor:
         identity: str,
         evidence: str,
     ) -> ExtractionResult:
-        with self.registry.transaction() as state:
+        self._check_bindings()
+        with self._ledger.transaction() as state:
             self.registry.deadline(state)
             self._fresh_sources(state, sources)
             cached = state.binding(identity, "extraction") is not None
@@ -584,7 +599,7 @@ class Extractor:
             inputs=inputs,
             scratch=self.scratch / "gates",
         )
-        with self.registry.transaction() as state:
+        with self._ledger.transaction() as state:
             self.registry.deadline(state)
             self._fresh_sources(state, sources)
             old = state.all_current(Fact)
@@ -654,6 +669,15 @@ class Extractor:
         )
 
     async def extract(self, identities: tuple[str, ...]) -> ExtractionResult:
+        # Each batch pins its ledger; concurrency and cleanup ownership stay shared.
+        batch = copy(self)
+        try:
+            batch._batch_ledger = RunnerState(self.registry)
+        except ValueError:
+            raise SandboxError("Invalid authenticated extraction context/configuration") from None
+        return await batch._extract(identities)
+
+    async def _extract(self, identities: tuple[str, ...]) -> ExtractionResult:
         try:
             self.limits = ExtractionLimits.model_validate(self.limits.model_dump())
             if not identities or len(identities) > 64 or len(set(identities)) != len(identities):
@@ -682,7 +706,7 @@ class Extractor:
                     self.limits.model_dump(),
                 )
             )
-            with self.registry.transaction() as state:
+            with self._ledger.transaction() as state:
                 require_recovered(state.history(task_only=False))
                 cached = state.binding(identity, "extraction")
             if cached is not None:
@@ -697,7 +721,7 @@ class Extractor:
             if self.runtime is None or self.runtime.provider is not self.provider:
                 raise SandboxError("Unavailable extraction adapter; no host fallback")
             attempt = "attempt-" + uuid.uuid4().hex
-            with self.registry.transaction() as state:
+            with self._ledger.transaction() as state:
                 require_recovered(state.history(task_only=False))
                 history = state.history()
                 used = token_commitment(history)
@@ -737,7 +761,7 @@ class Extractor:
                 # Marker writes can fail: retain the already-durable reservation
                 # unless every launched document positively verified its cleanup.
                 if all(u.cleanup_verified for u in usage):
-                    with self.registry.transaction() as state:
+                    with self._ledger.transaction() as state:
                         state.event(
                             "tool_result",
                             {"binding": "extraction_attempt", "identity": attempt, "phase": "end"},

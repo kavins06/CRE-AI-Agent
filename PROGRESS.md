@@ -11,6 +11,7 @@
 - 2026-10-04: CLI extension convention is installed `cre_brain.**.cli`/`cli_*.py` exporting `register_cli(app)`, with explicitly named groups. Registration must be side-effect-free and import optional engines only inside commands; never discover from deal folders. Duplicate names/invalid plugins fail closed.
 - 2026-10-04: Canonical scaffold seams live in domain/base (immutable TenantScope), state/base (tenant-explicit versioned store), deliverables/base (tenant-explicit finalizer), and runner/base (streaming Runner plus Policy protocols). Generics bind future T010 domain schemas without inventing duplicate Fact/Deliverable/Event models; no persistence, permission grant, finalization fallback or analyst implementation is claimed.
 - 2026-10-04: `init.sh` uses installed Python 3.12 and `uv sync --locked`, installs local hooks only in its own checkout, never starts services or creates/copies `.env`; Compose DB is opt-in, project-scoped and loopback-bound. `.gitignore` excludes generated state and credentials while retaining `.env.example`.
+- 2026-10-04: The first usable product slice remains SCREEN-only until genuine runtime proof passes. Keep deterministic CRE/safety layers, replace transitional retained loops with a persistent submit/status/replay host, and defer advisory transport/UW expansion; rationale and stop rules are in ADR-0001.
 
 ## Needs owner
 <!-- Blockers that need the owner: missing secrets, licences, spec questions. -->
@@ -1186,3 +1187,83 @@ pre-commit --all-files: passed before local merge
 - Active parallel Outpost worktrees: first bounded host-composed `cre run` source and read-only advisory review source, both delegated through authenticated OpenAI-only GPT-6.1 Sol/Codex. No live model calls in tests, private eval access or SEC work.
 - Authentication correction: the initial delegation used the wrong `CODEX_HOME`; native `/root/.codex` authentication is valid. No expired-login claim or new credential requirement remains.
 - Next: review and verify the two source candidates, integrate only supported safe composition, then wire authenticated verifier/revision transport once runtime prerequisites exist. Hosted CI, dev push and main promotion remain held on the no-cloud clarification and protected owner gates.
+
+## 2026-10-05 — Current run-loop candidate: five concrete source repairs; acceptance pending
+
+- Scope: implementation worker only, repairing this worktree's current candidate. No Git operations, installs, services, external/private-eval/SEC data, credentials, live analyst calls, production transcript edits, task-flag changes or acceptance claims. Earlier work and entries are preserved. T030/T033/T035/T038/T039/T040 were read back as false. The coordinator owns full `make check` and independent rereview.
+- Repairs: revalidate the exact transport/registry/context/configuration/source pins immediately after receipt verification and before tenant lifecycle reads or terminal reconciliation, including completed/stopped/failed outcomes. Observe the real quarantine batch as an owned host task with a configured bounded window and bounded cancellation drain; retain unresolved task/loop/recovery ownership. Share one process boundary to capture safe stdout/wait/cancel diagnostics before existing handlers erase programmer faults. Remove empty settled HostOperations buckets without clearing recovery markers. Rename `runner/cli_run.py` to `runner/run_commands.py` and explicitly register the built-in in `cre_brain/cli.py`, following record/tools registration; no compatibility shim remains.
+- Tests first: the initial 22-case run failed all cases, reproducing the five findings and both unchanged plugin-discovery assertions. The receipt harness gives the other tenant matching completed events while the original tenant retains an unresolved reservation. Additive checks reject drift before any post-receipt lifecycle read. The actual quarantine batch/_one is used for cancellation suppression; no synthetic replacement for extraction is used. A registry-clone extension later reproduced three more receipt failures before its identity check. Final new repair file contains 28 cases, including CLI retention, synchronous stdout invocation, parent cancellation with a cancel fault, and concurrent same-job bucket settlement.
+- Existing test changes are limited to the three new run-loop files' registrar imports and consequent import ordering; no assertion was changed. Source changes are `src/cre_brain/cli.py`, `src/cre_brain/runner/run_commands.py` (rename), `src/cre_brain/runner/orchestration/run.py`, `src/cre_brain/runner/orchestration/run_operations.py`; tests are `tests/runner/test_run_loop.py`, `test_run_loop_cli.py`, `test_run_loop_review.py`, new `test_run_loop_repairs.py`; docs are `src/cre_brain/runner/orchestration/run_host.md` and this appended entry. Owner guards, canonical accounting, source schemas and existing runtime interfaces remain intact.
+- Decisions: reuse the existing HostOperations owner instead of adding a service or duplicate global fault hooks. The exact healthy observed extraction batch can be recognized inside its guard; unknown markers and other unsettled tasks always block. Its observation window is per-document timeout times parallel waves, capped by remaining canonical task time. Late destruction/settlement is never a native-absence/recovery receipt. Diagnostics store only class/stage and at most eight module/function/line frames; recent diagnostic retention remains 128. Ordinary successful task keys are removed; unresolved recovery markers remain separate.
+
+Exact pytest commands executed, in order (every invocation used command-line basetemp under the authorized safe root; PYTEST_ADDOPTS remained empty and TMPDIR stayed outside every checkout):
+
+```bash
+# 22 failed; red-first baseline, 12.82s
+.venv/bin/python -m pytest tests/runner/test_run_loop_repairs.py tests/test_cli_plugins.py::test_t001_ac5_plugin_discovery_uses_installed_package_not_cwd tests/evals/test_t036_repairs.py::test_t036_ac3_generator_is_builtin_without_changing_plugin_discovery -q --capture=sys --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-red-01
+# 17 failed, 5 passed; first composition wrongly treated its healthy batch as unresolved, 10.82s
+.venv/bin/python -m pytest tests/runner/test_run_loop_repairs.py tests/test_cli_plugins.py::test_t001_ac5_plugin_discovery_uses_installed_package_not_cwd tests/evals/test_t036_repairs.py::test_t036_ac3_generator_is_builtin_without_changing_plugin_discovery -q --capture=sys --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-green-02
+# 9 failed, 13 passed; Refusal (a SandboxError subclass) was still rewritten by the receipt handler, 11.35s
+.venv/bin/python -m pytest tests/runner/test_run_loop_repairs.py tests/test_cli_plugins.py::test_t001_ac5_plugin_discovery_uses_installed_package_not_cwd tests/evals/test_t036_repairs.py::test_t036_ac3_generator_is_builtin_without_changing_plugin_discovery -q --capture=sys --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-green-03
+# 22 passed; original concrete regressions green, 11.54s
+.venv/bin/python -m pytest tests/runner/test_run_loop_repairs.py tests/test_cli_plugins.py::test_t001_ac5_plugin_discovery_uses_installed_package_not_cwd tests/evals/test_t036_repairs.py::test_t036_ac3_generator_is_builtin_without_changing_plugin_discovery -q --capture=sys --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-green-04
+# 89 passed; combined run/CLI/plugin suite before the last five additive cases, 48.19s
+.venv/bin/python -m pytest tests/runner/test_run_loop.py tests/runner/test_run_loop_cli.py tests/runner/test_run_loop_review.py tests/runner/test_run_loop_repairs.py tests/test_cli_plugins.py tests/evals/test_t036_repairs.py::test_t036_ac3_generator_is_builtin_without_changing_plugin_discovery -q --capture=sys --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-focused-05
+# 25 passed; expanded repair file including CLI extraction and cancel-fault propagation, 12.28s
+.venv/bin/python -m pytest tests/runner/test_run_loop_repairs.py -q --capture=sys --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-expanded-06
+# 358 passed, 2 deselected; neighboring accounting/jobs/watchdog/SCREEN/quarantine checks, 60.37s
+.venv/bin/python -m pytest tests/runner/test_t040_jobs_core.py tests/runner/test_t040_stuck_core.py tests/runner/test_codex_t033.py tests/runner/test_codex_repair3.py tests/runner/test_codex_final_review.py tests/deliverables/test_screen.py tests/extraction/test_quarantine.py tests/extraction/test_quarantine_repair3.py tests/extraction/test_quarantine_final_review.py -q --capture=sys -m 'not integration and not requires_codex and not requires_network and not requires_key and not requires_license' --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-neighbors-07
+# 3 failed, 25 deselected; registry-object replacement reproduced red-first, 3.92s
+.venv/bin/python -m pytest tests/runner/test_run_loop_repairs.py -q --capture=sys -k 'receipt_rechecks and registry' --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-registry-red-08
+# 94 passed; final run/CLI/plugin suite including all 28 repair cases, 51.65s
+.venv/bin/python -m pytest tests/runner/test_run_loop.py tests/runner/test_run_loop_cli.py tests/runner/test_run_loop_review.py tests/runner/test_run_loop_repairs.py tests/test_cli_plugins.py tests/evals/test_t036_repairs.py::test_t036_ac3_generator_is_builtin_without_changing_plugin_discovery -q --capture=sys --basetemp=/root/work/cre/codex-20261004/tmp-run-loop-check/repair-final-09
+```
+
+The two deselections are the existing PostgreSQL integration/key case and Codex prerequisite case; no authentication probe or live runtime was invoked. All runs emitted only the two existing Typer/Click dependency deprecation warnings. No nested basetemp environment override or Hypothesis healthcheck changes were made.
+
+Exact final static checks (exit 0):
+
+```bash
+.venv/bin/ruff check src/cre_brain/cli.py src/cre_brain/runner/orchestration/run.py src/cre_brain/runner/orchestration/run_operations.py src/cre_brain/runner/run_commands.py tests/runner/test_run_loop.py tests/runner/test_run_loop_cli.py tests/runner/test_run_loop_review.py tests/runner/test_run_loop_repairs.py
+.venv/bin/ruff format --check src/cre_brain/cli.py src/cre_brain/runner/orchestration/run.py src/cre_brain/runner/orchestration/run_operations.py src/cre_brain/runner/run_commands.py tests/runner/test_run_loop.py tests/runner/test_run_loop_cli.py tests/runner/test_run_loop_review.py tests/runner/test_run_loop_repairs.py
+.venv/bin/python -m mypy --strict src
+```
+
+Ruff: all checks passed; eight files already formatted. Strict mypy: no issues in 144 source files. Earlier static checks caught a new unused test import, import ordering after the rename, and missing type narrowing for the guarded extraction runtime; all were corrected without changing assertions. Ruff format ran on the new repair file and the two changed orchestration modules; Ruff's import fix ran only on the new repair file. An intermediate strict-mypy run already passed all 144 files; the final source received the checks above again after the registry-identity repair.
+
+- Remaining findings/gaps: no assigned defect remains red in the focused checks; independent rereview and full `make check` remain outstanding. The duplicated RunGateService/RunPublicationAuthority lifecycle predicates are deliberately deferred to the owner's subsequent complexity audit. Standalone Extractor callers still use the existing cooperative batch-drain contract; this hard observation/ownership boundary applies to the guarded run candidate. Synchronous trusted host callbacks and native containment/termination still require real runtime guarantees. Retained operations/loops and recovery markers require host supervision and authenticated reconciliation, not a guessed cleanup verdict.
+- T040 and runtime flags remain false. Genuine runtime, attach/recovery and production/PostgreSQL crash behavior, checked UW_MODEL, ESCALATION publication, advisory review/revision, quality/eval acceptance and the full task acceptance chain remain separate gaps. No task verifier/check_task or acceptance claim was made. Next: coordinator full checks and independent source rereview, then the requested in-depth complexity audit; no architectural cleanup was attempted here.
+
+### 2026-10-04: T040 source repair and complexity audit (acceptance remains false)
+
+- Branch: `task/T040-run-loop`
+- Changed: pinned runner and extraction accounting to the authorized context/engine;
+  retained cancellation-resistant lead ownership; checked bindings before and after
+  nudge; added stream/wait/cancel, late-producer, nudge and engine-drift regressions.
+- Review: fresh GPT-6.1 Sol read-only review returned `SOURCE PASS`; it explicitly kept
+  genuine runtime, attach/recovery, UW_MODEL and ESCALATION unsupported/unverified.
+- Audit: recorded `docs/decisions/0001-ship-screen-before-more-orchestration.md`.
+  Necessary safety and CRE domain complexity stay. The runtime boundary is the bottleneck;
+  broad roles, reviewer transport, revision, evaluation and learning are deferred.
+- Verify: `make check` with isolated `TMPDIR` and empty `PYTEST_ADDOPTS` -> exit 0.
+
+```text
+........................................................................ [ 90%]
+........................................................................ [ 94%]
+........................................................................ [ 98%]
+........................                                                 [100%]
+=============================== warnings summary ===============================
+.venv/lib/python3.12/site-packages/typer/__init__.py:24
+  DeprecationWarning: 'click.utils.get_binary_stream' is deprecated
+.venv/lib/python3.12/site-packages/typer/__init__.py:25
+  DeprecationWarning: 'click.utils.get_text_stream' is deprecated
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+1677 passed, 3 skipped, 17 deselected, 2 warnings in 522.27s (0:08:42)
+```
+
+- Next: genuine T030/T033 capability/runtime proof, then a persistent SCREEN host with
+  submit/status/replay. Integrate advisory review only after authenticated verifier
+  transport and bounded PostgreSQL read proof exist.
+- Blockers: T039/T040 stay false because synthetic plumbing and source review do not prove
+  containment, preventive hard caps, descendant termination, authenticated cancellation,
+  killed-run attach/resume, persistence-outage recovery or canonical live usage.

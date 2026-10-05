@@ -1,12 +1,14 @@
 """Runner adapter to the existing tenant event ledger and T032 policy/state seams."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 
 from cre_brain.domain import AgentEvent
 from cre_brain.runner.policy import HostContext, Limits, remaining_seconds
 from cre_brain.runner.segment import SegmentSpec, Workspace
 from cre_brain.runner.tools.registry import ToolRegistry
+from cre_brain.runner.tools.state import ToolState
 from cre_brain.sandbox.base import SandboxError
 from cre_brain.state.events import EventStore, _append_locked
 
@@ -133,11 +135,26 @@ def token_commitment(history: list[AgentEvent]) -> int:
 class RunnerState:
     def __init__(self, registry: ToolRegistry) -> None:
         self.registry = registry
-        self.events = EventStore(registry.engine)
+        self.context = registry.context.model_copy(deep=True)
+        self.limits = Limits.model_validate(registry.limits.model_dump())
+        self.engine = registry.engine
+        self.events = EventStore(self.engine)
+
+    @contextmanager
+    def transaction(self) -> Iterator[ToolState]:
+        if self.registry.context == self.context and self.registry.engine is self.engine:
+            manager = self.registry.transaction()
+        else:
+            manager = ToolRegistry.transaction(
+                self.registry, context=self.context, engine=self.engine
+            )
+        with manager as state:
+            if state.context != self.context or state.connection.engine is not self.engine:
+                raise SandboxError("Native ledger context changed")
+            yield state
 
     def validate(self, seg: SegmentSpec, ws: Workspace, policy: HostContext) -> None:
-        context = HostContext.model_validate(self.registry.context.model_dump())
-        Limits.model_validate(self.registry.limits.model_dump())
+        context = HostContext.model_validate(self.context.model_dump())
         if (
             policy != context
             or ws.scope != context.scope
@@ -149,7 +166,7 @@ class RunnerState:
             raise SandboxError("Runner scope must match the authenticated tool registry")
 
     def append(self, event: AgentEvent) -> AgentEvent:
-        return self.events.append(event, scope=self.registry.context.scope)
+        return self.events.append(event, scope=self.context.scope)
 
     def reconcile_usage(
         self,
@@ -160,10 +177,10 @@ class RunnerState:
         make_charge: Callable[[int], AgentEvent],
     ) -> AgentEvent | None:
         """Reconcile one native segment under the authenticated ledger transaction."""
-        if start.origin is None or start.task_id != self.registry.context.task_id:
+        if start.origin is None or start.task_id != self.context.task_id:
             raise SandboxError("Invalid native accounting identity")
         origin = start.origin[:2]
-        with self.registry.transaction() as state:
+        with self.transaction() as state:
 
             def charges() -> list[AgentEvent]:
                 return [
@@ -197,7 +214,7 @@ class RunnerState:
         Recovery/control-plane must authorize a NEW segment number. Session and
         usage bindings are append-only events in canonical state, not a side file.
         """
-        with self.registry.transaction() as state:
+        with self.transaction() as state:
             tenant_history = state.history(task_only=False)
             require_recovered(tenant_history)
             history = state.history()
@@ -254,7 +271,7 @@ class RunnerState:
                     )
             tokens = token_commitment(history)
             now = datetime.now(UTC)
-            limits = self.registry.limits
+            limits = self.limits
             tool_sessions = {
                 e.payload["tools_session"]
                 for e in history
@@ -265,17 +282,15 @@ class RunnerState:
                 or tokens >= limits.max_tokens
                 or seg.max_tokens > limits.max_tokens - tokens
                 or len(tool_sessions) > limits.max_sessions
-                or remaining_seconds(self.registry.context, limits, history, now) <= 0
+                or remaining_seconds(self.context, limits, history, now) <= 0
             ):
                 raise SandboxError("Canonical policy budget exhausted")
             return _append_locked(state.connection, start, state.scope)
 
     def stop_reason(self, after_seq: int) -> str | None:
-        with self.registry.transaction() as state:
+        with self.transaction() as state:
             for event in reversed(state.history()):
-                if (
-                    event.seq or 0
-                ) <= after_seq or event.release_id != self.registry.context.release_id:
+                if (event.seq or 0) <= after_seq or event.release_id != self.context.release_id:
                     continue
                 if event.runner == "tools":
                     if event.kind == "confirmation_request":
@@ -293,7 +308,5 @@ class RunnerState:
         return None
 
     def remaining_seconds(self) -> float:
-        with self.registry.transaction() as state:
-            return remaining_seconds(
-                self.registry.context, self.registry.limits, state.history(), datetime.now(UTC)
-            )
+        with self.transaction() as state:
+            return remaining_seconds(self.context, self.limits, state.history(), datetime.now(UTC))
