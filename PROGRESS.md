@@ -1382,3 +1382,29 @@ uv run --locked pytest tests -m "not integration" -q
   Responses parameter documents a generation bound including reasoning tokens, but that
   alone does not prove whole-segment accounting or approve new API spending:
   https://github.com/openai/openai-python/blob/main/src/openai/types/responses/response_create_params.py
+
+### 2026-10-04: ChatGPT-only runtime decision preserves the fail-closed boundary
+
+- Owner decision: keep execution within the existing ChatGPT allowance; do not run the
+  proposed separately billed OpenAI API experiment.
+- Installed `codex-cli 0.160.0` is authenticated through ChatGPT. Its generated
+  experimental app-server schema exposes durable `thread/resume`, a `turn/interrupt`
+  request, and post-response usage notifications, but `turn/start` has no preventive
+  token/output-cap field and `turn/interrupt` returns no cancellation or usage receipt.
+- Official source at tag `rust-v0.160.0` confirms both available budget mechanisms are
+  post-hoc. `RolloutBudget::record_usage` adds usage from `response.completed` before
+  reporting exhaustion. The goal-extension test
+  `budget_limited_goal_keeps_accruing_until_turn_stop` intentionally records 35 tokens
+  against a 25-token goal budget.
+- Consequence: the ChatGPT-backed CLI is suitable for bounded development and review,
+  but the installed native interface does not satisfy `RuntimeCapabilities.hard_caps`
+  or `CancellationReceipt`. A wall-clock kill can bound elapsed time, but interrupted
+  native usage remains unverified and must still fail closed.
+- Decision: stop extending the runtime adapter and do not weaken T030/T033/T039/T040.
+  Resume the genuine SCREEN runtime slice only when the ChatGPT-backed interface exposes
+  a preventive generation cap plus authenticated cancellation/usage receipts, or the
+  owner later approves a different runtime path.
+- Sources:
+  https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/core/src/rollout_budget.rs
+  and
+  https://github.com/openai/codex/blob/rust-v0.160.0/codex-rs/ext/goal/tests/goal_extension_backend.rs
