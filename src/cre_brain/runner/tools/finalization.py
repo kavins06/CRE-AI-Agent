@@ -7,17 +7,22 @@ from typing import Any
 
 from cre_brain.domain import Deliverable, GateResult
 from cre_brain.domain.base import TenantScope
-from cre_brain.gates.snapshot import ArtifactSnapshot
+from cre_brain.gates.snapshot import ArtifactSnapshot, CompanionSnapshot
 from cre_brain.runner.policy import ADVISORY, Refusal, required_gates
 from cre_brain.runner.tools import files
 from cre_brain.runner.tools.contracts import Artifact, Finalize
 from cre_brain.runner.tools.json_io import canonical
 from cre_brain.runner.tools.registry import ToolRegistry, ok, refused
 from cre_brain.runner.tools.state import ToolState
+from cre_brain.state import publications
 
 
 def artifact_snapshot(
-    registry: ToolRegistry, state: ToolState, identity: str, *, final_replay: bool = False
+    registry: ToolRegistry,
+    state: ToolState,
+    identity: str,
+    *,
+    final_replay: bool = False,
 ) -> tuple[Artifact, ArtifactSnapshot]:
     anchor = registry.inputs.artifact(registry.context, identity)
     if anchor is None:
@@ -61,7 +66,31 @@ def artifact_snapshot(
             "untrusted_artifact",
             "Artifact bytes changed; host must register a new canonical version.",
         )
-    return anchor, ArtifactSnapshot(data, anchor.sha256)
+    companions = []
+    for companion in anchor.companions:
+        files.relative(root, companion.path)
+        body = files.read(registry.workspace, companion.path)
+        if files.digest(body) != companion.sha256 or companion.path == Path(expected.path):
+            raise Refusal("untrusted_artifact", "Companion memo changed; register a new version.")
+        companions.append(CompanionSnapshot(companion.path, body, companion.sha256))
+    if final_replay and current.status == "final":
+        stored_anchor, stored = publications.load_release(
+            state.connection, registry.context, identity, current.version
+        )
+        if stored_anchor != anchor or not stored:
+            raise Refusal("untrusted_artifact", "Protected publication requires its bound anchor.")
+        snapshot = ArtifactSnapshot(
+            stored[0].body,
+            anchor.sha256,
+            tuple(
+                CompanionSnapshot(companion.path, published.body, companion.sha256)
+                for companion, published in zip(anchor.companions, stored[1:], strict=True)
+            ),
+        )
+        if publications.prepare(registry.context, anchor, snapshot) != stored:
+            raise Refusal("untrusted_artifact", "Protected publication references must match.")
+        return anchor, snapshot
+    return anchor, ArtifactSnapshot(data, anchor.sha256, tuple(companions))
 
 
 def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dict[str, Any]:
@@ -71,18 +100,7 @@ def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dic
     d = anchor.deliverable
     current = state.current(Deliverable, d.d_id)
     if current is not None and current.status == "final":
-        released = any(
-            e.kind == "deliverable"
-            and e.payload.get("d_id") == current.d_id
-            and e.payload.get("version") == current.version
-            and e.payload.get("sha256") == anchor.sha256
-            for e in state.history()
-        )
-        if not released:
-            raise Refusal(
-                "untrusted_artifact",
-                "Final status requires a trusted gate-bound release transition.",
-            )
+        trusted_release(registry, state, anchor, snapshot, current)
         return ok({"deliverable_id": current.d_id, "version": current.version, "status": "final"})
     if d.status not in {"draft", "conditional"}:
         raise Refusal(
@@ -140,13 +158,140 @@ def finalize(registry: ToolRegistry, state: ToolState, request: Finalize) -> dic
             "gate_results": results,
         }
     )
+    prepared = publications.prepare(registry.context, anchor, snapshot)
+    publication = publications.encode(registry.context, anchor, prepared)
+    payload = {
+        "d_id": d.d_id,
+        "version": final.version,
+        "status": "final",
+        "sha256": anchor.sha256,
+        "publication": publications.references(prepared),
+        **(
+            {"companions": {str(c.path): c.sha256 for c in anchor.companions}}
+            if anchor.companions
+            else {}
+        ),
+    }
+    # Bound metadata before the last deadline check. Lossless bodies are never
+    # encoded into the ordinary stored/streamed/exported event envelope.
+    canonical(payload)
     registry.deadline(state)
-    state.append(final)
-    state.event(
-        "deliverable",
-        {"d_id": d.d_id, "version": final.version, "status": "final", "sha256": anchor.sha256},
-    )
+    state.append(final, publication=publication)
+    state.event("deliverable", payload)
+    # A workspace race during the transition must roll back the entire release.
+    # Consumers can retrieve committed bytes independently of subsequent mirrors.
+    registry.artifact(state, d.d_id, final_replay=True)
+    registry.deadline(state)
     return ok({"deliverable_id": d.d_id, "version": final.version, "status": "final"})
+
+
+def published_artifact(
+    registry: ToolRegistry, identity: str, publication_id: str, *, version: int | None = None
+) -> bytes:
+    """Host-only retrieval, including historical releases, without reading mirrors.
+
+    The registry context comes from trusted host authentication, never URL claims.
+    Version/reference may come from a caller; the scoped row and trusted release
+    event authenticate them. Omitted versions require canonical freshness; only
+    explicit versions permit archival reads of invalidated immutable releases.
+    """
+    if registry.context.role not in {"lead", "user"}:
+        raise Refusal("unauthorized_role", "Publication retrieval requires host authorization.")
+    with registry.transaction() as state:
+        current_read = version is None
+        records = state.records(Deliverable, identity)
+        if version is None:
+            version = records[-1].version if records else None
+        if type(version) is not int or version < 2:
+            raise Refusal("untrusted_artifact", "Retrieve a published canonical version.")
+        current = next((d for d in records if d.version == version), None)
+        if current is None:
+            raise Refusal("untrusted_artifact", "Release does not belong to this tenant.")
+        anchor, stored = publications.load_release(
+            state.connection, registry.context, identity, version
+        )
+        root = registry.workspace / "deals" / registry.context.deal_id / "deliverables"
+        for item in stored:
+            files.relative(root, Path(item.path))
+        if (
+            stored[0].path != anchor.deliverable.path
+            or stored[0].sha256 != anchor.sha256
+            or [(p.path, p.sha256) for p in stored[1:]]
+            != [(str(c.path), c.sha256) for c in anchor.companions]
+        ):
+            raise Refusal("untrusted_artifact", "Protected bytes must match release descriptors.")
+        snapshot = ArtifactSnapshot(
+            stored[0].body,
+            stored[0].sha256,
+            tuple(CompanionSnapshot(Path(p.path), p.body, p.sha256) for p in stored[1:]),
+        )
+        registry.require_gates()
+        trusted_release(registry, state, anchor, snapshot, current)
+        if current_read and (
+            not state.fresh(identity) or any(not state.fresh(dep) for dep in current.depends_on)
+        ):
+            raise Refusal(
+                "stale_evidence", "Regenerate the artifact after source or assumption changes."
+            )
+        for item in stored:
+            if item.publication_id == publication_id:
+                return item.body
+        raise Refusal("untrusted_artifact", "Reference does not belong to this protected release.")
+
+
+def trusted_release(
+    registry: ToolRegistry,
+    state: ToolState,
+    anchor: Artifact,
+    snapshot: ArtifactSnapshot,
+    current: Deliverable,
+) -> None:
+    """One authentication rule for finalization replay, FakeRunner and external sends."""
+    names = required_gates(current.kind, anchor.extraction)
+    baseline = Deliverable.model_validate(
+        {
+            **current.model_dump(warnings=False),
+            "version": anchor.deliverable.version,
+            "status": anchor.deliverable.status,
+            "gate_results": anchor.deliverable.gate_results,
+            "parent_version": anchor.deliverable.parent_version,
+        }
+    )
+    if (
+        baseline != anchor.deliverable
+        or current.deal_ids != [registry.context.deal_id]
+        or current.status != "final"
+        or current.version != anchor.deliverable.version + 1
+        or current.parent_version != anchor.deliverable.version
+        or len(current.gate_results) != len(names)
+        or any(
+            name not in ADVISORY and (result.passed is not True or result.failures)
+            for name, result in zip(names, current.gate_results, strict=True)
+        )
+    ):
+        raise Refusal("untrusted_artifact", "Final status requires complete blocking gate results.")
+    prepared = publications.prepare(registry.context, anchor, snapshot)
+    stored_anchor, stored = publications.load_release(
+        state.connection, registry.context, current.d_id, current.version
+    )
+    if stored_anchor != anchor or stored != prepared:
+        raise Refusal("untrusted_artifact", "References must authenticate scoped stored bytes.")
+    if not any(
+        e.kind == "deliverable"
+        and e.runner == "tools"
+        and e.source == "tool"
+        and e.release_id == registry.context.release_id
+        and e.payload.get("d_id") == current.d_id
+        and e.payload.get("version") == current.version
+        and e.payload.get("status") == "final"
+        and e.payload.get("sha256") == anchor.sha256
+        and e.payload.get("companions", {}) == {str(c.path): c.sha256 for c in anchor.companions}
+        and e.payload.get("publication") == publications.references(prepared)
+        for e in state.history()
+    ):
+        raise Refusal(
+            "untrusted_artifact", "Final status requires a trusted immutable gate-bound release."
+        )
 
 
 def require_gates(registry: ToolRegistry) -> None:

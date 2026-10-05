@@ -5,6 +5,7 @@ from decimal import Decimal
 from cre_brain.domain import CalcResult
 from cre_brain.finance.proforma import ProFormaInput, build_proforma
 from cre_brain.finance.returns import ReturnsInput, calculate_returns
+from cre_brain.finance.risk import RiskInput, risk_score
 from cre_brain.gates.limits import GateFailure, bounded_values
 from cre_brain.gates.models import FinanceRecipe
 
@@ -30,6 +31,8 @@ def reproduce(recipe: FinanceRecipe) -> CalcResult:
         result = build_proforma(
             recipe.source, calc_id=recipe.calc_id, code_version=recipe.code_version
         )
+    elif isinstance(recipe.source, RiskInput):
+        result = risk_score(recipe.source, calc_id=recipe.calc_id, code_version=recipe.code_version)
     else:
         raise GateFailure("authority_unavailable")
     if recipe.dependencies:
@@ -38,14 +41,18 @@ def reproduce(recipe: FinanceRecipe) -> CalcResult:
         # It remains part of the complete model assumption inventory.
         if set(recipe.dependencies) not in (required, required - {"projection_months"}):
             raise GateFailure("authority_unavailable")
-        result = result.model_copy(
-            update={"inputs": {key: ref.record_id for key, ref in recipe.dependencies.items()}}
-        )
+        dependencies = {key: ref.record_id for key, ref in recipe.dependencies.items()}
+        if isinstance(recipe.source, RiskInput):
+            dependencies = {key + ":0": value for key, value in dependencies.items()}
+            dependencies["policy"] = recipe.source.input_id
+        result = result.model_copy(update={"inputs": dependencies})
     bounded_values(result)
     return result
 
 
 def input_unit(recipe: FinanceRecipe, key: str) -> str:
+    if isinstance(recipe.source, RiskInput):
+        return "ratio"
     if key == "projection_months":
         return "count"
     if isinstance(recipe.source, ReturnsInput):
@@ -54,6 +61,8 @@ def input_unit(recipe: FinanceRecipe, key: str) -> str:
 
 
 def output_unit(function: str, key: str) -> str:
+    if function == "risk_score" and key == "risk_score":
+        return "ratio"
     if function == "build_proforma":
         return "USD"
     if function != "calculate_returns":

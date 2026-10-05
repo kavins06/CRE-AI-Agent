@@ -1138,3 +1138,19 @@ Author focused runner: 109 passed
 - Decisions: observed usage is not a durable charge; only authenticated committed ledger totals discharge native receipt obligations. Missing recovery markers do not prove cleanup. Native lead/extraction phases cannot overlap while lead ownership is unresolved. Shared monotonic deadlines and trusted-operation acknowledgement bounds preserve fail-closed behavior.
 - T035 stays false. Synthetic acceptance-name tests demonstrate plumbing only; genuine restricted Codex containment/authentication, preventive caps, descendant termination, trusted recovery, production crash/outage behavior and extraction quality remain unproved. Exact verifier success does not waive these prerequisites.
 - Next: save reviewed source on its task branch, integrate locally after staged-checkout verification, finish SCREEN/UW source integration and the first resumable run with advisory review/revision. Task-branch source pushes must not trigger hosted CI; dev push, CI-triggering PRs and main promotion remain held on the no-cloud clarification.
+
+## 2026-10-05 — T038 SCREEN source handoff; calibration/runtime acceptance BLOCKED
+- Added rules-first document classification; canonical-Fact headline resolution; host-authorized buy-box evaluation; deterministic uncalibrated risk provenance; paired Markdown/JSON SCREEN drafts; strict gate/replay/send contracts; immutable protected publication storage; and migration `0002_deliverable_publication` without modifying frozen `0001` or its canonical table set.
+- Independent GPT-6.1 Sol reviews reproduced empty anchors, mutable companion swaps, source-text masking regressions, publication-body event leakage, stale-default retrieval and workspace-mirror publication authority. Red-first repairs keep body bytes in the bounded append-only SQL publication column, keep only references/digests in ordinary events, use protected SQL bodies for replay/cache/send, reject stale omitted-version reads and preserve explicitly authenticated historical versions. Mirrors remain fail-closed integrity/availability guards rather than byte authority.
+- Same-session coordinator verification after final repairs (exit0):
+```text
+make check: 1300 passed, 3 approved-marker skips, 15 integration deselected
+Ruff/format/strict mypy: passed
+uv run pytest tests/deliverables -q -k screen: 130 passed
+uv run python scripts/check_task.py T038: 132 passed, T038 AC1-AC3 PASSED
+isolated-schema PostgreSQL migration/publication tests: 3 passed
+independent final source review: SOURCE PASS
+```
+- Decisions: protected publication bodies are retrieved only through authenticated tenant/task/deal/release/version bindings. Current reads require canonical freshness; explicit versions are immutable archival reads. Reauthorization occurs immediately before connector delivery. Metadata, aggregate bytes and deadlines are bounded before commit. Complete bodies and reversible whole-body encodings never enter ordinary events.
+- T038 stays false. Acceptance-name tests and FakeRunner replay prove plumbing, not analyst quality. Risk calibration, real host intake, restored authority pins, live isolated runtime, download integration, production crash/concurrency behavior and latency targets remain unproved.
+- Next: save reviewed source, integrate it locally with T035, then integrate the deterministic UW core and resumable jobs before wiring the first run plus independent advisory review. Task-branch pushes do not trigger hosted CI; dev push, CI-triggering PRs and main promotion remain held on the no-cloud clarification.

@@ -19,6 +19,7 @@ from sqlalchemy import Engine
 from cre_brain.config.settings import GateSettings
 from cre_brain.domain import Assumption, CalcResult, Deliverable, GateResult
 from cre_brain.domain.base import TenantScope
+from cre_brain.domain.provenance import usable_anchor
 from cre_brain.finance.returns import ReturnsInput, calculate_returns
 from cre_brain.finance.scenarios import EvaluatedScenario, FragilityInput, assess_fragility
 from cre_brain.gates.authority import input_unit, numeric_inputs, output_unit
@@ -41,7 +42,7 @@ from cre_brain.gates.models import (
 )
 from cre_brain.gates.numbers import extract_numbers, has_label, number_context
 from cre_brain.gates.presentation import displayed_decimal, visible_text
-from cre_brain.gates.snapshot import ArtifactSnapshot
+from cre_brain.gates.snapshot import ArtifactSnapshot, CompanionSnapshot
 from cre_brain.gates.state import CanonicalState, GateStore
 from cre_brain.rules.engine import evaluate
 from cre_brain.rules.models import AssumptionInput, BuyBoxInput, LoiInput, Policy, RuleInput
@@ -91,6 +92,7 @@ class GateService:
         # Host-private scratch must remain outside analyst mounts.
         self.scratch = scratch
         self._snapshot_path: Path | None = None
+        self._snapshot: ArtifactSnapshot | None = None
         self.state = CanonicalState(engine, scope, inputs, as_of or datetime.now(UTC).date())
 
     def for_gate(self, name: str) -> "BoundGate":
@@ -101,12 +103,7 @@ class GateService:
     def check(self, gate: str, deliverable: Deliverable) -> GateResult:
         """Preserve the path interface, but capture bytes before invoking readers."""
         try:
-            path = Path(deliverable.path)
-            bounded_file(path)
-            data = path.read_bytes()
-            return self.check_bytes(
-                gate, deliverable, ArtifactSnapshot(data, sha256(data).hexdigest())
-            )
+            return self.check_bytes(gate, deliverable, self._capture(deliverable))
         except Exception as error:
             category = error.category if isinstance(error, GateFailure) else "invalid_evidence"
             return _result([f"{gate}: {category}"])
@@ -121,7 +118,7 @@ class GateService:
         Each invocation uses a separate service view, including concurrent calls.
         """
         try:
-            snapshot = ArtifactSnapshot(snapshot.data, snapshot.sha256)
+            snapshot = ArtifactSnapshot(snapshot.data, snapshot.sha256, snapshot.companions)
             if len(snapshot.data) > MAX_FILE_BYTES:
                 raise GateFailure("resource_limit")
             self.scratch.mkdir(mode=0o700, parents=True, exist_ok=True)
@@ -134,10 +131,34 @@ class GateService:
                 path.chmod(0o400)
                 bound = copy(self)
                 bound._snapshot_path = path
+                bound._snapshot = snapshot
                 return bound._check_snapshot(gate, deliverable)
         except Exception as error:
             category = error.category if isinstance(error, GateFailure) else "invalid_evidence"
             return _result([f"{gate}: {category}"])
+
+    def _capture(self, deliverable: Deliverable) -> ArtifactSnapshot:
+        """Path adapter captures the whole host-issued pair before any gate reader."""
+        from cre_brain.runner.tools.files import read
+
+        path = Path(deliverable.path)
+        bounded_file(path)
+        data = read(path.parent, path)
+        try:
+            plan = self.inputs.plan(self.scope, deliverable)
+        except Exception:
+            raise GateFailure("authority_unavailable") from None
+        companions: tuple[CompanionSnapshot, ...] = ()
+        if plan is not None and plan.memo_pair is not None:
+            pair = plan.memo_pair
+            if path not in {pair.markdown, pair.json_path}:
+                raise GateFailure("canonical_mismatch")
+            other = pair.json_path if path == pair.markdown else pair.markdown
+            if other == path or other.parent != path.parent:
+                raise GateFailure("canonical_mismatch")
+            body = read(path.parent, other)
+            companions = (CompanionSnapshot(other, body, sha256(body).hexdigest()),)
+        return ArtifactSnapshot(data, sha256(data).hexdigest(), companions)
 
     def _artifact_path(self, deliverable: Deliverable) -> Path:
         if self._snapshot_path is None:
@@ -203,10 +224,7 @@ class GateService:
             )
         names = required_gates(canonical.kind, extraction=plan.extraction)
         try:
-            path = Path(deliverable.path)
-            bounded_file(path)
-            data = path.read_bytes()
-            snapshot = ArtifactSnapshot(data, sha256(data).hexdigest())
+            snapshot = self._capture(deliverable)
             results = {name: self.check_bytes(name, deliverable, snapshot) for name in names}
         except Exception as error:
             category = error.category if isinstance(error, GateFailure) else "invalid_evidence"
@@ -243,6 +261,32 @@ class GateService:
     def _text(self, d: Deliverable, plan: GatePlan, *, visible: bool = False) -> str:
         path = self._artifact_path(d)
         bounded_file(path)
+        if plan.memo_pair is not None:
+            # Only the host-issued pair can authorize the JSON projection. Both
+            # representations carry one identical memo and no unchecked fields.
+            from cre_brain.runner.tools.files import digest
+            from cre_brain.runner.tools.json_io import parse
+
+            pair = plan.memo_pair
+            primary = Path(d.path)
+            if primary not in {pair.markdown, pair.json_path} or pair.markdown == pair.json_path:
+                raise GateFailure("canonical_mismatch")
+            root = pair.markdown.parent
+            if pair.json_path.parent != root:
+                raise GateFailure("canonical_mismatch")
+            if self._snapshot is None:
+                raise GateFailure("authority_unavailable")
+            captured = {primary: self._snapshot.data}
+            captured.update({c.path: c.data for c in self._snapshot.companions})
+            if set(captured) != {pair.markdown, pair.json_path}:
+                raise GateFailure("canonical_mismatch")
+            markdown, json_data = captured[pair.markdown], captured[pair.json_path]
+            if digest(markdown) != pair.markdown_sha256 or digest(json_data) != pair.json_sha256:
+                raise GateFailure("canonical_mismatch")
+            text = markdown.decode("utf-8")
+            if parse(json_data.decode("utf-8")) != {"markdown": text}:
+                raise GateFailure("canonical_mismatch")
+            return text
         if path.suffix.lower() == ".xlsx":
             # Numbers in real workbooks are checked by mapped integrity, not by
             # regex over binary OOXML. Text cells must still have number evidence.
@@ -307,11 +351,7 @@ class GateService:
                     )
                 seen.add(ref.record_id)
                 fact = self.state.fact(ref.record_id, ref.deal_id)
-                if not any(
-                    p.doc_id == field.doc_id
-                    and (p.page is not None or (p.sheet is not None and p.cell is not None))
-                    for p in fact.provenance
-                ):
+                if not any(p.doc_id == field.doc_id and usable_anchor(p) for p in fact.provenance):
                     raise ValueError(f"Coverage field {field.name} lacks required source location")
         return _result([], covered_fields=Decimal(len(plan.coverage)))
 

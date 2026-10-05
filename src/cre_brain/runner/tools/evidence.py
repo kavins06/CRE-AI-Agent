@@ -7,6 +7,7 @@ from typing import Any
 from pydantic import BaseModel
 
 from cre_brain.domain import Assumption, CalcResult, ClaimType, Fact
+from cre_brain.domain.provenance import usable_anchor
 from cre_brain.runner.policy import Refusal
 from cre_brain.runner.tools.contracts import Reference
 from cre_brain.runner.tools.state import ToolState, fingerprint
@@ -126,3 +127,26 @@ def number(state: ToolState, ref: Reference, unit: str) -> Decimal:
     if not isinstance(exponent, int) or abs(exponent) > 32:
         raise Refusal("invalid_input", "Stored Decimal exponent is outside supported tool bounds.")
     return value
+
+
+def screen_fact(state: ToolState, ref: Reference) -> Fact:
+    """SCREEN can disclose anchored seller claims; it cannot verify or promote them."""
+    if ref.kind != "fact":
+        raise Refusal("untrusted_evidence", "SCREEN inputs require canonical anchored facts.")
+    resolve(state, ref, trusted=False)
+    fact = state.current(Fact, ref.record_id)
+    binding = state.binding(ref.record_id, "fact")
+    if (
+        fact is None
+        or binding is None
+        or fact.claim_type not in {ClaimType.SELLER_ASSERTION, ClaimType.VERIFIED_FACT}
+        or binding.get("authority") not in {"quarantine", "verified_source", "authorized_user"}
+    ):
+        raise Refusal("untrusted_evidence", "SCREEN requires seller or verified deal evidence.")
+    if fact.claim_type == ClaimType.VERIFIED_FACT and binding.get("authority") == "quarantine":
+        raise Refusal("untrusted_evidence", "Quarantine cannot authorize verification.")
+    if not fact.provenance or any(not usable_anchor(p) for p in fact.provenance):
+        raise Refusal(
+            "untrusted_evidence", "Headline evidence requires page or sheet/cell anchors."
+        )
+    return fact

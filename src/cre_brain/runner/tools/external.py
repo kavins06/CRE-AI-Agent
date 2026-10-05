@@ -10,6 +10,7 @@ from cre_brain.domain.base import TenantScope
 from cre_brain.runner.policy import Refusal
 from cre_brain.runner.tools import files
 from cre_brain.runner.tools.contracts import DraftExternal, SendExternal
+from cre_brain.runner.tools.finalization import trusted_release
 from cre_brain.runner.tools.json_io import canonical, parse
 from cre_brain.runner.tools.registry import ToolRegistry, ok, refused
 from cre_brain.runner.tools.state import ToolState
@@ -87,19 +88,57 @@ def deliver(registry: ToolRegistry, intent: dict[str, Any]) -> dict[str, Any]:
     try:
         with registry.transaction() as state:
             draft = state.binding(intent["draft_id"], "draft")
-            assert draft is not None
+            if (
+                draft is None
+                or draft["deal"] != registry.context.deal_id
+                or draft["task"] != registry.context.task_id
+                or not any(
+                    e.kind == "tool_call"
+                    and e.source == "tool"
+                    and e.runner == "tools"
+                    and e.release_id == registry.context.release_id
+                    and e.payload.get("send_key") == intent["send_key"]
+                    and e.payload.get("draft_id") == intent["draft_id"]
+                    for e in state.history()
+                )
+            ):
+                raise Refusal("untrusted_artifact", "Delivery requires this task's durable intent.")
+            if any(
+                e.payload.get("send_key") == intent["send_key"]
+                and e.payload.get("delivery") == "sent"
+                for e in state.history()
+            ):
+                return ok({"draft_id": intent["draft_id"], "status": "sent"})
             raw = files.read(registry.workspace, Path(draft["path"]))
             if files.digest(raw) != draft["digest"]:
                 raise ValueError("Draft bytes changed")
             request = registry.released_draft(state, draft, raw)
-            connector = registry.connectors[request.kind]
-        # Connector idempotency is part of the configured host seam.
-        connector.send(
-            recipient_id=request.to, body=request.body, idempotency_key=intent["send_key"]
-        )
-        with registry.transaction() as state:
+            # Re-read durable tenant policy immediately before delivery. Keep the
+            # tenant lock through the call so a concurrent OFF cannot commit in
+            # the authorization/call gap. The intent is already durable separately.
+            toggle = getattr(registry.host_toggles(state), request.kind)
+            cid = "confirmation-" + files.digest(
+                canonical([intent["draft_id"], draft["digest"]]).encode()
+            )
+            if toggle == "off" or (toggle == "ask" and not registry.confirmed(state, cid)):
+                raise Refusal("policy_off", "Current host policy does not authorize delivery.")
+            connector = registry.connectors.get(request.kind)
+            if connector is None:
+                raise Refusal("missing_connector", "Host connector is no longer configured.")
+            if (
+                TenantScope.model_validate(connector.scope.model_dump(warnings=False))
+                != registry.context.scope
+                or request.to not in connector.allowed_recipients
+            ):
+                raise Refusal("unauthorized_scope", "Current connector authorization revoked.")
+            # Connector idempotency is part of the configured host seam.
+            connector.send(
+                recipient_id=request.to, body=request.body, idempotency_key=intent["send_key"]
+            )
             state.event("tool_result", {"send_key": intent["send_key"], "delivery": "sent"})
         return ok({"draft_id": intent["draft_id"], "status": "sent"})
+    except Refusal as error:
+        return refused(error.category, error.message)
     except Exception:
         return refused(
             "delivery_unknown",
@@ -120,14 +159,9 @@ def released_draft(
     )
     if current is None or current.status != "final" or current.kind != expected_kind:
         raise Refusal("untrusted_artifact", "Send only a finalized artifact of the matching kind.")
-    released = any(
-        e.kind == "deliverable"
-        and e.payload.get("d_id") == current.d_id
-        and e.payload.get("version") == current.version
-        and e.payload.get("sha256") == anchor.sha256
-        for e in state.history()
-    )
-    if not released or snapshot.data.decode() != request.body:
+    registry.require_gates()
+    trusted_release(registry, state, anchor, snapshot, current)
+    if snapshot.data.decode() != request.body:
         raise Refusal("untrusted_artifact", "Draft must match the finalized artifact exactly.")
     registry.deadline(state)
     return request
