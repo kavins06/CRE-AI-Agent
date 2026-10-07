@@ -1,0 +1,67 @@
+name: Sandbox validation
+
+on:
+  pull_request:
+    branches: [dev]
+    paths:
+      # Every project change can alter packaged image behavior or verifier setup.
+      - '**'
+      - .github/workflows/sandbox-validation.yml
+      - src/cre_brain/sandbox/**
+      - tests/sandbox/**
+      - docker/**
+      - .dockerignore
+      - pyproject.toml
+      - uv.lock
+      - scripts/check_task.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sandbox-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  sandbox-physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Pin action revisions and test the reviewer's branch SHA, not an implicit ref.
+      # https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#using-third-party-actions
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: '0.8.22'
+          enable-cache: true
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - run: ./init.sh
+      - name: Run unchanged T031 physical verification
+        run: uv run pytest tests/sandbox -q && uv run python scripts/check_task.py T031
+
+  sandbox-merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # The default pull_request ref is GitHub's synthetic merge commit.
+      # https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#pull_request
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e # v6
+        with:
+          version: '0.8.22'
+          enable-cache: true
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - run: ./init.sh
+      - name: Record tested merge revision
+        run: git rev-parse HEAD
+      - name: Run unchanged T031 physical verification
+        run: uv run pytest tests/sandbox -q && uv run python scripts/check_task.py T031

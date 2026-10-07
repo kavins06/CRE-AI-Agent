@@ -1,0 +1,39 @@
+name: Excel recalculation
+on:
+  pull_request:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  excel:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CRE_EXCEL_SOFFICE: /usr/bin/soffice
+      CRE_EXCEL_UNO_PYTHON: /usr/bin/python3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: '0.8.22'
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install native Excel verification runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libreoffice-calc python3-uno
+      - run: uv sync --locked --python 3.12
+      - name: Rebuild and compare reference assets
+        run: |
+          uv run --locked python -m cre_brain.excel.build_template --output /tmp/excel-reference --config config
+          cmp templates/mf_standard.xlsx /tmp/excel-reference/mf_standard.xlsx
+          cmp templates/mf_standard.map.json /tmp/excel-reference/mf_standard.map.json
+      - name: Verify template acceptance criteria
+        run: uv run pytest tests/excel -q -k template && uv run python scripts/check_task.py T019
+      - name: Verify real UNO recalculation and parity
+        run: uv run pytest tests/excel -q && uv run python scripts/check_task.py T020

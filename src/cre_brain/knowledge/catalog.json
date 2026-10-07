@@ -1,0 +1,1292 @@
+{
+  "schema_version": 1,
+  "resources": [
+    {
+      "id": "mfuv-occ-cre-lending-2022",
+      "title": "Comptroller's Handbook: Commercial Real Estate Lending, Version 2.0",
+      "authors": [
+        "Office of the Comptroller of the Currency"
+      ],
+      "publisher": "Office of the Comptroller of the Currency, U.S. Department of the Treasury",
+      "publication_date": "2022-03",
+      "canonical_url": "https://www.occ.gov/publications-and-resources/publications/comptrollers-handbook/files/commercial-real-estate-lending/index-commercial-real-estate-lending.html",
+      "download_url": "https://www.occ.gov/publications-and-resources/publications/comptrollers-handbook/files/commercial-real-estate-lending/pub-ch-commercial-real-estate.pdf",
+      "format": "PDF handbook; HTML publication record",
+      "topics": [
+        "income-producing CRE underwriting",
+        "multifamily lending",
+        "NOI",
+        "DSCR",
+        "debt yield",
+        "LTV",
+        "collateral valuation",
+        "loan structure",
+        "stress analysis",
+        "income-producing CRE lending",
+        "multifamily underwriting",
+        "repayment capacity",
+        "interest-rate risk",
+        "loan workouts",
+        "income-producing real estate",
+        "acquisition financing",
+        "credit risk",
+        "underwriting",
+        "market conditions",
+        "environmental liability",
+        "risk management"
+      ],
+      "license": "U.S. public domain for original federal-government work under 17 USC 105; not a Creative Commons license",
+      "license_url": "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title17-section105&num=0&edition=prelim",
+      "rights_basis": "Official OCC-authored supervisory handbook prepared for agency examiners. Section 105 excludes original U.S. Government employee works produced in official duties from U.S. copyright; this is not a blanket license for externally authored material referenced or reproduced in the handbook. Official OCC handbook prepared for agency examiners in their official supervision duties. U.S. government employee works are not protected by U.S. copyright under 17 U.S.C. §105. USAGov expressly warns that third-party material hosted by government agencies and agency logos are not automatically reusable; permission does not extend to those elements. OCC identifies this as its examiner handbook, describes its supervisory scope, and links the PDF. OCC Bulletin 2022-7 confirms the March 2022 Version 2.0 issuance. Reuse rests on federal-agency authorship and Section 105, not public accessibility alone.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "A strong lender-side baseline for evaluating multifamily income-producing properties: normalized cash flow, debt-service capacity, collateral value, covenant design and downside sensitivity. Particularly useful for debt-screening and underwriting QA.",
+      "caveats": "Bank supervision guidance, not an acquisition investment-return model or universal lending mandate. The PDF retains its March 2022 edition date but expressly marks March 20, 2025 removal of reputation-risk references. Recheck later bulletins and applicable law. Reuse permission covers original government text in the U.S.; exclude third-party material and official marks and verify international rights. Supervisory guidance for OCC-regulated banks, not a universal investor underwriting policy. Preserve March 2022 version and any subsequently marked PDF updates. Exclude third-party standards, logos, and seals, attribute OCC, and do not imply endorsement. Foreign copyright treatment may differ. Supervisory guidance for OCC-regulated institutions, not an investment recommendation or binding policy for all purchasers. Confirm later revisions. Public-domain conclusion is U.S.-specific and excludes third-party content and government marks. PDF endpoint returned HTTP 200/application/pdf; body not fetched.",
+      "aliases": [
+        "occ-cre-lending-2022"
+      ],
+      "allowed_urls": [
+        "https://www.occ.gov/publications-and-resources/publications/comptrollers-handbook/files/commercial-real-estate-lending/pub-ch-commercial-real-estate.pdf",
+        "https://occ.gov/publications-and-resources/publications/comptrollers-handbook/files/commercial-real-estate-lending/pub-ch-commercial-real-estate.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "mfuv-hud-map-guide-2021",
+      "title": "Multifamily Accelerated Processing (MAP) Guide, HUD Handbook 4430.G, 2020 edition, revised March 19, 2021",
+      "authors": [
+        "U.S. Department of Housing and Urban Development, Office of the Assistant Secretary for Housing–FHA Commissioner"
+      ],
+      "publisher": "U.S. Department of Housing and Urban Development",
+      "publication_date": "2021-03-19",
+      "canonical_url": "https://www.hud.gov/hudclips/guidebooks",
+      "download_url": "https://www.hud.gov/sites/dfiles/OCHCO/documents/4430GHSGG.pdf",
+      "format": "PDF federal multifamily underwriting manual; HTML guidebook listing",
+      "topics": [
+        "multifamily underwriting",
+        "valuation",
+        "market studies",
+        "rents",
+        "vacancy",
+        "operating expenses",
+        "capitalization",
+        "replacement reserves",
+        "FHA loan sizing",
+        "feasibility",
+        "rental income",
+        "acquisition financing",
+        "due diligence"
+      ],
+      "license": "Public domain for HUD-created text, subject to HUD's identified exclusions",
+      "license_url": "https://www.hud.gov/sites/documents/webpubstandards.pdf",
+      "rights_basis": "HUD Web Publication Standards, section D, states that HUD website content is generally public domain and permits use of material written or created for its websites. It separately excludes the official emblem and requires copyright identification for reprinted outside material. The guide is an official HUD publication, also supported by 17 USC 105 for original federal employee content. HUD's guidebook page identifies the 2020 MAP Guide, dated March 24, 2021, and links this PDF. HUD Web Publication Procedures and Style Guide, Section 1.D, permits use of HUD-created website material and requires notice of third-party copyrights.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "The most directly multifamily-specific reusable manual in this shortlist. Prioritize Chapter 7, Valuation Analysis and Market Study, for rent and expense support, income-capitalization analysis and demand; pair with mortgage-credit and reserve sections for financing feasibility.",
+      "caveats": "FHA/MAP program requirements are not universal market-rate acquisition assumptions. The PDF cover says revised March 19, 2021; HUD's listing labels the posting March 24, 2021, and the original transmittal was issued December 18, 2020. Later mortgagee letters modify the base guide, including 2026 environmental changes; do not treat it as an unamended current rulebook. Exclude externally copyrighted content and official marks; check international reuse. Edition-specific FHA requirements, not universal investment policy. Check subsequent HUD notices before applying thresholds. Ingestion permission covers HUD-authored content, not copyrighted third-party exhibits, standards, logos or emblems. PDF endpoint returned HTTP 200/application/pdf; approximately 9.8 MB, not fetched.",
+      "aliases": [
+        "hud-map-2020"
+      ],
+      "allowed_urls": [
+        "https://www.hud.gov/sites/dfiles/OCHCO/documents/4430GHSGG.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "mfuv-hud-section8-renewal-2023",
+      "title": "Section 8 Renewal Policy Guidebook, with revised Chapter 9: Rent Comparability Studies",
+      "authors": [
+        "U.S. Department of Housing and Urban Development, Office of Multifamily Housing"
+      ],
+      "publisher": "U.S. Department of Housing and Urban Development",
+      "publication_date": "2023-03-27",
+      "canonical_url": "https://www.hud.gov/sites/dfiles/Housing/documents/Section-8-Renewal-Guidebook.pdf",
+      "download_url": "https://www.hud.gov/sites/dfiles/Housing/documents/Section-8-Renewal-Guidebook.pdf",
+      "format": "PDF guidebook with dated transmittal",
+      "topics": [
+        "multifamily rent comparables",
+        "rent adjustments",
+        "amenity valuation",
+        "services",
+        "as-renovated rents",
+        "rent-controlled comparables",
+        "Section 8 PBRA",
+        "HAP renewal"
+      ],
+      "license": "Public domain for HUD-created text, subject to HUD's identified exclusions",
+      "license_url": "https://www.hud.gov/sites/documents/webpubstandards.pdf",
+      "rights_basis": "Official HUD Office of Multifamily Housing guidebook. HUD's public-domain website policy expressly permits use of HUD-created written material while distinguishing externally copyrighted material and the official emblem; original federal employee text is also covered by 17 USC 105.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Chapter 9 is a substantial, practical reference for choosing and adjusting multifamily rent comparables, explaining line-item rent-grid differences and evaluating amenities, services and planned renovations. Valuable for subsidized-property acquisitions and disciplined rent-comp reasoning.",
+      "caveats": "Issued March 27, 2023 and effective May 1, 2023; that transmittal makes substantive revisions only to Chapter 9. PBRA contract-renewal rules and SAFMR-based alternatives are program-specific, not substitutes for property-level market rent evidence. Check later HUD notices and live thresholds. Exclude third-party material and official marks; verify international rights.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.hud.gov/sites/dfiles/Housing/documents/Section-8-Renewal-Guidebook.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "mfuv-interagency-appraisal-2010",
+      "title": "Interagency Appraisal and Evaluation Guidelines",
+      "authors": [
+        "Office of the Comptroller of the Currency",
+        "Board of Governors of the Federal Reserve System",
+        "Federal Deposit Insurance Corporation",
+        "Office of Thrift Supervision",
+        "National Credit Union Administration"
+      ],
+      "publisher": "U.S. federal financial regulatory agencies; hosted by FDIC and the Federal Reserve Board",
+      "publication_date": "2010-12-02",
+      "canonical_url": "https://www.fdic.gov/news/financial-institution-letters/2010/fil10082.html",
+      "download_url": "https://www.federalreserve.gov/boarddocs/srletters/2010/sr1016a1.pdf",
+      "format": "PDF interagency guidelines; HTML agency announcement",
+      "topics": [
+        "appraisal versus evaluation",
+        "collateral valuation",
+        "appraiser independence",
+        "valuation review",
+        "documentation",
+        "automated valuation limitations",
+        "appraisal independence",
+        "appraisal review",
+        "evaluation standards",
+        "valuation updates",
+        "workouts",
+        "automated valuation methods"
+      ],
+      "license": "U.S. public domain for original government guidance; Federal Reserve website public-domain policy with exclusions",
+      "license_url": "https://www.federalreserve.gov/disclaimer.htm",
+      "rights_basis": "Official joint federal supervisory guidance. The Federal Reserve Board states that its website information is public domain unless otherwise indicated and may be copied and distributed with source citation, excluding non-Board copyrighted material and protected seals/logos. Original agency-authored guidance is also supported by 17 USC 105. Official joint federal-agency guidelines hosted by the Federal Reserve. Its copyright notice allows copying and distribution of public-domain Board website information without permission and asks that the Board be cited. This does not license externally authored standards incorporated by reference.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Useful for distinguishing an analyst's acquisition valuation from a required independent appraisal, and for setting evidence, independence, review and audit-trail standards. Helps prevent rent proxies or an automated tool from being misrepresented as a formal appraisal.",
+      "caveats": "A dated supervisory framework, not the full current regulatory regime; institutions and thresholds have changed since 2010 and OTS no longer exists. Verify current agency regulations and appraisal standards. References to USPAP do not confer a license to ingest USPAP. Exclude third-party content and protected marks; U.S. public-domain status does not establish worldwide rights. 2010 guidance, not a current all-in-one statement of appraisal law. Reconcile with later regulations and current thresholds. USPAP and other incorporated external standards are not licensed by this publication. Do not infer that a broker price opinion automatically meets bank evaluation requirements.",
+      "aliases": [
+        "interagency-appraisal-evaluation-2010"
+      ],
+      "allowed_urls": [
+        "https://www.federalreserve.gov/boarddocs/srletters/2010/sr1016a1.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "mfuv-interagency-cre-workouts-2023",
+      "title": "Policy Statement on Prudent Commercial Real Estate Loan Accommodations and Workouts",
+      "authors": [
+        "Office of the Comptroller of the Currency",
+        "Board of Governors of the Federal Reserve System",
+        "Federal Deposit Insurance Corporation",
+        "National Credit Union Administration"
+      ],
+      "publisher": "U.S. federal financial regulatory agencies; Federal Register / U.S. Government Publishing Office",
+      "publication_date": "2023-07-06",
+      "canonical_url": "https://www.govinfo.gov/content/pkg/FR-2023-07-06/html/2023-14247.htm",
+      "download_url": "https://www.govinfo.gov/content/pkg/FR-2023-07-06/pdf/2023-14247.pdf",
+      "format": "Federal Register HTML and PDF; final policy statement, 88 FR 43115–43134",
+      "topics": [
+        "CRE distress",
+        "refinance risk",
+        "borrower repayment capacity",
+        "collateral decline",
+        "loan workouts",
+        "short-term accommodations",
+        "loan classification",
+        "stress scenarios",
+        "loan accommodations",
+        "workouts",
+        "repayment capacity",
+        "collateral valuation",
+        "CECL"
+      ],
+      "license": "U.S. public domain for original federal-government policy text under 17 USC 105",
+      "license_url": "https://uscode.house.gov/view.xhtml?req=granuleid:USC-prelim-title17-section105&num=0&edition=prelim",
+      "rights_basis": "Final policy statement issued by four federal regulators and published in the Federal Register. Original agency policy text and agency-authored examples are U.S. Government work under section 105; externally authored accounting standards or other quoted third-party material require separate review. Joint official federal-agency policy statement. The Federal Reserve copyright notice states that, unless otherwise indicated, information on its website is public domain and may be copied and distributed without permission, with the Board cited as source. Separately identified non-Board material and agency marks are excluded.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Complements stabilized underwriting with downside and maturity-risk reasoning: separate temporary operating weakness, collateral-value decline and actual repayment impairment, then assess extension/workout plausibility. Useful background for multifamily debt maturity and hold/sell scenarios.",
+      "caveats": "Primarily lender supervision, credit classification and accounting guidance, not a valuation formula or promise of refinancing. Distinguish July 6 Federal Register publication from June 2023 agency announcements. Check subsequent guidance, and exclude third-party accounting material and official marks; verify international reuse. Supervisory policy, not borrower legal advice or assurance that a lender will modify a loan. Supersedes the 2009 CRE workout statement. The FDIC download is the agency-issued final policy manuscript and contains a Federal Register publication-date placeholder; use issuance metadata rather than treating that placeholder as an effective date. Referenced accounting and appraisal standards retain their own rights.",
+      "aliases": [
+        "interagency-cre-workouts-2023"
+      ],
+      "allowed_urls": [
+        "https://www.govinfo.gov/content/pkg/FR-2023-07-06/pdf/2023-14247.pdf",
+        "https://www.fdic.gov/news/financial-institution-letters/2023/fil23034a.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "mfuv-fannie-mae-valuation-income",
+      "title": "Multifamily Selling and Servicing Guide, Part II, Chapter 2: Valuation and Income",
+      "authors": [
+        "Fannie Mae"
+      ],
+      "publisher": "Fannie Mae",
+      "publication_date": "2026-09-14",
+      "canonical_url": "https://mfguide.fanniemae.com/node/6346",
+      "download_url": null,
+      "format": "Living HTML guide chapter; publisher-generated PDF available for rights inspection only",
+      "topics": [
+        "multifamily market analysis",
+        "appraisal",
+        "underwriting value",
+        "underwritten net cash flow",
+        "DSCR",
+        "refinance risk",
+        "rent-stabilized properties",
+        "multifamily valuation",
+        "appraisal review",
+        "cash-out analysis"
+      ],
+      "license": "Copyright Fannie Mae; restricted lender-use permissions, no commercial knowledge-library license",
+      "license_url": "https://www.fanniemae.com/about-us/legal-disclosure",
+      "rights_basis": "The chapter's publisher-generated PDF states that no portion may be reproduced without prior written permission except permitted legal uses and narrow permissions for Fannie Mae-approved lenders originating/selling/servicing its loans. The legal disclosure separately confirms that website publication does not place content in the public domain. Rights notice verified at https://mfguide.fanniemae.com/fnmf-pdf/download/6346. Fannie Mae reserves copyright and expressly states that publication does not place content in the public domain. The chapter permits only limited reproduction by Fannie Mae-approved lenders for their own origination/sale/servicing use. Legal disclosure also expressly prohibits unauthorized use as training data or in AI modeling applications.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Highly relevant institutional multifamily reference for normalized lender NCF, valuation support, debt-service analysis and refinance-risk assumptions. Use bibliographic links for authorized human consultation; obtain express appropriate rights before any automated-library incorporation.",
+      "caveats": "The date is the effective-as-of date on the retrieved chapter PDF, not an original publication date; the guide is live and individual sections can change independently. Agency execution-specific assumptions must not become universal acquisition rules. No downloading into the knowledge library, embeddings, retrieval indexing, training or wholesale copying under this catalog. Fannie Mae is not treated as a public-domain federal agency. Do not download into the knowledge library, embed, retrieve full text for the analyst, train on, or reproduce content without written permission. PDF identity/date verified at https://mfguide.fanniemae.com/fnmf-pdf/download/6346; that publisher URL is evidence, not ingestion authorization. Requirements are Fannie Mae-specific and effective dates change.",
+      "aliases": [
+        "fannie-mae-mf-valuation-income-2026"
+      ],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "mfuv-brueggeman-fisher-yates-2024",
+      "title": "Real Estate Finance & Investments, 2024 Release",
+      "authors": [
+        "William B. Brueggeman",
+        "Jeffrey D. Fisher",
+        "Stephanie R. Yates"
+      ],
+      "publisher": "McGraw Hill LLC",
+      "publication_date": "2024",
+      "canonical_url": "https://www.mheducation.co.uk/real-estate-finance-investments-2024-release-ise-9781266928086-emea-group",
+      "download_url": null,
+      "format": "Commercial textbook, print/e-book; publisher-hosted preface and table of contents",
+      "topics": [
+        "income-producing property valuation",
+        "leases and rents",
+        "DCF",
+        "mortgage finance",
+        "leverage",
+        "risk analysis",
+        "renovation",
+        "disposition",
+        "investment structures",
+        "income-property valuation",
+        "financial leverage",
+        "financing alternatives",
+        "joint ventures",
+        "portfolio analysis"
+      ],
+      "license": "Copyright 2024 McGraw Hill LLC; all rights reserved",
+      "license_url": "https://info.mheducation.com/rs/128-SJW-347/images/Preface_Brueggeman_Real%20Estate%20Finance%20and%20Investments_2024%20Release.pdf?version=0",
+      "rights_basis": "Publisher-hosted title/copyright pages identify all three authors and prohibit reproduction, distribution and storage in a database or retrieval system without prior written consent. A public preface and a publisher product listing are not a reuse license. Publisher product page verifies title, authors, release and table of contents. McGraw Hill terms reserve ownership/licensing of site content and restrict copying, derivative works and systematic retrieval. Access or purchase does not grant permission to incorporate textbook content into a commercial knowledge library.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Established finance foundation for multifamily acquisitions. Chapters 9–14 cover leases/rents, income-property appraisal, investment analysis, leverage, risk, disposition and renovation; later investment-structure chapters provide partnership/JV background.",
+      "caveats": "General U.S. real-estate finance textbook, not a current lender policy manual; tax and market examples require updating. The official 2024 preface includes Yates although the linked ISE storefront lists Brueggeman and Fisher only; match ISBN/edition when obtaining authorized access. Only publisher metadata, TOC and preface were reviewed, not the full book. No full-text download, embedding, retrieval indexing or training permission. Not multifamily-specific throughout and not current lender policy. Retain bibliographic metadata only. Do not buy access for this research, bypass a paywall, use a pirated copy, or reproduce textbook content. The verified international edition ISBN is 9781266928086.",
+      "aliases": [
+        "brueggeman-fisher-real-estate-finance-2024"
+      ],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "mfuv-geltner-et-al-4e-2026",
+      "title": "Commercial Real Estate Analysis for Investment, Finance, and Development, 4th Edition",
+      "authors": [
+        "David M. Geltner",
+        "Norman G. Miller",
+        "Alex Van De Minne",
+        "Piet Eichholtz",
+        "Thies Lindenthal",
+        "Lily Shen"
+      ],
+      "publisher": "Routledge / Taylor & Francis Group",
+      "publication_date": "2026",
+      "canonical_url": "https://www.routledge.com/Commercial-Real-Estate-Analysis-for-Investment-Finance-and-Development/Geltner-Miller-VanDeMinne-Eichholtz-Lindenthal-Shen/p/book/9781041076391",
+      "download_url": null,
+      "format": "Commercial print/e-book textbook with separate online supplemental chapters",
+      "topics": [
+        "DCF and NPV",
+        "NOI definitions",
+        "rent determinants",
+        "market forecasting",
+        "cash-flow growth",
+        "cost of capital",
+        "leverage",
+        "mortgage underwriting",
+        "development"
+      ],
+      "license": "Copyright 2026; all rights reserved; publisher website permissions limited to personal, noncommercial use",
+      "license_url": "https://www.routledge.com/policies/terms-conditions",
+      "rights_basis": "The publisher identifies the fourth edition and copyright year. Its terms reserve rights and prohibit inclusion in public/private electronic retrieval services without written permission; personal noncommercial website permissions do not authorize commercial library incorporation. Book permissions process verified at https://www.routledge.com/contacts/rights-and-permissions/permissions.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Rigorous acquisition-analysis reference linking property income and rents to DCF/NPV, performance measurement, required returns and leverage. Chapters 4–9 and 11–15 are especially relevant; online Chapter 21 addresses commercial mortgage analysis and underwriting.",
+      "caveats": "Cross-property textbook rather than exclusively multifamily. The publisher page confirms the 2026 edition/copyright year but not an exact publication day; no day-level date is asserted. Some chapters are online supplements with separate access conditions. Only publisher metadata, TOC and rights pages were reviewed. Personal/noncommercial permissions are incompatible with commercial incorporation; no book download, embedding, retrieval indexing or training permission.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "interagency-cre-concentrations-2006",
+      "title": "Concentrations in Commercial Real Estate Lending, Sound Risk Management Practices",
+      "authors": [
+        "Office of the Comptroller of the Currency",
+        "Board of Governors of the Federal Reserve System",
+        "Federal Deposit Insurance Corporation"
+      ],
+      "publisher": "Federal banking regulatory agencies",
+      "publication_date": "2006-12-12 PDF date; Federal Reserve transmittal SR 07-1 dated 2007-01-04",
+      "canonical_url": "https://www.federalreserve.gov/boarddocs/srletters/2007/SR0701.htm",
+      "download_url": "https://www.federalreserve.gov/boarddocs/srletters/2007/SR0701a2.pdf",
+      "format": "PDF with HTML supervisory transmittal",
+      "topics": [
+        "CRE concentration risk",
+        "multifamily portfolio segmentation",
+        "credit underwriting",
+        "market analysis",
+        "stress testing",
+        "sensitivity analysis",
+        "capital adequacy",
+        "portfolio monitoring"
+      ],
+      "license": "Federal Reserve website information generally public domain unless otherwise indicated; attribution requested",
+      "license_url": "https://www.federalreserve.gov/disclaimer.htm",
+      "rights_basis": "Official agency-authored interagency guidance on the Federal Reserve website. The Board's explicit copyright notice permits copying and distribution of its public-domain information without permission, subject to separately identified non-Board material and trademark exclusions.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Adds a portfolio-level perspective to single-property underwriting: shared market sensitivities, capitalization-rate/rent/vacancy shocks, concentration segmentation, stress testing, and sensitivity analysis. Explicitly includes multifamily loans and distinguishes their risk profiles from speculative construction.",
+      "caveats": "Historical supervisory framework, not current market calibration or acquisition leverage limits. Guidance does not establish a universal CRE lending cap. PDF date differs from the December 6, 2006 issuance mentioned in the transmittal; retain both source dates rather than silently normalizing them. Apply current regulations separately.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.federalreserve.gov/boarddocs/srletters/2007/SR0701a2.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "freddie-mac-mf-credit-underwriting-ch10",
+      "title": "Multifamily Seller/Servicer Guide, Chapter 10: Fundamentals of Mortgages, Mortgage Origination and Credit Underwriting",
+      "authors": [
+        "Freddie Mac Multifamily"
+      ],
+      "publisher": "Freddie Mac",
+      "publication_date": "Rolling chapter; latest displayed section date 2026-02-24, with other sections dated 2004-2025",
+      "canonical_url": "https://mf.freddiemac.com/docs/chapters/mf_guide_ch_10.pdf",
+      "download_url": null,
+      "format": "Publisher-hosted PDF chapter; catalog download/embedding disabled",
+      "topics": [
+        "multifamily credit underwriting",
+        "sustainable cash flow",
+        "DCR",
+        "LTV",
+        "sponsor creditworthiness",
+        "viable maturity exit",
+        "loan amortization",
+        "acquisition financing",
+        "loan amount"
+      ],
+      "license": "Proprietary copyrighted content; copying, downloading, republication and display require prior written consent unless otherwise noted",
+      "license_url": "https://www.freddiemac.com/terms/linking",
+      "rights_basis": "Freddie Mac's content-use policy prohibits selling, republishing, printing, downloading, copying, retransmitting, reposting or displaying website content without prior written consent unless otherwise noted. Its linking policy permits direct links without prior permission. No library incorporation license was verified.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Focused conventional multifamily debt reference for borrower/property evaluation, cash-flow durability, debt coverage, lender leverage constraints, and maturity exit; more targeted than ingesting the entire Seller/Servicer Guide.",
+      "caveats": "Metadata and links only; no ingestion or embedding without permission. Section-specific dates matter, and product-specific chapters control conflicts. Freddie Mac states that AllRegs is the current official electronic guide; this public chapter PDF is a convenient reference, not proof of every program's current terms. No paid subscription was used.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "hud-4350-3-lease-occupancy",
+      "title": "Occupancy Requirements of Subsidized Multifamily Housing Programs, Handbook 4350.3 REV-1, Change 4 — Chapter 6: Lease Requirements and Leasing Activities",
+      "authors": [
+        "U.S. Department of Housing and Urban Development"
+      ],
+      "publisher": "HUD Office of Housing",
+      "publication_date": "2013-08 (Change 4); transmittal revised 2013-11",
+      "canonical_url": "https://www.hud.gov/hudclips/handbooks/housing-4350-3",
+      "download_url": "https://www.hud.gov/sites/documents/43503c6hsgh.pdf",
+      "format": "PDF handbook chapter",
+      "topics": [
+        "subsidized multifamily housing",
+        "leases",
+        "lease addenda",
+        "security deposits",
+        "permitted charges",
+        "move-in inspections",
+        "tenant disclosures"
+      ],
+      "license": "U.S. Government work; HUD website policy generally places agency-created written materials in the public domain.",
+      "license_url": "https://www.hud.gov/sites/documents/webpubstandards.pdf",
+      "rights_basis": "HUD's Web Publication Procedures and Style Guide, dated August 27, 2025, says that as a rule HUD Internet content is public domain and anyone can use material created for the websites. It requires separately copyrighted reprints to be marked. This agency-authored chapter is identified on HUD's official handbook page.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Direct lease-administration and diligence reference for HUD-subsidized multifamily assets: lease terms, attachments, deposits, resident briefing and inspection procedures.",
+      "caveats": "Download is Chapter 6, not the complete handbook. Its 2013 program-specific requirements are not current universal landlord-tenant law; check subsequent HUD notices, HOTMA implementation, program rules and state/local law. Exclude agency emblems and separately credited third-party content from blanket reuse.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.hud.gov/sites/documents/43503c6hsgh.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "hud-doj-reasonable-accommodations-2004",
+      "title": "Joint Statement of HUD and DOJ: Reasonable Accommodations Under the Fair Housing Act",
+      "authors": [
+        "U.S. Department of Housing and Urban Development",
+        "U.S. Department of Justice Civil Rights Division"
+      ],
+      "publisher": "HUD and DOJ",
+      "publication_date": "2004-05-17",
+      "canonical_url": "https://www.justice.gov/crt/us-department-housing-and-urban-development",
+      "download_url": "https://www.justice.gov/sites/default/files/crt/legacy/2010/12/14/joint_statement_ra.pdf",
+      "format": "PDF joint statement; HTML transcription",
+      "topics": [
+        "Fair Housing Act",
+        "reasonable accommodations",
+        "disability",
+        "resident requests",
+        "verification",
+        "housing-provider policies"
+      ],
+      "license": "Public domain under DOJ's website copyright policy, unless otherwise indicated.",
+      "license_url": "https://www.justice.gov/legalpolicies",
+      "rights_basis": "DOJ states that, unless otherwise indicated, information on its websites is public domain and may be copied and distributed without permission. The statement is authored by two federal agencies; DOJ excludes third-party material and protected seals from the general policy.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Supports review of accommodation workflows, resident communications, disability verification and fair-housing controls at multifamily properties.",
+      "caveats": "The PDF is dated May 17, 2004; the HTML transcription instead displays May 14, 2004. Date follows the PDF. Technical assistance is not a substitute for current law, subsequent agency guidance or counsel. Structural reasonable modifications and additional Section 504 obligations require separate treatment; do not reuse agency seals.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.justice.gov/sites/default/files/crt/legacy/2010/12/14/joint_statement_ra.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "epa-lead-protect-family-2026",
+      "title": "Protect Your Family From Lead in Your Home",
+      "authors": [
+        "U.S. Environmental Protection Agency",
+        "U.S. Consumer Product Safety Commission",
+        "U.S. Department of Housing and Urban Development"
+      ],
+      "publisher": "EPA, CPSC and HUD",
+      "publication_date": "2026-01",
+      "canonical_url": "https://www.epa.gov/lead/protect-your-family-lead-your-home-real-estate-disclosure",
+      "download_url": "https://www.epa.gov/system/files/documents/2026-02/protectyourfamily_pamphlet_2026_3.pdf",
+      "format": "PDF pamphlet",
+      "topics": [
+        "pre-1978 housing",
+        "lead-based paint",
+        "rental disclosures",
+        "lead hazards",
+        "renovation",
+        "resident health"
+      ],
+      "license": "Explicit public-domain notice in the pamphlet.",
+      "license_url": "https://www.epa.gov/system/files/documents/2026-02/protectyourfamily_pamphlet_2026_3.pdf",
+      "rights_basis": "The January 2026 pamphlet states that the document is in the public domain and may be produced by an individual or organization without permission. EPA's source page also permits printing/photocopying legible copies and production by a commercial printer.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Direct pre-1978 multifamily diligence and resident-disclosure reference covering known hazards, records, safe renovation and exposure reduction.",
+      "caveats": "EPA says the 2026 version reflects dust-lead action/reportable levels effective January 12, 2026 and the abatement definition effective January 13, 2025. Confirm later rule changes and state requirements. Retrieval or summarization does not replace required delivery of the applicable official disclosure document.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.epa.gov/system/files/documents/2026-02/protectyourfamily_pamphlet_2026_3.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "niosh-dampness-mold-assessment-tool",
+      "title": "Dampness and Mold Assessment Tool – General Buildings: Form & Instructions",
+      "authors": [
+        "J. Cox-Ganser",
+        "M. Martin",
+        "J.H. Park",
+        "S. Game"
+      ],
+      "publisher": "National Institute for Occupational Safety and Health, CDC, U.S. Department of Health and Human Services",
+      "publication_date": "2018-12",
+      "canonical_url": "https://www.cdc.gov/niosh/publications/numbered/2019-115.html",
+      "download_url": "https://www.epa.gov/sites/default/files/2019-02/documents/2019-115.pdf",
+      "format": "PDF assessment form and instructions",
+      "topics": [
+        "dampness",
+        "mold",
+        "water intrusion",
+        "building inspections",
+        "maintenance prioritization",
+        "remediation tracking"
+      ],
+      "license": "Explicit public domain; freely copyable or reprintable.",
+      "license_url": "https://www.epa.gov/sites/default/files/2019-02/documents/2019-115.pdf",
+      "rights_basis": "The EPA-hosted copy of NIOSH Publication 2019-115 expressly states that the document is in the public domain and may be freely copied or reprinted. Its suggested citation names the four authors; CDC's official page confirms the December 2018 publication date.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Useful for structured moisture observations, room-by-room condition diligence, repair prioritization and repeat inspections after remediation.",
+      "caveats": "A screening and prioritization tool, not an exposure standard, engineering specification or legal-compliance certification. Download uses an official EPA mirror; CDC's canonical page was readable through web retrieval but direct automated HTTP access returned 403 during verification.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.epa.gov/sites/default/files/2019-02/documents/2019-115.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "epa-building-air-quality-guide",
+      "title": "Building Air Quality: A Guide for Building Owners and Facility Managers",
+      "authors": [
+        "U.S. Environmental Protection Agency",
+        "National Institute for Occupational Safety and Health"
+      ],
+      "publisher": "EPA and NIOSH",
+      "publication_date": "1991-12",
+      "canonical_url": "https://www.epa.gov/indoor-air-quality-iaq/building-air-quality-guide-guide-building-owners-and-facility-managers",
+      "download_url": "https://www.epa.gov/sites/default/files/2014-08/documents/iaq.pdf",
+      "format": "PDF guide",
+      "topics": [
+        "indoor air quality",
+        "HVAC",
+        "moisture",
+        "occupant complaints",
+        "maintenance",
+        "building-management plans",
+        "diagnostic documentation"
+      ],
+      "license": "Explicit public-domain notice in the guide.",
+      "license_url": "https://www.epa.gov/sites/default/files/2014-08/documents/iaq.pdf",
+      "rights_basis": "The guide states that it is in the public domain and may be reproduced in whole or part by an individual or organization without permission. EPA's official resource page links the full guide and individual sections; CDC's publication record identifies December 1991 and NIOSH Publication 91-114.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Substantial building-operations framework for IAQ profiles, resident/occupant complaints, HVAC investigation, moisture control and management documentation.",
+      "caveats": "Written for public and commercial buildings and dated 1991; multifamily adaptation is necessary. Do not use historical thresholds or technical recommendations as current codes or health standards. Its citations do not confer rights to separately published third-party standards.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.epa.gov/sites/default/files/2014-08/documents/iaq.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "epa-aai-reporting-checklist-2026",
+      "title": "All Appropriate Inquiries: Reporting Requirements and Grant Recipient Checklist (EPA-560-F-23-017)",
+      "authors": [
+        "U.S. Environmental Protection Agency"
+      ],
+      "publisher": "EPA Office of Land and Emergency Management, Brownfields Program",
+      "publication_date": "2026-03",
+      "canonical_url": "https://www.epa.gov/brownfields/brownfields-all-appropriate-inquiries",
+      "download_url": null,
+      "format": "PDF fact sheet and reporting checklist, linked from agency guidance page",
+      "topics": [
+        "environmental due diligence",
+        "Phase I environmental site assessment",
+        "CERCLA",
+        "significant data gaps",
+        "environmental professionals",
+        "AAI reporting",
+        "Brownfields grants",
+        "acquisition due diligence",
+        "environmental site assessments",
+        "all appropriate inquiries",
+        "environmental professional qualifications",
+        "report review"
+      ],
+      "license": "Commercial-reuse authorization not established; EPA's general policy allows noncommercial, scientific and educational use but warns commercial use may be copyright-protected.",
+      "license_url": "https://www.epa.gov/web-policies-and-procedures/epa-disclaimers",
+      "rights_basis": "The source page links the reporting fact sheet, whose footer states EPA-560-F-23-017, March 2026. No document-specific commercial license or public-domain declaration was verified. EPA's general notice explicitly says individual documents may have different copyright conditions; classify conservatively as reference-only, not as a definitive finding that the agency text is copyrighted. Official EPA Brownfields page links this reporting checklist. The PDF footer states March 2026 and EPA-560-F-23-017 despite the older URL directory. EPA's Copyright Status policy is not a blanket commercial incorporation license; employee authorship or a document-specific permission was not established.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Useful checklist for environmental report opinions, significant missing evidence, professional qualifications, signatures and recommendations for further investigation during acquisitions.",
+      "caveats": "The PDF URL contains 2025-02, but the publication footer is March 2026; date follows the document. Grant-recipient submission requirements do not automatically apply to every private acquisition. The text contains an apparent ASTM E1521-21 typo; its introduction/checklist correctly refer to E1527-21. Use current 40 CFR Part 312 and qualified professionals. No download, retrieval ingestion or embedding authorized by this catalog. Form submission requirements are specific to EPA Brownfields grants; not every private acquisition must submit this checklist. References ASTM standards but does not license or replace them. Verify current rule and standard citations with an environmental professional; one paragraph contains an inconsistent ASTM designation. No downloading, embedding or reproduction authorized by this catalog.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "astm-e2018-24-pca",
+      "title": "E2018-24 Standard Guide for Property Condition Assessments: Baseline Property Condition Assessment Process",
+      "authors": [
+        "ASTM International Committee E50"
+      ],
+      "publisher": "ASTM International",
+      "publication_date": "2024",
+      "canonical_url": "https://store.astm.org/e2018-24.html",
+      "download_url": null,
+      "format": "Commercial standard",
+      "topics": [
+        "property-condition assessment",
+        "physical deficiencies",
+        "walk-through surveys",
+        "building systems",
+        "document review",
+        "capital planning"
+      ],
+      "license": "Copyrighted ASTM publication; licensed access and separate reproduction permission required.",
+      "license_url": "https://store.astm.org/restricted_copyright-and-permissions",
+      "rights_basis": "ASTM's official rights page states that all its publications, including standards, are copyrighted and protected by U.S. and international law. Reproduction permissions are handled through the Copyright Clearance Center; permission does not itself supply the publication.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "High-value reference for specifying baseline physical diligence, documenting observed deficiencies and framing property-condition reports and capital needs.",
+      "caveats": "No full standard accessed or purchased. Public product-page scope information does not license the standard. Assessments are point-in-time, site-specific and purpose-specific; they do not eliminate uncertainty or cover all environmental, economic or transaction issues. No download, ingestion or embedding without an appropriate additional license.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "irem-practical-apartment-management-7",
+      "title": "Practical Apartment Management, 7th Edition",
+      "authors": [
+        "Cindy M. Clare, CPM, CAPS (editor)"
+      ],
+      "publisher": "Institute of Real Estate Management",
+      "publication_date": "2020",
+      "canonical_url": "https://www.irem.org/bookstore/id-784-7/Practical_Apartment_Management_7th_Edition",
+      "download_url": null,
+      "format": "Commercial book; print and digital editions",
+      "topics": [
+        "apartment management",
+        "marketing",
+        "leasing",
+        "rent setting",
+        "revenue management",
+        "resident retention",
+        "property operations",
+        "investment potential"
+      ],
+      "license": "Commercial publication; no open license or commercial incorporation permission verified.",
+      "license_url": "https://www.irem.org/digital-millennium-copyright-act",
+      "rights_basis": "IREM's bookstore verifies editor, publisher, 2020 edition, 317 pages, ISBN 978-1-57203-288-0 and commercial sale. IREM's DMCA policy provides copyright-enforcement procedures, not a reuse grant. Neither source establishes permission to reproduce the book or ingest it into a commercial system.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Focused multifamily reference on ownership and management, leasing strategy, pricing, resident service, reputation, retention and management technology.",
+      "caveats": "Only official metadata and description reviewed; no full book purchased or accessed. A print/digital purchase does not establish embedding or redistribution rights. Use as a licensed human reference or obtain explicit incorporation rights. Practices require adaptation to current local law and market conditions.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "pnnl-om-best-practices-release-3",
+      "title": "Operations & Maintenance Best Practices: A Guide to Achieving Operational Efficiency, Release 3.0",
+      "authors": [
+        "G. Sullivan",
+        "R. Pugh",
+        "A.P. Melendez",
+        "W.D. Hunt"
+      ],
+      "publisher": "Pacific Northwest National Laboratory for the U.S. Department of Energy Federal Energy Management Program",
+      "publication_date": "2010-08-04; publication page revised 2012-02-01",
+      "canonical_url": "https://www.pnnl.gov/publications/operations-maintenance-best-practices-guide-achieving-operational-efficiency-release-3",
+      "download_url": null,
+      "format": "Technical report, PNNL-19634",
+      "topics": [
+        "operations and maintenance",
+        "preventive maintenance",
+        "energy efficiency",
+        "water efficiency",
+        "HVAC",
+        "equipment reliability",
+        "operating expenses"
+      ],
+      "license": "Contractor-produced publication; PNNL notice permits noncommercial, scientific and educational use, without an unrestricted commercial grant.",
+      "license_url": "https://www.pnnl.gov/notices.asp",
+      "rights_basis": "PNNL states that its documents are sponsored by a U.S. Government contractor; the Government retains reuse rights for Government purposes, while documents may be freely distributed and used for noncommercial, scientific and educational purposes. This is not equivalent to a general public-domain or commercial incorporation license.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Useful operating-expense and capital-planning reference for preventive maintenance, energy/water efficiency and equipment reliability, with multifamily adaptation.",
+      "caveats": "Federal-facility emphasis and 2010-era guidance limit direct residential application. The publisher's energy-savings ranges are not verified current underwriting assumptions. Public availability does not permit commercial ingestion or embeddings; obtain permission before incorporation.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "irs-p527-2025",
+      "title": "Publication 527 (2025), Residential Rental Property (Including Rental of Vacation Homes)",
+      "authors": [
+        "Internal Revenue Service"
+      ],
+      "publisher": "U.S. Department of the Treasury, Internal Revenue Service",
+      "publication_date": "2025 tax-year edition; IRS catalog posted date: 2026-01-09",
+      "canonical_url": "https://www.irs.gov/publications/p527",
+      "download_url": "https://www.irs.gov/pub/irs-prior/p527--2025.pdf",
+      "format": "HTML; year-specific PDF",
+      "topics": [
+        "rental income",
+        "deductible rental expenses",
+        "residential rental depreciation",
+        "improvements versus repairs",
+        "personal-use limitations"
+      ],
+      "license": "U.S. federal-employee content: public domain in the United States; IRS copying notice",
+      "license_url": "https://www.irs.gov/about-irs/use-of-content-from-irsgov",
+      "rights_basis": "IRS states content created or maintained by federal employees in their official duties is not subject to copyright and may be freely copied. This permission excludes copyrighted third-party material; IRS credit is requested.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Direct multifamily tax foundation for rental revenues, expense classification, improvements and residential rental depreciation; useful for separating property cash flow from taxable income.",
+      "caveats": "Pinned to 2025; the canonical HTML can advance to a later edition. Check subsequent law and taxpayer facts. Commercial incorporation must exclude third-party content, including any NCMEC photographs, and seals/logos suggesting endorsement. State/local and non-U.S. rights require separate review.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.irs.gov/pub/irs-prior/p527--2025.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "irs-p541-2025",
+      "title": "Publication 541 (12/2025), Partnerships",
+      "authors": [
+        "Internal Revenue Service"
+      ],
+      "publisher": "U.S. Department of the Treasury, Internal Revenue Service",
+      "publication_date": "2025-12 revision; IRS catalog posted date: 2026-01-07",
+      "canonical_url": "https://www.irs.gov/publications/p541",
+      "download_url": "https://www.irs.gov/pub/irs-prior/p541--2025.pdf",
+      "format": "HTML; year-specific PDF",
+      "topics": [
+        "partnership taxation",
+        "partner basis",
+        "income allocations",
+        "capital accounts",
+        "distributions",
+        "contributions",
+        "foreign-partner withholding"
+      ],
+      "license": "U.S. federal-employee content: public domain in the United States; IRS copying notice",
+      "license_url": "https://www.irs.gov/about-irs/use-of-content-from-irsgov",
+      "rights_basis": "The IRS official copying notice permits reuse of qualifying federal-employee content without a noncommercial restriction; copyrighted third-party material and endorsement-related Treasury symbols are excluded.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Core federal-tax reference for multifamily LLC/JV entities taxed as partnerships, contributions, allocations, distributions and partner basis.",
+      "caveats": "Tax allocations and distributable cash waterfalls are not interchangeable. This general publication does not establish transaction-specific substantial-economic-effect compliance or draft JV terms. Recheck later developments. Exclude third-party images/NCMEC photographs and endorsement-related seals; U.S. public-domain basis is not a worldwide-rights determination.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.irs.gov/pub/irs-prior/p541--2025.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "irs-p544-2025",
+      "title": "Publication 544 (2025), Sales and Other Dispositions of Assets",
+      "authors": [
+        "Internal Revenue Service"
+      ],
+      "publisher": "U.S. Department of the Treasury, Internal Revenue Service",
+      "publication_date": "2025 tax-year edition; IRS catalog posted date: 2026-02-11",
+      "canonical_url": "https://www.irs.gov/publications/p544",
+      "download_url": "https://www.irs.gov/pub/irs-prior/p544--2025.pdf",
+      "format": "HTML; year-specific PDF",
+      "topics": [
+        "real-property dispositions",
+        "gain and loss",
+        "adjusted basis",
+        "section 1231",
+        "depreciation recapture",
+        "like-kind exchanges",
+        "foreign-owner withholding"
+      ],
+      "license": "U.S. federal-employee content: public domain in the United States; IRS copying notice",
+      "license_url": "https://www.irs.gov/about-irs/use-of-content-from-irsgov",
+      "rights_basis": "IRS expressly permits copying official federal-employee content, subject to its separate restrictions on copyrighted third-party content and Treasury symbols that could imply endorsement.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Supports multifamily exit-tax screening: sales proceeds versus taxable gain, basis adjustments, recapture and exchange considerations.",
+      "caveats": "Pinned 2025 guidance, not an individualized tax opinion; current law, investor status and state/local taxes can change results. Sections unrelated to rental real estate must not be indiscriminately applied. Exclude third-party images/NCMEC photographs and endorsement-related seals; non-U.S. rights are not established.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.irs.gov/pub/irs-prior/p544--2025.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "irs-p925-2025",
+      "title": "Publication 925 (2025), Passive Activity and At-Risk Rules",
+      "authors": [
+        "Internal Revenue Service"
+      ],
+      "publisher": "U.S. Department of the Treasury, Internal Revenue Service",
+      "publication_date": "2025 tax-year edition; IRS catalog posted date: 2026-02-24",
+      "canonical_url": "https://www.irs.gov/publications/p925",
+      "download_url": "https://www.irs.gov/pub/irs-prior/p925--2025.pdf",
+      "format": "HTML; year-specific PDF",
+      "topics": [
+        "rental real-estate passive losses",
+        "at-risk limitations",
+        "material participation",
+        "real-estate-professional rules",
+        "disposition of passive activities"
+      ],
+      "license": "U.S. federal-employee content: public domain in the United States; IRS copying notice",
+      "license_url": "https://www.irs.gov/about-irs/use-of-content-from-irsgov",
+      "rights_basis": "The official IRS notice says qualifying federal-employee material is not subject to copyright and may be freely copied. Third-party copyright and endorsement-related mark restrictions remain.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Important investor-level caution when evaluating whether projected multifamily tax losses actually reduce current taxes; complements partnership basis guidance rather than replacing it.",
+      "caveats": "Availability of losses depends on investor facts, basis, at-risk exposure, participation, grouping and other limitations; do not treat a modeled loss as an automatic tax benefit. Recheck law after 2025. Exclude third-party images/NCMEC photographs and endorsement-related seals; foreign rights require separate review.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.irs.gov/pub/irs-prior/p925--2025.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "irs-p946-2025",
+      "title": "Publication 946 (2025), How To Depreciate Property",
+      "authors": [
+        "Internal Revenue Service"
+      ],
+      "publisher": "U.S. Department of the Treasury, Internal Revenue Service",
+      "publication_date": "2025 tax-year edition; IRS catalog posted date: 2026-03-13",
+      "canonical_url": "https://www.irs.gov/publications/p946",
+      "download_url": "https://www.irs.gov/pub/irs-prior/p946--2025.pdf",
+      "format": "HTML; year-specific PDF",
+      "topics": [
+        "depreciable basis",
+        "placed-in-service timing",
+        "MACRS",
+        "GDS and ADS",
+        "recovery periods",
+        "depreciation conventions",
+        "section 179 and special depreciation"
+      ],
+      "license": "U.S. federal-employee content: public domain in the United States; IRS copying notice",
+      "license_url": "https://www.irs.gov/about-irs/use-of-content-from-irsgov",
+      "rights_basis": "IRS permits freely copying qualifying official federal-employee content; the notice does not authorize reuse of third-party copyrighted content or misleading use of IRS/Treasury symbols.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Detailed methods reference for modeling multifamily depreciation by asset classification, basis, method, convention and placed-in-service date; more technical than Publication 527.",
+      "caveats": "Do not apply personal-property bonus depreciation or section 179 assumptions to an entire apartment building. Land is not depreciable; building/components and elections require fact-specific treatment. Tax law and effective dates must be checked. Exclude third-party images/NCMEC photographs and endorsement-related seals; no worldwide-rights determination.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.irs.gov/pub/irs-prior/p946--2025.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "uli-long-finance-2012",
+      "title": "Finance for Real Estate Development",
+      "authors": [
+        "Charles Long"
+      ],
+      "publisher": "Urban Land Institute",
+      "publication_date": "2012-05-01; companion tools page dated 2012-06-18",
+      "canonical_url": "https://knowledge.uli.org/en/books/2012/finance-for-real-estate-development",
+      "download_url": null,
+      "format": "Commercial paperback; public book summary and companion-tool descriptions",
+      "topics": [
+        "development feasibility",
+        "NOI",
+        "DSCR/LTV/LTC debt sizing",
+        "levered and unlevered IRR",
+        "waterfall distributions",
+        "preferred returns",
+        "residual land value",
+        "due diligence"
+      ],
+      "license": "Copyrighted ULI book and companion materials; no commercial incorporation license verified",
+      "license_url": "https://europe.uli.org/terms-of-use/",
+      "rights_basis": "ULI terms apply to ULI.org and its subdomains and prohibit reproduction, distribution and dissemination without written permission. The companion page offers spreadsheets for free use but does not establish commercial embedding or redistribution rights: https://americas.uli.org/finance-for-real-estate-development-tools/ .",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Practitioner reference for acquisition/development feasibility and the relationship between financing and equity returns. Companion descriptions explicitly cover refinancing/sale cash flows, debt-size constraints, IRR and investor/developer waterfalls.",
+      "caveats": "Book and companion tools are consolidated here to avoid duplicate entries. Development-oriented and dated 2012; not a current market-assumption source. ULI disclaims spreadsheet accuracy. Do not download or embed the book/tools for this commercial library absent permission; implement needed calculations independently.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "openstax-principles-finance-2e-2026",
+      "title": "Principles of Finance 2e",
+      "authors": [
+        "Julie Dahlquist",
+        "Rainford Knight",
+        "Alan S. Adams",
+        "Curtis J. Bacon",
+        "Samantha T. Cooper",
+        "Michael P. Griffin",
+        "Kevin C. Higgins",
+        "Larry Musolino"
+      ],
+      "publisher": "OpenStax, Rice University",
+      "publication_date": "2026-06-24; web version updated 2026-07-06",
+      "canonical_url": "https://openstax.org/details/books/principles-finance-2e",
+      "download_url": null,
+      "format": "Web textbook; publisher offers PDF, not authorized for this commercial catalog",
+      "topics": [
+        "time value of money",
+        "unequal cash flows",
+        "NPV",
+        "IRR",
+        "capital budgeting",
+        "risk",
+        "financial forecasting"
+      ],
+      "license": "Creative Commons Attribution-NonCommercial-ShareAlike 4.0 (CC BY-NC-SA 4.0)",
+      "license_url": "https://openstax.org/books/principles-finance-2e/pages/preface",
+      "rights_basis": "The edition-specific preface explicitly licenses the book under CC BY-NC-SA 4.0. OpenStax's licensing help page also states no commercial use and directs commercial users to request permission: https://help.openstax.org/s/article/Licensing-information-of-OpenStax-textbooks .",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Foundational reference for chapters 7-9 on cash-flow timing and time value, and chapters 15-16 on investment decisions; useful context for explaining discounted returns and capital-budgeting choices.",
+      "caveats": "General corporate finance, not multifamily-specific. An open-access/free PDF is not permission for commercial incorporation; no embedding, adaptation, training or redistribution in the product without separate permission. This rights finding applies to the verified second edition, not an unverified earlier edition.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "maira-real-estate-jv-2016",
+      "title": "Understanding Real Estate Joint Ventures",
+      "authors": [
+        "Thomas G. Maira"
+      ],
+      "publisher": "LexisNexis Practical Guidance Journal; author affiliated with Reed Smith LLP",
+      "publication_date": "2016-09-14",
+      "canonical_url": "https://www.lexisnexis.com/community/insights/legal/practical-guidance-journal/b/pa/posts/understanding-real-estate-joint-ventures",
+      "download_url": null,
+      "format": "Substantial HTML article; publisher labels it a 25-minute read",
+      "topics": [
+        "capital and operating members",
+        "initial and additional contributions",
+        "capital calls",
+        "member loans",
+        "dilution",
+        "waterfall distributions",
+        "preferred returns",
+        "promotes",
+        "control and exit rights"
+      ],
+      "license": "Copyrighted LexisNexis/author material; all rights reserved",
+      "license_url": "https://www.lexisnexis.com/en-us/terms/copyright.page",
+      "rights_basis": "LexisNexis expressly identifies its site materials as copyright-protected and restricts copying, reproduction and reduction to machine-readable form. No commercial incorporation permission was verified.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Direct JV-design reference for multifamily acquisitions and transitional assets: capital-call remedies, loan priority, dilution effects, waterfall ordering and the distinction between ownership percentage and promote share.",
+      "caveats": "Legal commentary from 2016, not current individualized legal advice. The actual JV agreement governs; illustrative percentages are not defaults. Retain bibliographic metadata and links only; do not ingest article prose or linked agreement templates.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "paulweiss-crystallized-promote-2019",
+      "title": "Transactional Real Estate: Crystallization of Carried Interest in Joint Ventures",
+      "authors": [
+        "Mitchell L. Berg",
+        "Peter E. Fisch"
+      ],
+      "publisher": "Paul, Weiss, Rifkind, Wharton & Garrison LLP; New York Law Journal column",
+      "publication_date": "2019-08-14",
+      "canonical_url": "https://www.paulweiss.com/insights/client-memos/transactional-real-estate-crystallization-of-carried-interest-in-joint-ventures",
+      "download_url": null,
+      "format": "HTML publication page linking an article reprint; PDF not authorized for this catalog",
+      "topics": [
+        "carried interest",
+        "crystallized promotes",
+        "long-term-hold JV economics",
+        "promote valuation"
+      ],
+      "license": "Copyrighted law-firm and publisher material; no commercial reuse license verified",
+      "license_url": "https://www.paulweiss.com/policies-notices/legal-notice",
+      "rights_basis": "Paul Weiss's official legal notice identifies site information, text and images as protected by copyrights or other proprietary rights. Public availability of the article/reprint does not establish permission for commercial incorporation.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Focused reference for recognizing crystallized-promote provisions in long-term multifamily JV holds, where sponsor compensation can be determined before a conventional terminal sale.",
+      "caveats": "2019 legal commentary; not a complete waterfall specification or tax opinion. The publisher credits associate Peter Borock with assistance, not as a principal author. No article/PDF ingestion or redistribution without permission.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "geltner-creai-2014",
+      "title": "Commercial Real Estate Analysis and Investments, 3rd Edition",
+      "authors": [
+        "David Geltner",
+        "Norman G. Miller",
+        "Jim Clayton",
+        "Piet Eichholtz"
+      ],
+      "publisher": "OnCourse Learning (2014 edition); current retail catalog: The CE Shop",
+      "publication_date": "2014",
+      "canonical_url": "https://textbooks.theceshop.com/catalog/book/commercial-real-estate-analysis-investments-3rd-edition",
+      "download_url": null,
+      "format": "Commercial textbook; ISBN 9781133108825",
+      "topics": [
+        "commercial real-estate finance",
+        "investment analysis",
+        "valuation",
+        "market risk",
+        "lessons from the Global Financial Crisis"
+      ],
+      "license": "Copyrighted commercial textbook; no commercial incorporation or open license verified",
+      "license_url": "https://www.theceshop.com/legal",
+      "rights_basis": "The publisher catalog offers the book for purchase, not under an open license. Publisher eTextbook terms permit specified offline/personal copying, not commercial library incorporation. Author/year/original publisher metadata corroborated at https://books.google.com/books/about/Commercial_Real_Estate.html?id=3z2onzivNuAC .",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Advanced CRE finance and investment reference grounding valuation and risk concepts beyond introductory finance; useful background for multifamily underwriting methodology.",
+      "caveats": "2014 edition: durable concepts, not current tax law or market data. General CRE rather than a dedicated multifamily JV manual. This research verified catalog/bibliographic pages, not full purchased chapters. Do not download, embed or reproduce chapters, figures or companion media without permission.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "hud-emad-methodology-2019",
+      "title": "HUD's Housing Market Analysis: History and Current State",
+      "authors": [
+        "HUD Office of Policy Development and Research, Economic and Market Analysis Division"
+      ],
+      "publisher": "U.S. Department of Housing and Urban Development / HUD User",
+      "publication_date": "2019",
+      "canonical_url": "https://www.huduser.gov/portal/sites/default/files/pdf/emad-methodology.pdf",
+      "download_url": "https://www.huduser.gov/portal/sites/default/files/pdf/emad-methodology.pdf",
+      "format": "PDF",
+      "topics": [
+        "housing demand",
+        "market-area definition",
+        "supply-demand reconciliation",
+        "employment",
+        "household formation",
+        "fieldwork",
+        "forecast uncertainty"
+      ],
+      "license": "HUD-created material generally public domain; exclude separately copyrighted material.",
+      "license_url": "https://www.hud.gov/sites/documents/webpubstandards.pdf",
+      "rights_basis": "Official EMAD methodological publication, with running heading 'EMAD Housing Market Methodology | 2019 Figures'. HUD Section 1.D web publication policy permits reuse of agency-created content rather than merely allowing public access.",
+      "commercial_reuse_allowed": true,
+      "disposition": "DOWNLOAD_ALLOWED",
+      "applicability": "Substantial methodology for reconciling employment, demographic, construction and vacancy evidence into housing-demand estimates and multifamily market assessments.",
+      "caveats": "Historical methodology edition, not current market measurements. Estimates require judgment; new-unit demand is not property-level rent comparables. Official PDF text was retrievable through the web tool; a direct VM HEAD request returned an HTTP 202 HTML challenge, so download clients must validate MIME/content and never ingest the challenge page.",
+      "aliases": [],
+      "allowed_urls": [
+        "https://www.huduser.gov/portal/sites/default/files/pdf/emad-methodology.pdf"
+      ],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": [
+        "US"
+      ]
+    },
+    {
+      "id": "census-acs-researchers-2020",
+      "title": "Understanding and Using American Community Survey Data: What Researchers Need to Know",
+      "authors": [
+        "Linda A. Jacobsen (Population Reference Bureau)",
+        "Mark Mather (Population Reference Bureau)",
+        "U.S. Census Bureau, American Community Survey Office"
+      ],
+      "publisher": "U.S. Census Bureau",
+      "publication_date": "2020-03",
+      "canonical_url": "https://www.census.gov/programs-surveys/acs/library/handbooks/researchers.html",
+      "download_url": null,
+      "format": "PDF reference",
+      "topics": [
+        "demographic analysis",
+        "housing data",
+        "income and tenure",
+        "geographic comparisons",
+        "sampling error",
+        "custom tables",
+        "multiyear estimates"
+      ],
+      "license": "No explicit commercial reuse license established for the complete jointly drafted handbook; government hosting alone does not establish public-domain status.",
+      "license_url": "https://www2.census.gov/foia/ds_policies/ds027.pdf",
+      "rights_basis": "Official Census page identifies the handbook and PDF. Its acknowledgments credit PRB staff Jacobsen and Mather as drafters in partnership with Census. Census DS027 distinguishes federal-employee works from nonemployee/contractor works that may carry copyright; Section 105 cannot alone authorize the entire handbook.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "High-value guide to geographic comparisons, survey uncertainty, custom tables and combining ACS demographic and housing data for defensible multifamily demand proxies.",
+      "caveats": "PDF states issued March 2020; landing page is dated April 2020. ACS estimates are not property-level verified rent comps. Preserve geography, vintage and uncertainty. No commercial incorporation or embedding until rights are clarified; this restriction on the handbook does not classify Census data themselves as restricted. Large handbook body was not downloaded.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "nchma-model-content-standards-2025",
+      "title": "Model Content Standards for Rental Housing Market Studies, Version 3.1",
+      "authors": [
+        "National Council of Housing Market Analysts"
+      ],
+      "publisher": "National Housing & Rehabilitation Association / NCHMA",
+      "publication_date": "2025-09",
+      "canonical_url": "https://www.housingonline.com/councils/national-council-housing-market-analysts/model-content-standards/",
+      "download_url": null,
+      "format": "Web page and PDF reference",
+      "topics": [
+        "rental housing market studies",
+        "primary market area",
+        "competitive properties",
+        "demand analysis",
+        "capture rates",
+        "affordability",
+        "market-rate multifamily",
+        "LIHTC"
+      ],
+      "license": "Publisher encourages incorporating information into industry standards and requests written notification; no explicit commercial redistribution or embedding license verified.",
+      "license_url": "https://www.housingonline.com/councils/national-council-housing-market-analysts/model-content-standards/",
+      "rights_basis": "Official publisher page identifies September 2025 update and Version 3.1, encourages incorporation into users' own standards, and requests written notification. That scoped encouragement is not treated as unrestricted permission to copy the publication into commercial retrieval.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Strong professional checklist for market-study content, competitive inventory, economic and demographic evidence, demand, affordability, conclusions and reconciliation of conflicting indicators.",
+      "caveats": "Different housing agencies, lenders and clients may impose their own standards. Cite the exact version and clarify permission before downloading or embedding. Official content was readable through the web tool; direct VM request returned HTTP 403, which must not be bypassed.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "uli-real-estate-market-analysis-2019",
+      "title": "Real Estate Market Analysis: Trends, Methods, and Information Sources, Third Edition",
+      "authors": [
+        "Deborah L. Brett"
+      ],
+      "publisher": "Urban Land Institute",
+      "publication_date": "2019-08",
+      "canonical_url": "https://uli.bookstore.ipgbook.com/real-estate-market-analysis-products-9780874204285.php",
+      "download_url": null,
+      "format": "Commercial book; paperback and EPUB reference",
+      "topics": [
+        "market-area definition",
+        "site inspection",
+        "competitive properties",
+        "supply and demand",
+        "economic data",
+        "demographic data",
+        "residential market analysis"
+      ],
+      "license": "Copyrighted commercial book; no open commercial incorporation license verified. ULI reserves rights and requires permission for reuse of its website content.",
+      "license_url": "https://europe.uli.org/terms-of-use/",
+      "rights_basis": "Official ULI bookstore verifies author, publisher, third edition, August 2019 publication and ISBN 9780874204285. ULI's terms identify copyright protection and prior-written-permission requirements for ULI site content; those terms are rights context, not a separate book-content license.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Professional framework for defining market areas, reviewing sites and competitors, selecting data sources and analyzing residential demand/supply.",
+      "caveats": "Covers several property types, not multifamily alone. Methods are reusable concepts but examples and data-source descriptions are 2019 vintage. Citation metadata only; purchasing a copy would not establish commercial embedding rights.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    },
+    {
+      "id": "berges-apartment-buildings-2011",
+      "title": "The Complete Guide to Buying and Selling Apartment Buildings, Second Edition",
+      "authors": [
+        "Steve Berges"
+      ],
+      "publisher": "Wiley",
+      "publication_date": "2011-01",
+      "canonical_url": "https://www.wiley.com/en-us/The+Complete+Guide+to+Buying+and+Selling+Apartment+Buildings%2C+2nd+Edition-p-9781118045909",
+      "download_url": null,
+      "format": "Commercial book; e-book and paperback reference",
+      "topics": [
+        "apartment acquisition",
+        "deal sourcing",
+        "pricing",
+        "financing",
+        "transaction paperwork",
+        "property management",
+        "value creation"
+      ],
+      "license": "Copyrighted commercial publication; suitable reuse permission/license required.",
+      "license_url": "https://www.wiley.com/en-us/solutions-partnerships/permissions/",
+      "rights_basis": "Wiley's publisher page verifies title, Steve Berges, second edition, e-book ISBN 9781118045909 and January 2011 date. Wiley's rights portal directs both commercial and noncommercial reuse through licensing.",
+      "commercial_reuse_allowed": false,
+      "disposition": "REFERENCE_ONLY",
+      "applicability": "Practical apartment acquisition-process overview spanning sourcing, price assessment, financing, paperwork, ownership and value-creation workflow.",
+      "caveats": "January 2011 is the e-book date; Wiley lists December 2004 for the second-edition paperback. Historical process reference only: tax advice, forecasts, financing assumptions and forms must not be presented as current. No purchase, download, embedding or content reproduction.",
+      "aliases": [],
+      "allowed_urls": [],
+      "verified_at": "2026-10-04",
+      "verification_source": "Original publisher/agency and rights review supplied by coordinator session 70d6ca47bdbf4faf8083ca76c4988784; download verification recorded separately.",
+      "jurisdictions": []
+    }
+  ]
+}

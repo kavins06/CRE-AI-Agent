@@ -83,6 +83,10 @@ That record then becomes:
 ## 8. Releases and nightly operation
 - **Brain Release:** a manifest hash over `brain/`, firm playbook versions, `config/*.yaml`, the gates code hash, runner and model IDs, and the Codex CLI version. Every task records its release.
 - `cre release rollback <id>` reverts to an earlier release.
+- Rollback requires the recorded gate code and Codex CLI version; a release built without Codex can be restored offline only when the CLI remains unavailable. It never installs runtime software.
+- Rollback rejects changes to gates, budget or toggles before any writes by default. Both file defaults and effective environment policies are compared, so overrides cannot hide changed defaults. The offline operator must review the displayed current/proposed policies and repeat with `--confirm-policy <digest>`. The digest binds the rollback action, exact release ID and both current/proposed policy digests; a different release or changed current policy invalidates it. Library callers default to no confirmation and must supply the exact `policy_confirmation=` explicitly.
+- This confirmation is an offline operator safety boundary, not authentication, a signature or a reusable control-plane approval. Any future remote exposure must require an owner role and a one-time action-bound confirmation; never let an analyst auto-confirm a policy change.
+- Release hashes prove content integrity, not owner approval. The offline administrative CLI assumes an operator-controlled checkout and trusted local manifests. Do not import seller, analyst or web-supplied manifests; candidate promotion must pass the evaluator/owner controls before distributing a release. Global brain synchronization to analyst boxes is read-only (§3 of SPEC). Untrusted release import/signing is not implemented by T004.
 - `cre learn nightly`:
   1. skips with `SKIPPED_NO_RUNNER` if Codex isn't usable
   2. rotates kinds by gap

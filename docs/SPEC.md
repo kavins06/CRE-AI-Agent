@@ -55,6 +55,11 @@ class SandboxProvider(Protocol):             # sandbox/base.py
     async def destroy(self, box: Box) -> None: ...
     # v1: LocalDockerProvider. The owner's infrastructure implements the same Protocol + passes tests/sandbox/contract.py.
 
+class SnapshotReader(Protocol):              # sandbox/base.py, trusted owner-contract adapter
+    async def read_snapshot(self, snapshot_id: str) -> bytes: ...
+    # Optional, separate from the production provider: returns the actual bounded TAR artifact.
+    # LocalDockerProvider implements it; other owners use SnapshotContractAdapter(provider, reader).
+
 class DecisionModel(Protocol):               # decisions/base.py
     async def choice(self, state: dict, question: str, options: dict[str, str]) -> ChoiceResult: ...
     async def score(self, state: dict, question: str, levels: list[str]) -> ScoreResult: ...
@@ -296,6 +301,7 @@ roles:
 
 ### 10.4 CRE tools (`cre` MCP server **and** `cre tool <name>` CLI, one implementation)
 - `facts_get` / `facts_put` / `assumption_set`
+- `knowledge_search(query, limit, max_chars, scope="global_public")`
 - `finance_run(fn, args)`
 - `excel_build(template, deal)` → path
 - `excel_recalc_parity(path)`
@@ -310,6 +316,18 @@ roles:
 - `ingest_user_edit(deliverable_id, path)`
 
 Tools return concise JSON with actionable errors.
+
+Licensed public references use the single `cre_brain.knowledge` catalog and typed
+`KnowledgeProvider.search(SearchRequest) -> SearchResult` seam (`docs/KNOWLEDGE.md`).
+The host-injected registry `knowledge_search` delegates to this same provider as
+`cre knowledge search`, returning cited `global_public` reference chunks or
+metadata-only references, never verified deal `Fact`/`CalcResult` evidence. It is
+advertised only when the authenticated host supplies a provider. It is read-only,
+uses the existing tool budget and result ledger, rejects arbitrary URLs/tenant
+scope and is available to lead and read-only verifier roles, not extraction.
+Imports remain operator-only/default-off until wired through this canonical
+policy; reference-only/unknown/noncommercial rights prohibit ingestion. SEC is
+disabled. Firm/user memory and evaluation truth must remain physically separate.
 
 ### 10.5 Ask-and-continue and mid-task messages
 1. `ask_user` creates a `Question`, records `default_used` as an `Assumption(set_by="agent")`, adds edges to the `affects` items, and continues.

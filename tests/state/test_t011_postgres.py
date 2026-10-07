@@ -1,0 +1,152 @@
+import os
+import re
+from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
+from decimal import Decimal
+from uuid import uuid4
+
+import pytest
+from sqlalchemy import create_engine, inspect, text
+from sqlalchemy.exc import DBAPIError
+
+from cre_brain.domain import AgentEvent, ClaimType, Fact
+from cre_brain.domain.base import TenantScope
+from cre_brain.state.events import EventStore
+from cre_brain.state.migrate import downgrade_database, upgrade_database
+from cre_brain.state.schema import metadata
+from cre_brain.state.store import SqlVersionedStore
+
+pytestmark = [pytest.mark.integration, pytest.mark.requires_key("CRE_TEST_DATABASE_URL")]
+SCOPE = TenantScope(user_id="integration-user", firm_id="integration-firm")
+
+
+@pytest.fixture
+def postgres_engine():
+    admin = create_engine(
+        os.environ["CRE_TEST_DATABASE_URL"], connect_args={"client_encoding": "utf8"}
+    )
+    assert admin.dialect.name == "postgresql"
+    schema = f"cre_t011_{uuid4().hex}"
+    with admin.begin() as connection:
+        connection.execute(text(f"CREATE SCHEMA {schema}"))
+    engine = create_engine(
+        os.environ["CRE_TEST_DATABASE_URL"],
+        connect_args={"client_encoding": "utf8", "options": f"-csearch_path={schema}"},
+    )
+    try:
+        yield engine
+    finally:
+        engine.dispose()
+        with admin.begin() as connection:
+            connection.execute(text(f"DROP SCHEMA {schema} CASCADE"))
+        admin.dispose()
+
+
+def test_t011_ac1_postgresql_migration_and_state_semantics(postgres_engine) -> None:
+    upgrade_database(postgres_engine)
+    assert set(metadata.tables) <= set(inspect(postgres_engine).get_table_names())
+
+    facts = SqlVersionedStore(postgres_engine, Fact)
+    first = Fact(
+        fact_id="noi",
+        deal_id="deal",
+        key="noi",
+        value=Decimal("1.20"),
+        claim_type=ClaimType.VERIFIED_FACT,
+        provenance=[],
+        known_at=datetime(2026, 10, 4, tzinfo=UTC),
+        version=1,
+    )
+    facts.append(first, scope=SCOPE)
+    facts.append(first.model_copy(update={"version": 2, "value": Decimal("1.30")}), scope=SCOPE)
+    assert facts.current("noi", scope=SCOPE).value == Decimal("1.30")
+    with pytest.raises(DBAPIError), postgres_engine.begin() as connection:
+        connection.execute(text("UPDATE facts SET payload = '{}'"))
+
+    events = EventStore(postgres_engine)
+
+    def insert(number: int) -> AgentEvent:
+        item = AgentEvent(
+            event_id=f"e-{number}",
+            task_id="task",
+            seq=None,
+            origin=("box", 1, number),
+            ts=datetime(2026, 10, 4, tzinfo=UTC),
+            source="tool",
+            kind="tool_result",
+            cause_id=None,
+            release_id="r",
+            runner="integration",
+            payload={"n": number},
+        )
+        return events.append(item, scope=SCOPE)
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        written = list(executor.map(insert, range(32)))
+    assert sorted(event.seq for event in written) == list(range(1, 33))
+    first_origin = next(
+        event.origin[2] for event in written if event.seq == 1 and event.origin is not None
+    )
+    assert events.append(insert(first_origin), scope=SCOPE).seq == 1
+
+    downgrade_database(postgres_engine)
+    assert not (set(metadata.tables) & set(inspect(postgres_engine).get_table_names()))
+
+
+def test_t012_ac1_graph_postgresql_atomic_sequence_and_concurrent_cycles(postgres_engine) -> None:
+    from cre_brain.state.graph import DependencyGraph, GraphCycle
+
+    upgrade_database(postgres_engine)
+    graph = DependencyGraph(postgres_engine, release_id="integration-release")
+
+    def add(pair):
+        try:
+            graph.add_edge(*pair, scope=SCOPE)
+            return "added"
+        except GraphCycle:
+            return "cycle"
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        assert sorted(executor.map(add, [("a", "b"), ("b", "a")])) == ["added", "cycle"]
+    graph.add_edge("rent", "noi", scope=SCOPE)
+    graph.add_edge("noi", "uw", scope=SCOPE)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(
+            executor.map(lambda _: graph.mark_stale("rent", task_id="task", scope=SCOPE), range(32))
+        )
+    assert results == [["noi", "uw"]] * 32
+    assert graph.stale_items("task", scope=SCOPE) == ["noi", "uw"]
+    assert [event.seq for event in EventStore(postgres_engine).list("task", scope=SCOPE)] == list(
+        range(1, 65)
+    )
+
+
+def test_t012_ac1_graph_postgresql_stale_event_ulid_wire_contract(postgres_engine) -> None:
+    from cre_brain.state.graph import DependencyGraph
+
+    upgrade_database(postgres_engine)
+    graph = DependencyGraph(postgres_engine, release_id="integration-release")
+    graph.add_edge("rent", "noi", scope=SCOPE)
+    graph.add_edge("noi", "uw", scope=SCOPE)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        assert (
+            list(
+                executor.map(
+                    lambda _: graph.mark_stale("rent", task_id="task", scope=SCOPE), range(32)
+                )
+            )
+            == [["noi", "uw"]] * 32
+        )
+    persisted = EventStore(postgres_engine).list("task", scope=SCOPE)
+    assert len({event.event_id for event in persisted}) == 64
+    assert [event.seq for event in persisted] == list(range(1, 65))
+    alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
+    for event in persisted:
+        assert re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", event.event_id)
+        timestamp = 0
+        for char in event.event_id[:10]:
+            timestamp = timestamp * 32 + alphabet.index(char)
+        assert timestamp == (event.ts - datetime(1970, 1, 1, tzinfo=UTC)) // timedelta(
+            milliseconds=1
+        )
+    assert graph.stale_items("task", scope=SCOPE) == ["noi", "uw"]

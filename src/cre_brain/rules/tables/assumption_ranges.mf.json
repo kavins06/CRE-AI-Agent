@@ -1,0 +1,112 @@
+{
+  "metadata": {
+    "table_id": "assumption_ranges.mf",
+    "version": "1.0.0",
+    "policy_notice": "Classification only. Business defaults are illustrative configurable firm policy, not market or legal truth. Jurisdiction outcomes require caller-supplied verified policy/evidence; no jurisdiction facts are bundled.",
+    "numeric_encoding": "Money: exact cents; ratios: exact millionths; integers bounded at 2**53-1. No numeric arithmetic or float conversion."
+  },
+  "nodes": [
+    {
+      "id": "input",
+      "type": "inputNode",
+      "name": "input",
+      "position": {
+        "x": 0,
+        "y": 0
+      }
+    },
+    {
+      "id": "rules",
+      "type": "decisionTableNode",
+      "name": "rules",
+      "position": {
+        "x": 200,
+        "y": 0
+      },
+      "content": {
+        "hitPolicy": "first",
+        "inputs": [
+          {
+            "id": "predicate",
+            "name": "ExactPolicyPredicate",
+            "field": "",
+            "type": "expression"
+          }
+        ],
+        "outputs": [
+          {
+            "id": "classification",
+            "name": "classification",
+            "field": "classification",
+            "type": "expression"
+          },
+          {
+            "id": "reason_code",
+            "name": "reason_code",
+            "field": "reason_code",
+            "type": "expression"
+          },
+          {
+            "id": "required_checks",
+            "name": "required_checks",
+            "field": "required_checks",
+            "type": "expression"
+          }
+        ],
+        "rules": [
+          {
+            "_id": "unverified_profile",
+            "predicate": "not profile_known or rent_growth == null or cap_rate == null",
+            "classification": "\"review_required\"",
+            "reason_code": "\"unverified_profile\"",
+            "required_checks": "[\"verify_assumption_profile\"]"
+          },
+          {
+            "_id": "growth_outside_policy",
+            "predicate": "rent_growth < min_rent_growth or rent_growth > max_rent_growth",
+            "classification": "\"outside_policy\"",
+            "reason_code": "\"growth_outside_policy\"",
+            "required_checks": "[\"approve_assumption_exception\"]"
+          },
+          {
+            "_id": "cap_outside_policy",
+            "predicate": "cap_rate < min_cap_rate or cap_rate > max_cap_rate",
+            "classification": "\"outside_policy\"",
+            "reason_code": "\"cap_outside_policy\"",
+            "required_checks": "[\"approve_assumption_exception\"]"
+          },
+          {
+            "_id": "within_policy",
+            "predicate": "",
+            "classification": "\"within_policy\"",
+            "reason_code": "\"within_policy\"",
+            "required_checks": "[\"verify_market_evidence\"]"
+          }
+        ]
+      }
+    },
+    {
+      "id": "output",
+      "type": "outputNode",
+      "name": "output",
+      "position": {
+        "x": 400,
+        "y": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "input-rules",
+      "type": "edge",
+      "sourceId": "input",
+      "targetId": "rules"
+    },
+    {
+      "id": "rules-output",
+      "type": "edge",
+      "sourceId": "rules",
+      "targetId": "output"
+    }
+  ]
+}

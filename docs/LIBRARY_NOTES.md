@@ -1,5 +1,17 @@
 # LIBRARY NOTES: pinned versions, verified snippets, gotchas
 
+## Core/dev security correction (2026-10-04)
+
+- pytest 9.0.3 fixes CVE-2025-71176; pytest-asyncio 1.3.0 supports pytest >=8.2,<10. Exact pins and Python compatibility verified against PyPI metadata; all M0 tests replayed without assertion/skip changes.
+- Native core/dev `uv audit --locked` excluding optional extras is clean. No audit exceptions are configured.
+
+## Optional-stack security correction (2026-10-04)
+
+- pypdf 6.19.0 replaces 6.1.1 to cover malformed-PDF resource-exhaustion fixes, including alphabetical page-label limits: https://github.com/py-pdf/pypdf/releases/tag/6.19.0. Untrusted parsing still requires bounded resources; patched dependencies are not a sandbox.
+- MCP 1.28.1 stays on the maintained v1 API and fixes HTTP principal validation and transport Host/Origin protections: https://github.com/modelcontextprotocol/python-sdk/releases/tag/v1.28.1. Do not migrate to the new v2 API implicitly.
+- Starlette 1.3.1 covers Host/path, HTTP dispatch, range and form-parser fixes: https://github.com/Kludex/starlette/blob/1.3.1/docs/release-notes.md. FastAPI 0.135.2 supports Starlette 1.x: https://github.com/fastapi/fastapi/blob/0.135.2/docs/en/docs/release-notes.md#01330.
+- Native full-lock audit is clean across 250 third-party packages after these focused corrections. The separate dependency-audit CI job uses verified uv 0.12.19 for its native audit; existing test/bootstrap jobs keep their original manager pin. Offline synthetic API/PDF/MCP probes passed; these prove compatibility, not production readiness or tenant isolation.
+
 > The product is an autonomous CRE acquisition analyst. This is the reference for the libraries it is built on.
 
 Versions were checked on PyPI on 2026-10-04.

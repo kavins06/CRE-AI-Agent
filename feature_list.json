@@ -19,7 +19,7 @@
       "task_file": "docs/tasks/T001-scaffold.md",
       "depends_on": [],
       "verify": "./init.sh && make check && uv run cre --help && uv run pytest tests/test_t001_scaffold.py -q",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T002",
@@ -30,7 +30,7 @@
         "T001"
       ],
       "verify": "make check && uv run pytest tests/test_t002_guards.py -q && uv run python scripts/check_task.py T002",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T003",
@@ -41,7 +41,7 @@
         "T001"
       ],
       "verify": "uv run pytest tests/config -q && uv run python scripts/check_task.py T003",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T004",
@@ -52,7 +52,7 @@
         "T003"
       ],
       "verify": "uv run pytest tests/release -q && uv run python scripts/check_task.py T004",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T010",
@@ -63,7 +63,7 @@
         "T001"
       ],
       "verify": "uv run pytest tests/domain -q && uv run python scripts/check_task.py T010",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T011",
@@ -74,7 +74,7 @@
         "T010"
       ],
       "verify": "uv run pytest tests/state -q -m 'not integration' && uv run python scripts/check_task.py T011",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T012",
@@ -85,7 +85,7 @@
         "T011"
       ],
       "verify": "uv run pytest tests/state -q -k graph && uv run python scripts/check_task.py T012",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T013",
@@ -96,7 +96,7 @@
         "T010"
       ],
       "verify": "uv run pytest tests/finance -q -k 'rentroll or t12' && uv run python scripts/check_task.py T013",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T014",
@@ -107,7 +107,7 @@
         "T013"
       ],
       "verify": "uv run pytest tests/finance -q -k 'proforma or taxes or valueadd' && uv run python scripts/check_task.py T014",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T015",
@@ -118,7 +118,7 @@
         "T014"
       ],
       "verify": "uv run pytest tests/finance -q -k debt && uv run python scripts/check_task.py T015",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T016",
@@ -129,7 +129,7 @@
         "T015"
       ],
       "verify": "uv run pytest tests/finance -q -k returns && uv run python scripts/check_task.py T016",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T017",
@@ -140,7 +140,7 @@
         "T016"
       ],
       "verify": "uv run pytest tests/finance -q -k 'waterfall or exit or holdsell' && uv run python scripts/check_task.py T017",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T018",
@@ -151,7 +151,7 @@
         "T017"
       ],
       "verify": "uv run pytest tests/finance -q -k scenarios && uv run python scripts/check_task.py T018",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T019",
@@ -162,7 +162,7 @@
         "T018"
       ],
       "verify": "uv run pytest tests/excel -q -k template && uv run python scripts/check_task.py T019",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T020",
@@ -173,7 +173,7 @@
         "T019"
       ],
       "verify": "uv run pytest tests/excel -q && uv run python scripts/check_task.py T020",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T021",
@@ -184,7 +184,7 @@
         "T010"
       ],
       "verify": "uv run pytest tests/rules -q && uv run python scripts/check_task.py T021",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T030",
@@ -207,7 +207,7 @@
         "T001"
       ],
       "verify": "uv run pytest tests/sandbox -q && uv run python scripts/check_task.py T031",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T032",
@@ -219,10 +219,10 @@
         "T018",
         "T020",
         "T021",
-        "T030"
+        "T037"
       ],
       "verify": "uv run pytest tests/runner -q -k tools && uv run pytest tests/protected -q -k policy && uv run python scripts/check_task.py T032",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T033",
@@ -246,7 +246,7 @@
         "T010"
       ],
       "verify": "uv run pytest tests/extraction -q -k preparse && uv run python scripts/check_task.py T034",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T035",
@@ -271,7 +271,7 @@
         "T034"
       ],
       "verify": "uv run pytest tests/evals -q -k generator && uv run python scripts/check_task.py T036",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T037",
@@ -285,7 +285,7 @@
         "T018"
       ],
       "verify": "uv run pytest tests/gates tests/protected -q && uv run python scripts/check_task.py T037",
-      "passes": false
+      "passes": true
     },
     {
       "id": "T038",
